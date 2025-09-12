@@ -15,7 +15,7 @@ fn local_image_to_theme<P: AsRef<std::path::Path>>(
     let mut img = style::core::color::image::ImageReader::read(bytes)
         .map_err(|e| format!("failed to decode image: {}", e))?;
 
-    use style::core::color::image::FilterType;
+    use style::core::color::image::FilterType; 
     img.resize(128, 128, FilterType::Lanczos3);
 
     let source = style::core::color::image::ImageReader::extract_color(&img);
