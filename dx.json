@@ -6,6 +6,14 @@
     "description": "Orchestrate don't just own your code",
     "author": "essensefromexistence",
     "repository": "https://dx.vercel.app/essensefromexistence/dx",
+    "homepage": "auto-detected",
+    "items": [
+        {
+            "name": "dx",
+            "type": "registry:lib",
+            "dx": "0.0.1"
+        }
+    ],
     "language": "auto-detected",
     "runtime": "auto-detected",
     "compiler": "auto-detected",

@@ -284,6 +284,8 @@ impl ThemeBuilder {
 pub struct Theme {
     pub source: Argb,
     pub schemes: Schemes,
+    #[serde(skip_serializing)]
     pub palettes: Palettes,
+    #[serde(skip_serializing)]
     pub custom_colors: Vec<CustomColorGroup>,
 }
