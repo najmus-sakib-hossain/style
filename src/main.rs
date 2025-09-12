@@ -48,14 +48,14 @@ async fn remote_image_to_theme(url: &str) -> Result<style::core::color::theme::T
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1) Color-based theme
     let color_theme = color_to_theme(Argb::from_u32(0xffaae5a4));
-    println!("{}", "Theme generated from color:".green());
-    println!("{}", serde_json::to_string_pretty(&color_theme)?);
+    println!("[");
+    println!("{},", serde_json::to_string_pretty(&color_theme)?);
 
     // 2) Local image-based theme
-    match local_image_to_theme("media/suzume.png") {
+    match local_image_to_theme("media/suzume-no-tojimari.png") {
         Ok(theme) => {
-            println!("{}", "Theme generated from local image:".green());
-            println!("{}", serde_json::to_string_pretty(&theme)?);
+            // println!("{}", "Theme generated from local image:".green());
+            println!("{},", serde_json::to_string_pretty(&theme)?);
         }
         Err(e) => {
             println!("{} {}", "Local image theme failed:".red(), e);
@@ -67,8 +67,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match remote_image_to_theme(remote_url).await {
         Ok(theme) => {
-            println!("{}", "Theme generated from remote image:".green());
             println!("{}", serde_json::to_string_pretty(&theme)?);
+            println!("]");
         }
         Err(e) => {
             println!("{} {}", "Remote image theme failed:".red(), e);
