@@ -1,0 +1,131 @@
+# -----------------------------------------------------------------------------
+# [dynamic]
+# For classes that have a non-numeric or irregular scale.
+# Format: "prefix|css-property" = { suffix = "css-value", ... }
+# -----------------------------------------------------------------------------
+[dynamic]
+"align-content|align-content" = { normal = "normal", center = "center", start = "flex-start", end = "flex-end", between = "space-between", around = "space-around", evenly = "space-evenly", baseline = "baseline", stretch = "stretch" }
+"align-items|align-items" = { start = "flex-start", end = "flex-end", center = "center", baseline = "baseline", stretch = "stretch" }
+"align-self|align-self" = { auto = "auto", start = "flex-start", end = "flex-end", center = "center", stretch = "stretch", baseline = "baseline" }
+"align|vertical-align" = { baseline = "baseline", top = "top", middle = "middle", bottom = "bottom", "text-top" = "text-top", "text-bottom" = "text-bottom", sub = "sub", super = "super" }
+"animate|animation" = { none = "none", spin = "spin 1s linear infinite", ping = "ping 1s cubic-bezier(0, 0, 0.2, 1) infinite", pulse = "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite", bounce = "bounce 1s infinite" }
+"appearance|appearance" = { none = "none", auto = "auto" }
+"auto-cols|grid-auto-columns" = { auto = "auto", min = "min-content", max = "max-content", fr = "minmax(0, 1fr)" }
+"auto-rows|grid-auto-rows" = { auto = "auto", min = "min-content", max = "max-content", fr = "minmax(0, 1fr)" }
+"backface|backface-visibility" = { visible = "visible", hidden = "hidden" }
+"backdrop-blur|--tw-backdrop-blur" = { none = "blur(0)", xs = "blur(2px)", sm = "blur(4px)", "" = "blur(8px)", md = "blur(12px)", lg = "blur(16px)", xl = "blur(24px)", "2xl" = "blur(40px)", "3xl" = "blur(64px)" }
+"backdrop-grayscale|--tw-backdrop-grayscale" = { "0" = "grayscale(0)", "" = "grayscale(1)" }
+"backdrop-invert|--tw-backdrop-invert" = { "0" = "invert(0)", "" = "invert(1)" }
+"backdrop-sepia|--tw-backdrop-sepia" = { "0" = "sepia(0)", "" = "sepia(1)" }
+"basis|flex-basis" = { auto = "auto", "1/2" = "50%", "1/3" = "33.333333%", "2/3" = "66.666667%", "1/4" = "25%", "2/4" = "50%", "3/4" = "75%", "1/5" = "20%", "2/5" = "40%", "3/5" = "60%", "4/5" = "80%", "1/6" = "16.666667%", "2/6" = "33.333333%", "3/6" = "50%", "4/6" = "66.666667%", "5/6" = "83.333333%", "1/12" = "8.333333%", "2/12" = "16.666667%", "3/12" = "25%", "4/12" = "33.333333%", "5/12" = "41.666667%", "6/12" = "50%", "7/12" = "58.333333%", "8/12" = "66.666667%", "9/12" = "75%", "10/12" = "83.333333%", "11/12" = "91.666667%", full = "100%" }
+"bg-attachment|background-attachment" = { fixed = "fixed", local = "local", scroll = "scroll" }
+"bg-blend|background-blend-mode" = { normal = "normal", multiply = "multiply", screen = "screen", overlay = "overlay", darken = "darken", lighten = "lighten", "color-dodge" = "color-dodge", "color-burn" = "color-burn", "hard-light" = "hard-light", "soft-light" = "soft-light", difference = "difference", exclusion = "exclusion", hue = "hue", saturation = "saturation", color = "color", luminosity = "luminosity", "plus-lighter" = "plus-lighter" }
+"bg-clip|background-clip" = { border = "border-box", padding = "padding-box", content = "content-box", text = "text" }
+"bg-gradient|background-image" = { "to-t" = "linear-gradient(to top, var(--tw-gradient-stops))", "to-tr" = "linear-gradient(to top right, var(--tw-gradient-stops))", "to-r" = "linear-gradient(to right, var(--tw-gradient-stops))", "to-br" = "linear-gradient(to bottom right, var(--tw-gradient-stops))", "to-b" = "linear-gradient(to bottom, var(--tw-gradient-stops))", "to-bl" = "linear-gradient(to bottom left, var(--tw-gradient-stops))", "to-l" = "linear-gradient(to left, var(--tw-gradient-stops))", "to-tl" = "linear-gradient(to top left, var(--tw-gradient-stops))", "conic" = "conic-gradient(var(--tw-gradient-stops))", "radial" = "radial-gradient(circle, var(--tw-gradient-stops))" }
+"bg-image|background-image" = { none = "none" }
+"bg-origin|background-origin" = { border = "border-box", padding = "padding-box", content = "content-box" }
+"bg-position|background-position" = { bottom = "bottom", center = "center", left = "left", "left-bottom" = "left bottom", "left-top" = "left top", right = "right", "right-bottom" = "right bottom", "right-top" = "right top", top = "top" }
+"bg-repeat|background-repeat" = { "" = "repeat", "no-repeat" = "no-repeat", "repeat-x" = "repeat-x", "repeat-y" = "repeat-y", round = "round", space = "space" }
+"bg-size|background-size" = { auto = "auto", cover = "cover", contain = "contain" }
+"blur|--tw-blur" = { none = "blur(0)", xs = "blur(2px)", sm = "blur(4px)", "" = "blur(8px)", md = "blur(12px)", lg = "blur(16px)", xl = "blur(24px)", "2xl" = "blur(40px)", "3xl" = "blur(64px)" }
+"border-collapse|border-collapse" = { collapse = "collapse", separate = "separate" }
+"border-style|border-style" = { solid = "solid", dashed = "dashed", dotted = "dotted", double = "double", hidden = "hidden", none = "none" }
+"box-decoration|box-decoration-break" = { clone = "clone", slice = "slice" }
+"box-sizing|box-sizing" = { border = "border-box", content = "content-box" }
+"break-after|break-after" = { auto = "auto", avoid = "avoid", all = "all", "avoid-page" = "avoid-page", page = "page", left = "left", right = "right", column = "column" }
+"break-before|break-before" = { auto = "auto", avoid = "avoid", all = "all", "avoid-page" = "avoid-page", page = "page", left = "left", right = "right", column = "column" }
+"break-inside|break-inside" = { auto = "auto", avoid = "avoid", "avoid-page" = "avoid-page", "avoid-column" = "avoid-column" }
+"caption-side|caption-side" = { top = "top", bottom = "bottom" }
+"clear|clear" = { left = "left", right = "right", both = "both", none = "none" }
+"content|content" = { none = "none", "empty" = '""' }
+"cursor|cursor" = { auto = "auto", default = "default", pointer = "pointer", wait = "wait", text = "text", move = "move", help = "help", "not-allowed" = "not-allowed", none = "none", "context-menu" = "context-menu", progress = "progress", cell = "cell", crosshair = "crosshair", "vertical-text" = "vertical-text", alias = "alias", copy = "copy", "no-drop" = "no-drop", grab = "grab", grabbing = "grabbing", "all-scroll" = "all-scroll", "col-resize" = "col-resize", "row-resize" = "row-resize", "n-resize" = "n-resize", "e-resize" = "e-resize", "s-resize" = "s-resize", "w-resize" = "w-resize", "ne-resize" = "ne-resize", "nw-resize" = "nw-resize", "se-resize" = "se-resize", "sw-resize" = "sw-resize", "ew-resize" = "ew-resize", "ns-resize" = "ns-resize", "nesw-resize" = "nesw-resize", "nwse-resize" = "nwse-resize", "zoom-in" = "zoom-in", "zoom-out" = "zoom-out" }
+"decoration-style|text-decoration-style" = { solid = "solid", double = "double", dotted = "dotted", dashed = "dashed", wavy = "wavy" }
+"diagonal-fractions|font-variant-numeric" = { "" = "diagonal-fractions" }
+"display|display" = { block = "block", "inline-block" = "inline-block", inline = "inline", flex = "flex", "inline-flex" = "inline-flex", table = "table", "inline-table" = "inline-table", "table-caption" = "table-caption", "table-cell" = "table-cell", "table-column" = "table-column", "table-column-group" = "table-column-group", "table-footer-group" = "table-footer-group", "table-header-group" = "table-header-group", "table-row-group" = "table-row-group", "table-row" = "table-row", "flow-root" = "flow-root", grid = "grid", "inline-grid" = "inline-grid", contents = "contents", "list-item" = "list-item", hidden = "none" }
+"divide-style|border-style" = { solid = "solid", dashed = "dashed", dotted = "dotted", double = "double", none = "none" }
+"drop-shadow|--tw-drop-shadow" = { xs = "drop-shadow(0 1px 1px rgb(0 0 0 / 0.05))", sm = "drop-shadow(0 1px 2px rgb(0 0 0 / 0.1))", "" = "drop-shadow(0 2px 4px rgb(0 0 0 / 0.1)) drop-shadow(0 1px 1px rgb(0 0 0 / 0.06))", md = "drop-shadow(0 4px 3px rgb(0 0 0 / 0.07)) drop-shadow(0 2px 2px rgb(0 0 0 / 0.06))", lg = "drop-shadow(0 10px 8px rgb(0 0 0 / 0.04)) drop-shadow(0 4px 3px rgb(0 0 0 / 0.1))", xl = "drop-shadow(0 20px 13px rgb(0 0 0 / 0.03)) drop-shadow(0 8px 5px rgb(0 0 0 / 0.08))", "2xl" = "drop-shadow(0 25px 25px rgb(0 0 0 / 0.15))", none = "drop-shadow(0 0 #0000)" }
+"ease|transition-timing-function" = { linear = "linear", in = "cubic-bezier(0.4, 0, 1, 1)", out = "cubic-bezier(0, 0, 0.2, 1)", "in-out" = "cubic-bezier(0.4, 0, 0.2, 1)" }
+"fill|fill" = { none = "none", current = "currentColor" }
+"flex-direction|flex-direction" = { row = "row", "row-reverse" = "row-reverse", col = "column", "col-reverse" = "column-reverse" }
+"flex-grow|flex-grow" = { "" = "1", "0" = "0" }
+"flex-shrink|flex-shrink" = { "" = "1", "0" = "0" }
+"flex-wrap|flex-wrap" = { wrap = "wrap", "wrap-reverse" = "wrap-reverse", nowrap = "nowrap" }
+"float|float" = { right = "right", left = "left", none = "none", start = "inline-start", end = "inline-end" }
+"font-family|font-family" = { sans = 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"', serif = 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif', mono = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }
+"font-smoothing|font-smoothing" = { antialiased = "antialiased", "subpixel-antialiased" = "auto" }
+"font-style|font-style" = { italic = "italic", "not-italic" = "normal" }
+"font-weight|font-weight" = { thin = "100", extralight = "200", light = "300", normal = "400", medium = "500", semibold = "600", bold = "700", extrabold = "800", black = "900" }
+"forced-color-adjust|forced-color-adjust" = { auto = "auto", none = "none" }
+"grayscale|--tw-grayscale" = { "0" = "grayscale(0)", "" = "grayscale(1)" }
+"grid-cols|grid-template-columns" = { "1" = "repeat(1, minmax(0, 1fr))", "2" = "repeat(2, minmax(0, 1fr))", "3" = "repeat(3, minmax(0, 1fr))", "4" = "repeat(4, minmax(0, 1fr))", "5" = "repeat(5, minmax(0, 1fr))", "6" = "repeat(6, minmax(0, 1fr))", "7" = "repeat(7, minmax(0, 1fr))", "8" = "repeat(8, minmax(0, 1fr))", "9" = "repeat(9, minmax(0, 1fr))", "10" = "repeat(10, minmax(0, 1fr))", "11" = "repeat(11, minmax(0, 1fr))", "12" = "repeat(12, minmax(0, 1fr))", none = "none" }
+"grid-flow|grid-auto-flow" = { row = "row", col = "column", dense = "dense", "row-dense" = "row dense", "col-dense" = "column dense" }
+"grid-rows|grid-template-rows" = { "1" = "repeat(1, minmax(0, 1fr))", "2" = "repeat(2, minmax(0, 1fr))", "3" = "repeat(3, minmax(0, 1fr))", "4" = "repeat(4, minmax(0, 1fr))", "5" = "repeat(5, minmax(0, 1fr))", "6" = "repeat(6, minmax(0, 1fr))", none = "none" }
+"h|height" = { auto = "auto", "1/2" = "50%", "1/3" = "33.333333%", "2/3" = "66.666667%", "1/4" = "25%", "2/4" = "50%", "3/4" = "75%", "1/5" = "20%", "2/5" = "40%", "3/5" = "60%", "4/5" = "80%", "1/6" = "16.666667%", "2/6" = "33.333333%", "3/6" = "50%", "4/6" = "66.666667%", "5/6" = "83.333333%", full = "100%", screen = "100vh", min = "min-content", max = "max-content", fit = "fit-content" }
+"hyphens|hyphens" = { none = "none", manual = "manual", auto = "auto" }
+"invert|--tw-invert" = { "0" = "invert(0)", "" = "invert(1)" }
+"isolation|isolation" = { isolate = "isolate", "auto" = "auto" }
+"justify-content|justify-content" = { normal = "normal", start = "flex-start", end = "flex-end", center = "center", between = "space-between", around = "space-around", evenly = "space-evenly", stretch = "stretch" }
+"justify-items|justify-items" = { start = "start", end = "end", center = "center", stretch = "stretch" }
+"justify-self|justify-self" = { auto = "auto", start = "start", end = "end", center = "center", stretch = "stretch" }
+"leading|line-height" = { none = "1", tight = "1.25", snug = "1.375", normal = "1.5", relaxed = "1.625", loose = "2" }
+"lining-nums|font-variant-numeric" = { "" = "lining-nums" }
+"list-style-image|list-style-image" = { none = "none" }
+"list-style-position|list-style-position" = { inside = "inside", outside = "outside" }
+"list-style-type|list-style-type" = { none = "none", disc = "disc", decimal = "decimal" }
+"max-h|max-height" = { none = "none", full = "100%", screen = "100vh", min = "min-content", max = "max-content", fit = "fit-content" }
+"max-w|max-width" = { "0" = "0rem", none = "none", xs = "20rem", sm = "24rem", md = "28rem", lg = "32rem", xl = "36rem", "2xl" = "42rem", "3xl" = "48rem", "4xl" = "56rem", "5xl" = "64rem", "6xl" = "72rem", "7xl" = "80rem", full = "100%", min = "min-content", max = "max-content", fit = "fit-content", prose = "65ch", "screen-sm" = "640px", "screen-md" = "768px", "screen-lg" = "1024px", "screen-xl" = "1280px", "screen-2xl" = "1536px" }
+"min-h|min-height" = { "0" = "0px", full = "100%", screen = "100vh", min = "min-content", max = "max-content", fit = "fit-content" }
+"min-w|min-width" = { "0" = "0px", full = "100%", min = "min-content", max = "max-content", fit = "fit-content" }
+"mix-blend|mix-blend-mode" = { normal = "normal", multiply = "multiply", screen = "screen", overlay = "overlay", darken = "darken", lighten = "lighten", "color-dodge" = "color-dodge", "color-burn" = "color-burn", "hard-light" = "hard-light", "soft-light" = "soft-light", difference = "difference", exclusion = "exclusion", hue = "hue", saturation = "saturation", color = "color", luminosity = "luminosity", "plus-lighter" = "plus-lighter" }
+"object-fit|object-fit" = { contain = "contain", cover = "cover", fill = "fill", none = "none", "scale-down" = "scale-down" }
+"object-position|object-position" = { bottom = "bottom", center = "center", left = "left", "left-bottom" = "left bottom", "left-top" = "left top", right = "right", "right-bottom" = "right bottom", "right-top" = "right top", top = "top" }
+"oldstyle-nums|font-variant-numeric" = { "" = "oldstyle-nums" }
+"ordinal|font-variant-numeric" = { "" = "ordinal" }
+"origin|transform-origin" = { center = "center", top = "top", "top-right" = "top right", right = "right", "bottom-right" = "bottom right", bottom = "bottom", "bottom-left" = "bottom left", left = "left", "top-left" = "top left" }
+"outline-style|outline-style" = { "" = "solid", none = "none", dotted = "dotted", dashed = "dashed", double = "double" }
+"overflow|overflow" = { auto = "auto", hidden = "hidden", clip = "clip", visible = "visible", scroll = "scroll" }
+"overflow-x|overflow-x" = { auto = "auto", hidden = "hidden", clip = "clip", visible = "visible", scroll = "scroll" }
+"overflow-y|overflow-y" = { auto = "auto", hidden = "hidden", clip = "clip", visible = "visible", scroll = "scroll" }
+"overscroll-behavior|overscroll-behavior" = { auto = "auto", contain = "contain", none = "none" }
+"overscroll-behavior-x|overscroll-behavior-x" = { auto = "auto", contain = "contain", none = "none" }
+"overscroll-behavior-y|overscroll-behavior-y" = { auto = "auto", contain = "contain", none = "none" }
+"perspective-origin|perspective-origin" = { center = "center", top = "top", "top-right" = "top right", right = "right", "bottom-right" = "bottom right", bottom = "bottom", "bottom-left" = "bottom left", left = "left", "top-left" = "top left" }
+"place-content|place-content" = { center = "center", start = "start", end = "end", between = "space-between", around = "space-around", evenly = "space-evenly", baseline = "baseline", stretch = "stretch" }
+"place-items|place-items" = { start = "start", end = "end", center = "center", baseline = "baseline", stretch = "stretch" }
+"place-self|place-self" = { auto = "auto", start = "start", end = "end", center = "center", stretch = "stretch" }
+"pointer-events|pointer-events" = { none = "none", auto = "auto" }
+"position|position" = { static = "static", fixed = "fixed", absolute = "absolute", relative = "relative", sticky = "sticky" }
+"proportional-nums|font-variant-numeric" = { "" = "proportional-nums" }
+"resize|resize" = { none = "none", "" = "both", vertical = "vertical", horizontal = "horizontal" }
+"scroll-behavior|scroll-behavior" = { auto = "auto", smooth = "smooth" }
+"scroll-snap-align|scroll-snap-align" = { start = "start", end = "end", center = "center", none = "none" }
+"scroll-snap-stop|scroll-snap-stop" = { normal = "normal", always = "always" }
+"scroll-snap-type|scroll-snap-type" = { none = "none", x = "x var(--tw-scroll-snap-strictness)", y = "y var(--tw-scroll-snap-strictness)", both = "both var(--tw-scroll-snap-strictness)" }
+"select|user-select" = { none = "none", text = "text", all = "all", auto = "auto" }
+"sepia|--tw-sepia" = { "0" = "sepia(0)", "" = "sepia(1)" }
+"shadow|--tw-shadow" = { xs = "0 1px 2px 0 rgb(0 0 0 / 0.05)", sm = "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)", "" = "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)", md = "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)", lg = "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)", xl = "0 25px 50px -12px rgb(0 0 0 / 0.25)", "2xl" = "0 25px 50px -12px rgb(0 0 0 / 0.25)", inner = "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)", none = "none" }
+"slashed-zero|font-variant-numeric" = { "" = "slashed-zero" }
+"sr|position,width,height,padding,margin,overflow,clip,white-space,border-width" = { only = "absolute; 1px; 1px; 0; -1px; hidden; rect(0, 0, 0, 0); nowrap; 0;", "not-only" = "static; auto; auto; 0; 0; visible; auto; normal; 0;" }
+"stacked-fractions|font-variant-numeric" = { "" = "stacked-fractions" }
+"stroke|stroke" = { none = "none", current = "currentColor" }
+"table-layout|table-layout" = { auto = "auto", fixed = "fixed" }
+"tabular-nums|font-variant-numeric" = { "" = "tabular-nums" }
+"text-align|text-align" = { left = "left", center = "center", right = "right", justify = "justify", start = "start", end = "end" }
+"text-decoration|text-decoration-line" = { underline = "underline", "line-through" = "line-through", "no-underline" = "none" }
+"text-decoration-thickness|text-decoration-thickness" = { auto = "auto", "from-font" = "from-font" }
+"text-overflow|text-overflow" = { truncate = "ellipsis", "text-ellipsis" = "ellipsis", "text-clip" = "clip" }
+"text-transform|text-transform" = { uppercase = "uppercase", lowercase = "lowercase", capitalize = "capitalize", "normal-case" = "none" }
+"text-wrap|text-wrap" = { wrap = "wrap", nowrap = "nowrap", balance = "balance", pretty = "pretty" }
+"touch|touch-action" = { auto = "auto", none = "none", "pan-x" = "pan-x", "pan-left" = "pan-left", "pan-right" = "pan-right", "pan-y" = "pan-y", "pan-up" = "pan-up", "pan-down" = "pan-down", "pinch-zoom" = "pinch-zoom", manipulation = "manipulation" }
+"tracking|letter-spacing" = { tighter = "-0.05em", tight = "-0.025em", normal = "0em", wide = "0.025em", wider = "0.05em", widest = "0.1em" }
+"transform-box|transform-box" = { content = "content-box", border = "border-box", fill = "fill-box", stroke = "stroke-box", view = "view-box" }
+"transform-style|transform-style" = { flat = "flat", "preserve-3d" = "preserve-3d" }
+"transition|transition-property" = { none = "none", all = "all, color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter", "" = "color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter", colors = "color, background-color, border-color, text-decoration-color, fill, stroke", opacity = "opacity", shadow = "box-shadow", transform = "transform" }
+"underline-style|text-decoration-style" = { solid = "solid", double = "double", dotted = "dotted", dashed = "dashed", wavy = "wavy" }
+"visibility|visibility" = { visible = "visible", invisible = "hidden", collapse = "collapse" }
+"w|width" = { auto = "auto", "1/2" = "50%", "1/3" = "33.333333%", "2/3" = "66.666667%", "1/4" = "25%", "2/4" = "50%", "3/4" = "75%", "1/5" = "20%", "2/5" = "40%", "3/5" = "60%", "4/5" = "80%", "1/6" = "16.666667%", "2/6" = "33.333333%", "3/6" = "50%", "4/6" = "66.666667%", "5/6" = "83.333333%", "1/12" = "8.333333%", "2/12" = "16.666667%", "3/12" = "25%", "4/12" = "33.333333%", "5/12" = "41.666667%", "6/12" = "50%", "7/12" = "58.333333%", "8/12" = "66.666667%", "9/12" = "75%", "10/12" = "83.333333%", "11/12" = "91.666667%", full = "100%", screen = "100vw", min = "min-content", max = "max-content", fit = "fit-content" }
+"whitespace|white-space" = { normal = "normal", nowrap = "nowrap", pre = "pre", "pre-line" = "pre-line", "pre-wrap" = "pre-wrap", "break-spaces" = "break-spaces" }
+"will-change|will-change" = { auto = "auto", scroll = "scroll-position", contents = "contents", transform = "transform" }
+"word-break|word-break" = { normal = "normal", "break-all" = "break-all", "keep-all" = "keep-all", "break-word" = "break-word" }
+"z|z-index" = { auto = "auto" }
+

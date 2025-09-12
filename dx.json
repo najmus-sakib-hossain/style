@@ -1,0 +1,110 @@
+{
+    "$schema": "https://ui.shadcn.com/schema/registry.json",
+    "name": "dx",
+    "version": "0.0.1",
+    "title": "Enhance Developing Experience",
+    "description": "Orchestrate don't just own your code",
+    "author": "essensefromexistence",
+    "repository": "https://dx.vercel.app/essensefromexistence/dx",
+    "language": "auto-detected",
+    "runtime": "auto-detected",
+    "compiler": "auto-detected",
+    "bundler": "auto-detected",
+    "interpreter": "auto-detected",
+    "framework": "auto-detected",
+    "packageManager": "auto-detected",
+    "environment": {
+        "os": "auto-detected",
+        "arch": "auto-detected",
+        "container": "auto-detected"
+    },
+    "workspace": {
+        "frontend/www": {},
+        "frontend/mobile": {}
+    },
+    "ide": {
+        "vscode": {},
+        "vim": {},
+        "gitpod": {},
+        "github-codespace": {},
+        "replit": {},
+        "firebase-studio": {},
+        "cursor": {},
+        "windsruff": {},
+        "stackblitz": {}
+    },
+    "scripts": {
+        "start": "dx start",
+        "build": "dx build",
+        "test": "dx test",
+        "lint": "dx lint",
+        "format": "dx format",
+        "fix": "dx fix"
+    },
+    "forge": {},
+    "style": {
+        "style": "./style",
+        "engine": [
+            "automic",
+            "enhanced",
+            "logical"
+        ],
+        "themes": [
+            "dx",
+            "vercel",
+            "claude"
+        ]
+    },
+    "ui": {},
+    "check": {
+        "lint": {},
+        "format": {},
+        "fix": {}
+    },
+    "media": {
+        "image": "./public/images",
+        "video": "./public/videos",
+        "sound": "./public/sounds",
+        "asset": "./public/assets",
+        "images": [],
+        "videos": [],
+        "sounds": [],
+        "assets": []
+    },
+    "internationalization": {
+        "locale": "./locales",
+        "tts": "./ttses",
+        "defaultLocale": "en-US",
+        "defaultTts": "en-US",
+        "locales": {
+            "dev": [
+                "en-US",
+                "bn-BD"
+            ],
+            "prod": [
+                "all"
+            ]
+        },
+        "ttses": {
+            "dev": [
+                "en-US",
+                "bn-BD"
+            ],
+            "prod": [
+                "all"
+            ]
+        }
+    },
+    "icon": {
+        "icon": "@/components/icons",
+        "pack": "lucide-react",
+        "variant": "default"
+    },
+    "font": {
+        "font": "./font",
+        "primary": "Inter",
+        "secondary": "Roboto Mono"
+    },
+    "dependencies": {},
+    "devDependencies": {}
+}

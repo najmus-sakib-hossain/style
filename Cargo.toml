@@ -1,0 +1,66 @@
+[package]
+name = "style"
+version = "0.0.0"
+edition = "2024"
+
+[lib]
+name = "style"
+path = "src/lib.rs"
+
+[dependencies]
+indexmap = { version = "2.3.0", default-features = false }
+images = { package = "image", version = "0.25.2", optional = true }
+libm = { version = "0.2.8", optional = true }
+
+ahash = "0.8.12"
+colored = "3.0.0"
+cssparser = "0.35.0"
+memchr = "2.7.5"
+memmap2 = "0.9.5"
+notify = "8.2.0"
+notify-debouncer-full = "0.6.0"
+rayon = "1.11.0"
+serde = { version = "1.0.219", features = ["derive"] }
+toml = "0.9.5"
+serde_json = "1.0"
+reqwest = { version = "0.12.5", features = ["rustls-tls", "blocking"] }
+tokio = { version = "1.39.2", features = ["rt-multi-thread", "macros"] }
+flatbuffers = "25.2.10"
+smallvec = "1.13.2"
+seahash = "4.1.0"
+twoway = "0.2"
+winapi = { version = "0.3", features = ["wincon","consoleapi","minwindef","processenv","winbase"] }
+
+[features]
+eager-flush = []
+default = ["std", "image"]
+std = ["indexmap/std", "ahash/std", "ahash/runtime-rng"]
+image = ["dep:images"]
+libm = ["dep:libm"]
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+float-cmp = "0.9"
+reqwest = "0.12.5"
+tokio = { version = "1.39.2", features = ["rt", "macros"] }
+
+[[bench]]
+name = "hot_path"
+harness = false
+
+[[bench]]
+name = "write_path"
+harness = false
+
+[build-dependencies]
+flatc-rust = "0.2.0"
+toml = "0.9.5"
+flatbuffers = "25.2.10"
+serde = { version = "1.0.219", features = ["derive"] }
+
+[profile.dev]
+opt-level = 2
+debug = true
+overflow-checks = false
+incremental = true
+lto = "thin"
