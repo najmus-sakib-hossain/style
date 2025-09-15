@@ -153,3 +153,7 @@
 "z|z-index" = { auto = "auto" }
 "mask-clip|mask-clip" = { border = "border-box", padding = "padding-box", content = "content-box", text = "text" }
 "mask-composite|mask-composite" = { add = "add", subtract = "subtract", intersect = "intersect", exclude = "exclude" }
+"border-is-color|border-inline-start-color" = { inherit = "inherit", current = "currentColor" }
+"border-ie-color|border-inline-end-color" = { inherit = "inherit", current = "currentColor" }
+"border-bs-color|border-block-start-color" = { inherit = "inherit", current = "currentColor" }
+"border-be-color|border-block-end-color" = { inherit = "inherit", current = "currentColor" }

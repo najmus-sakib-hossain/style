@@ -188,70 +188,6 @@ fn main() {
         dynamic_offsets.push(dynamic_offset);
     }
 
-    // ------------------------------------------------------------------
-    // Auto-generated dynamic utilities for logical border colors
-    // Generates: border-inline-color-*, border-block-color-*, border-is-color-*,
-    //            border-ie-color-*, border-bs-color-*, border-be-color-* using the
-    // configured color tokens plus basic keywords.
-    // ------------------------------------------------------------------
-    if !colors.is_empty() {
-        let logical_color_targets: &[(&str, &str)] = &[
-            ("border-inline-color", "border-inline-color"),
-            ("border-block-color", "border-block-color"),
-            ("border-is-color", "border-inline-start-color"),
-            ("border-ie-color", "border-inline-end-color"),
-            ("border-bs-color", "border-block-start-color"),
-            ("border-be-color", "border-block-end-color"),
-        ];
-
-        for (prefix, property) in logical_color_targets {
-            // Build value mapping: keyword colors + all palette tokens
-            let mut value_offsets = Vec::new();
-            // Helper closure to push a (suffix,value)
-            let mut push_pair = |suffix: &str,
-                                 value: &str,
-                                 builder: &mut FlatBufferBuilder,
-                                 vec: &mut Vec<WIPOffset<_>>| {
-                let suffix_offset = builder.create_string(suffix);
-                let value_offset = builder.create_string(value);
-                let table_wip = builder.start_table();
-                builder.push_slot(4, suffix_offset, WIPOffset::new(0));
-                builder.push_slot(6, value_offset, WIPOffset::new(0));
-                let entry = builder.end_table(table_wip);
-                vec.push(entry);
-            };
-
-            push_pair(
-                "transparent",
-                "transparent",
-                &mut builder,
-                &mut value_offsets,
-            );
-            push_pair("current", "currentColor", &mut builder, &mut value_offsets);
-            push_pair("inherit", "inherit", &mut builder, &mut value_offsets);
-            for (color_name, color_value) in &colors {
-                let layered = if color_value.contains('/') {
-                    color_value.clone()
-                } else if color_value.starts_with("oklch(") {
-                    format!("{color_value} / var(--tw-border-opacity, 1)")
-                } else {
-                    color_value.clone()
-                };
-                push_pair(color_name, &layered, &mut builder, &mut value_offsets);
-            }
-
-            let values_vec = builder.create_vector(&value_offsets);
-            let key_offset = builder.create_string(prefix);
-            let property_offset = builder.create_string(property);
-            let table_wip = builder.start_table();
-            builder.push_slot(4, key_offset, WIPOffset::new(0));
-            builder.push_slot(6, property_offset, WIPOffset::new(0));
-            builder.push_slot(8, values_vec, WIPOffset::new(0));
-            let dyn_offset = builder.end_table(table_wip);
-            dynamic_offsets.push(dyn_offset);
-        }
-    }
-
     let mut generator_offsets = Vec::new();
     for (key, config) in generators {
         let parts: Vec<&str> = key.split('|').collect();
@@ -298,25 +234,6 @@ fn main() {
         builder.push_slot(6, value_offset, WIPOffset::new(0));
         let state_offset = builder.end_table(table_wip);
         state_offsets.push(state_offset);
-    }
-
-    // ------------------------------------------------------------------
-    // Auto-generate container query variant states: cq-<name>
-    // Derived from entries in container_queries (named with leading '@').
-    // Produces variants like: cq-md => @container (min-width: <value>)
-    // ------------------------------------------------------------------
-    for (cq_name, value) in &container_queries {
-        if cq_name.starts_with('@') {
-            let variant = format!("cq-{}", &cq_name[1..]);
-            let variant_offset = builder.create_string(&variant);
-            let rule = format!("@container (min-width: {})", value);
-            let rule_offset = builder.create_string(&rule);
-            let table_wip = builder.start_table();
-            builder.push_slot(4, variant_offset, WIPOffset::new(0));
-            builder.push_slot(6, rule_offset, WIPOffset::new(0));
-            let state_offset = builder.end_table(table_wip);
-            state_offsets.push(state_offset);
-        }
     }
 
     let mut cq_offsets = Vec::new();
@@ -375,8 +292,8 @@ fn main() {
         property_offsets.push(prop_offset);
     }
     let properties_vec = builder.create_vector(&property_offsets);
-    const BASE_CSS: &str = "*, ::after, ::before, ::backdrop, ::file-selector-button {\n  box-sizing: border-box;\n  margin: 0;\n  padding: 0;\n  border: 0 solid;\n}\nhtml, :host {\n  line-height: 1.5;\n  -webkit-text-size-adjust: 100%;\n  tab-size: 4;\n  font-family: var(--default-font-family, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\");\n  font-feature-settings: var(--default-font-feature-settings, normal);\n  font-variation-settings: var(--default-font-variation-settings, normal);\n  -webkit-tap-highlight-color: transparent;\n}\nhr {\n  height: 0;\n  color: inherit;\n  border-top-width: 1px;\n}\nabbr:where([title]) {\n  -webkit-text-decoration: underline dotted;\n  text-decoration: underline dotted;\n}\nh1, h2, h3, h4, h5, h6 {\n  font-size: inherit;\n  font-weight: inherit;\n}\na {\n  color: inherit;\n  -webkit-text-decoration: inherit;\n  text-decoration: inherit;\n}\nb, strong {\n  font-weight: bolder;\n}\ncode, kbd, samp, pre {\n  font-family: var(--default-mono-font-family, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace);\n  font-feature-settings: var(--default-mono-font-feature-settings, normal);\n  font-variation-settings: var(--default-mono-font-variation-settings, normal);\n  font-size: 1em;\n}\nsmall {\n  font-size: 80%;\n}\nsub, sup {\n  font-size: 75%;\n  line-height: 0;\n  position: relative;\n  vertical-align: baseline;\n}\nsub {\n  bottom: -0.25em;\n}\nsup {\n  top: -0.5em;\n}\ntable {\n  text-indent: 0;\n  border-color: inherit;\n  border-collapse: collapse;\n}\n:-moz-focusring {\n  outline: auto;\n}\nprogress {\n  vertical-align: baseline;\n}\nsummary {\n  display: list-item;\n}\nol, ul, menu {\n  list-style: none;\n}\nimg, svg, video, canvas, audio, iframe, embed, object {\n  display: block;\n  vertical-align: middle;\n}\nimg, video {\n  max-width: 100%;\n  height: auto;\n}\nbutton, input, select, optgroup, textarea, ::file-selector-button {\n  font: inherit;\n  font-feature-settings: inherit;\n  font-variation-settings: inherit;\n  letter-spacing: inherit;\n  color: inherit;\n  border-radius: 0;\n  background-color: transparent;\n  opacity: 1;\n}\n:where(select:is([multiple], [size])) optgroup {\n  font-weight: bolder;\n}\n:where(select:is([multiple], [size])) optgroup option {\n  padding-inline-start: 20px;\n}\n::file-selector-button {\n  margin-inline-end: 4px;\n}\n::placeholder {\n  opacity: 1;\n}\n@supports (not (-webkit-appearance: -apple-pay-button))  or (contain-intrinsic-size: 1px) {\n  ::placeholder {\n    color: currentcolor;\n    @supports (color: color-mix(in lab, red, red)) {\n      color: color-mix(in oklab, currentcolor 50%, transparent);\n    }\n  }\n}\ntextarea {\n  resize: vertical;\n}\n::-webkit-search-decoration {\n  -webkit-appearance: none;\n}\n::-webkit-date-and-time-value {\n  min-height: 1lh;\n  text-align: inherit;\n}\n::-webkit-datetime-edit {\n  display: inline-flex;\n}\n::-webkit-datetime-edit-fields-wrapper {\n  padding: 0;\n}\n::-webkit-datetime-edit, ::-webkit-datetime-edit-year-field, ::-webkit-datetime-edit-month-field, ::-webkit-datetime-edit-day-field, ::-webkit-datetime-edit-hour-field, ::-webkit-datetime-edit-minute-field, ::-webkit-datetime-edit-second-field, ::-webkit-datetime-edit-millisecond-field, ::-webkit-datetime-edit-meridiem-field {\n  padding-block: 0;\n}\n::-webkit-calendar-picker-indicator {\n  line-height: 1;\n}\n:-moz-ui-invalid {\n  box-shadow: none;\n}\nbutton, input:where([type=\"button\"], [type=\"reset\"], [type=\"submit\"]), ::file-selector-button {\n  appearance: button;\n}\n::-webkit-inner-spin-button, ::-webkit-outer-spin-button {\n  height: auto;\n}\n[hidden]:where(:not([hidden=\"until-found\"])) {\n  display: none !important;\n}";
-    let base_css_offset = builder.create_string(BASE_CSS);
+    let base_css = fs::read_to_string(style_dir.join("base.css")).unwrap_or_default();
+    let base_css_offset = builder.create_string(&base_css);
 
     let table_wip = builder.start_table();
     builder.push_slot(4, styles_vec, WIPOffset::new(0));

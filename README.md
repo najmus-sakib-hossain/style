@@ -116,7 +116,7 @@ Base spec lives in `tailwind-spec.json`. Additional spec fragments (utilities or
 
 Variant matrix:
 
-JSON output includes a `variants` object with present/missing/extra plus a `matrix_counts` map (heuristic counts of implemented prefixed utilities). Full per-utility per-variant enumeration can be layered later if required.
+JSON output includes a `variants` object with present/missing/extra plus a `matrix_counts` map (heuristic counts of implemented prefixed utilities). Container query variants are not synthesized automatically; only variants explicitly defined in your TOML/state configuration appear.
 
 Arbitrary values:
 
