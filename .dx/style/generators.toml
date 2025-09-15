@@ -153,3 +153,22 @@
 "-bottom|bottom" = { multiplier = -0.25, unit = "rem" }
 "left|left" = { multiplier = 0.25, unit = "rem" }
 "-left|left" = { multiplier = -0.25, unit = "rem" }
+"size|width, height" = { multiplier = 0.25, unit = "rem" }
+"is|inline-size" = { multiplier = 0.25, unit = "rem" }
+"bs|block-size" = { multiplier = 0.25, unit = "rem" }
+"min-is|min-inline-size" = { multiplier = 0.25, unit = "rem" }
+"min-bs|min-block-size" = { multiplier = 0.25, unit = "rem" }
+"max-is|max-inline-size" = { multiplier = 0.25, unit = "rem" }
+"max-bs|max-block-size" = { multiplier = 0.25, unit = "rem" }
+"ms|margin-inline-start" = { multiplier = 0.25, unit = "rem" }
+"me|margin-inline-end" = { multiplier = 0.25, unit = "rem" }
+"-ms|margin-inline-start" = { multiplier = -0.25, unit = "rem" }
+"-me|margin-inline-end" = { multiplier = -0.25, unit = "rem" }
+"ps|padding-inline-start" = { multiplier = 0.25, unit = "rem" }
+"pe|padding-inline-end" = { multiplier = 0.25, unit = "rem" }
+"rounded-s|border-start-start-radius, border-end-start-radius" = { multiplier = 0.25, unit = "rem" }
+"rounded-e|border-start-end-radius, border-end-end-radius" = { multiplier = 0.25, unit = "rem" }
+"rounded-ss|border-start-start-radius" = { multiplier = 0.25, unit = "rem" }
+"rounded-se|border-start-end-radius" = { multiplier = 0.25, unit = "rem" }
+"rounded-es|border-end-start-radius" = { multiplier = 0.25, unit = "rem" }
+"rounded-ee|border-end-end-radius" = { multiplier = 0.25, unit = "rem" }
