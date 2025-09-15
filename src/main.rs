@@ -1,12 +1,10 @@
 use colored::Colorize;
 use style::core::color::{color::Argb, theme::ThemeBuilder};
 
-/// Generate a theme directly from an `Argb` color.
 fn color_to_theme(source: Argb) -> style::core::color::theme::Theme {
     ThemeBuilder::with_source(source).build()
 }
 
-/// Generate theme from a local image path.
 fn local_image_to_theme<P: AsRef<std::path::Path>>(
     path: P,
 ) -> Result<style::core::color::theme::Theme, String> {
@@ -23,7 +21,6 @@ fn local_image_to_theme<P: AsRef<std::path::Path>>(
     Ok(ThemeBuilder::with_source(source).build())
 }
 
-/// Generate theme from a remote image URL (async).
 async fn remote_image_to_theme(url: &str) -> Result<style::core::color::theme::Theme, String> {
     let resp = reqwest::get(url)
         .await
@@ -46,15 +43,12 @@ async fn remote_image_to_theme(url: &str) -> Result<style::core::color::theme::T
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 1) Color-based theme
     let color_theme = color_to_theme(Argb::from_u32(0xffaae5a4));
     println!("[");
     println!("{},", serde_json::to_string_pretty(&color_theme)?);
 
-    // 2) Local image-based theme
     match local_image_to_theme("media/suzume-no-tojimari.png") {
         Ok(theme) => {
-            // println!("{}", "Theme generated from local image:".green());
             println!("{},", serde_json::to_string_pretty(&theme)?);
         }
         Err(e) => {
@@ -62,7 +56,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // 3) Remote image-based theme
     let remote_url = "https://picsum.photos/id/866/1920/1080";
 
     match remote_image_to_theme(remote_url).await {
