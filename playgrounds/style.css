@@ -1085,16 +1085,16 @@ Dx Style - @0.0.0
     display: flex;
   }
   .font-bold {}
-  .h-50 {
-    height: 12.5rem;
-  }
   .items-center {}
   .justify-center {}
+  .text-5xl {}
+  .text-center {}
   .rounded-md {
     border-radius: 0.375rem;
   }
-  .text-5xl {}
-  .text-center {}
+  .h-50 {
+    height: 12.5rem;
+  }
   .w-50 {
     width: 12.5rem;
   }
