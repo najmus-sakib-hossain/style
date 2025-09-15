@@ -188,6 +188,70 @@ fn main() {
         dynamic_offsets.push(dynamic_offset);
     }
 
+    // ------------------------------------------------------------------
+    // Auto-generated dynamic utilities for logical border colors
+    // Generates: border-inline-color-*, border-block-color-*, border-is-color-*,
+    //            border-ie-color-*, border-bs-color-*, border-be-color-* using the
+    // configured color tokens plus basic keywords.
+    // ------------------------------------------------------------------
+    if !colors.is_empty() {
+        let logical_color_targets: &[(&str, &str)] = &[
+            ("border-inline-color", "border-inline-color"),
+            ("border-block-color", "border-block-color"),
+            ("border-is-color", "border-inline-start-color"),
+            ("border-ie-color", "border-inline-end-color"),
+            ("border-bs-color", "border-block-start-color"),
+            ("border-be-color", "border-block-end-color"),
+        ];
+
+        for (prefix, property) in logical_color_targets {
+            // Build value mapping: keyword colors + all palette tokens
+            let mut value_offsets = Vec::new();
+            // Helper closure to push a (suffix,value)
+            let mut push_pair = |suffix: &str,
+                                 value: &str,
+                                 builder: &mut FlatBufferBuilder,
+                                 vec: &mut Vec<WIPOffset<_>>| {
+                let suffix_offset = builder.create_string(suffix);
+                let value_offset = builder.create_string(value);
+                let table_wip = builder.start_table();
+                builder.push_slot(4, suffix_offset, WIPOffset::new(0));
+                builder.push_slot(6, value_offset, WIPOffset::new(0));
+                let entry = builder.end_table(table_wip);
+                vec.push(entry);
+            };
+
+            push_pair(
+                "transparent",
+                "transparent",
+                &mut builder,
+                &mut value_offsets,
+            );
+            push_pair("current", "currentColor", &mut builder, &mut value_offsets);
+            push_pair("inherit", "inherit", &mut builder, &mut value_offsets);
+            for (color_name, color_value) in &colors {
+                let layered = if color_value.contains('/') {
+                    color_value.clone()
+                } else if color_value.starts_with("oklch(") {
+                    format!("{color_value} / var(--tw-border-opacity, 1)")
+                } else {
+                    color_value.clone()
+                };
+                push_pair(color_name, &layered, &mut builder, &mut value_offsets);
+            }
+
+            let values_vec = builder.create_vector(&value_offsets);
+            let key_offset = builder.create_string(prefix);
+            let property_offset = builder.create_string(property);
+            let table_wip = builder.start_table();
+            builder.push_slot(4, key_offset, WIPOffset::new(0));
+            builder.push_slot(6, property_offset, WIPOffset::new(0));
+            builder.push_slot(8, values_vec, WIPOffset::new(0));
+            let dyn_offset = builder.end_table(table_wip);
+            dynamic_offsets.push(dyn_offset);
+        }
+    }
+
     let mut generator_offsets = Vec::new();
     for (key, config) in generators {
         let parts: Vec<&str> = key.split('|').collect();
@@ -234,6 +298,25 @@ fn main() {
         builder.push_slot(6, value_offset, WIPOffset::new(0));
         let state_offset = builder.end_table(table_wip);
         state_offsets.push(state_offset);
+    }
+
+    // ------------------------------------------------------------------
+    // Auto-generate container query variant states: cq-<name>
+    // Derived from entries in container_queries (named with leading '@').
+    // Produces variants like: cq-md => @container (min-width: <value>)
+    // ------------------------------------------------------------------
+    for (cq_name, value) in &container_queries {
+        if cq_name.starts_with('@') {
+            let variant = format!("cq-{}", &cq_name[1..]);
+            let variant_offset = builder.create_string(&variant);
+            let rule = format!("@container (min-width: {})", value);
+            let rule_offset = builder.create_string(&rule);
+            let table_wip = builder.start_table();
+            builder.push_slot(4, variant_offset, WIPOffset::new(0));
+            builder.push_slot(6, rule_offset, WIPOffset::new(0));
+            let state_offset = builder.end_table(table_wip);
+            state_offsets.push(state_offset);
+        }
     }
 
     let mut cq_offsets = Vec::new();

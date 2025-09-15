@@ -77,6 +77,65 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```
 
+## Coverage / Parity Tool
+
+The `coverage` binary compares configured utilities & variants to a Tailwind spec snapshot (no `tw-` prefix) for gap analysis.
+
+Run examples:
+
+```bash
+cargo run --bin coverage
+cargo run --bin coverage -- --json > coverage.json
+cargo run --bin coverage -- --only-category sizing
+cargo run --bin coverage -- --fail-on-missing any
+```
+
+Flags:
+
+- `--json` : Machine-readable JSON output (suppresses text mode).
+- `--only-category <name>` : Limit category coverage output / JSON categories subset.
+- `--hide-missing-utilities` : Suppress listing of missing utility keys (text mode).
+- `--hide-missing-values` : Suppress per-value missing suffix details (text mode).
+- `--fail-on-missing [utilities|values|variants|any]` : Exit 1 if gaps; default `any` when provided without argument.
+- `--generator-covers a,b,c` : (Optional) Explicitly mark value sets as fully covered when numeric generator present. Normally auto-detected; use to override.
+
+Auto-detection:
+
+Sizing, spacing, radii, line-height, and logical size value sets are automatically considered covered when a numeric generator is found, removing the need for manual flags in most cases.
+
+Spec expansion:
+
+Base spec lives in `tailwind-spec.json`. Additional spec fragments (utilities or variants) can be merged by dropping JSON files into `spec-extra/`. These files may contain:
+
+```json
+{
+    "utilities": { "sizing": ["w","h"], "layout": ["flex"] },
+    "variants": ["hover","focus"]
+}
+```
+
+Variant matrix:
+
+JSON output includes a `variants` object with present/missing/extra plus a `matrix_counts` map (heuristic counts of implemented prefixed utilities). Full per-utility per-variant enumeration can be layered later if required.
+
+Arbitrary values:
+
+Bracketed classes (e.g. `w-[3.7rem]`) are detected and counted but excluded from value diffs.
+
+CI usage example (fail build if any gap):
+
+```bash
+cargo run --quiet --bin coverage -- --fail-on-missing any
+```
+
+Or only enforce variants:
+
+```bash
+cargo run --quiet --bin coverage -- --fail-on-missing variants
+```
+
+> Note: Missing utility counts depend on how complete your spec files are. Expand `tailwind-spec.json` / `spec-extra` to reduce false positives.
+
 ```rust
 use serde_json;
 use std::fs::File;
