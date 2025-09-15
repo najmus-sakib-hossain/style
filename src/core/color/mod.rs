@@ -1,3 +1,5 @@
+#![allow(dead_code)] // Color module API surface is broader than current in-crate usage.
+
 use crate::core::engine::StyleEngine;
 
 #[cfg(all(feature = "image", not(feature = "std")))]
@@ -19,6 +21,7 @@ pub(crate) use ahash::HashMap as Map;
 #[cfg(not(feature = "std"))]
 pub(crate) use alloc::collections::BTreeMap as Map;
 
+#[allow(dead_code)]
 pub(crate) type IndexMap<K, V> =
     indexmap::IndexMap<K, V, core::hash::BuildHasherDefault<ahash::AHasher>>;
 
