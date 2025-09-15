@@ -1081,6 +1081,9 @@ Dx Style - @0.0.0
   .bg-red-500 {
     background-color: var(--color-red-500);
   }
+  .border {
+    border-width: 1px;
+  }
   .flex {
     display: flex;
   }
@@ -1099,16 +1102,13 @@ Dx Style - @0.0.0
   .rounded-md {
     border-radius: 0.375rem;
   }
-  .text-6xl {
-    font-size: 3.75rem;
+  .text-7xl {
+    font-size: 4.5rem;
   }
   .text-center {
     text-align: center;
   }
   .w-50 {
     width: 12.5rem;
-  }
-  .border {
-    border-width: 1px;
   }
 }
