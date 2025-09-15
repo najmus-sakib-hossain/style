@@ -129,4 +129,3 @@
 "will-change|will-change" = { auto = "auto", scroll = "scroll-position", contents = "contents", transform = "transform" }
 "word-break|word-break" = { normal = "normal", "break-all" = "break-all", "keep-all" = "keep-all", "break-word" = "break-word" }
 "z|z-index" = { auto = "auto" }
-
