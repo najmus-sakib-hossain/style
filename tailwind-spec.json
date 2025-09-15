@@ -1,0 +1,139 @@
+{
+    "version": "4.1.0",
+    "utilities": {
+        "spacing": [
+            "p",
+            "px",
+            "py",
+            "pt",
+            "pr",
+            "pb",
+            "pl",
+            "m",
+            "mx",
+            "my",
+            "mt",
+            "mr",
+            "mb",
+            "ml",
+            "ms",
+            "me",
+            "ps",
+            "pe",
+            "mbs",
+            "mbe",
+            "pbs",
+            "pbe"
+        ],
+        "sizing": [
+            "w",
+            "h",
+            "min-w",
+            "max-w",
+            "min-h",
+            "max-h",
+            "size",
+            "is",
+            "bs",
+            "min-is",
+            "max-is",
+            "min-bs",
+            "max-bs"
+        ],
+        "typography": [
+            "text",
+            "leading",
+            "tracking",
+            "font-stretch",
+            "font-optical",
+            "font-variant-numeric",
+            "text-wrap",
+            "text-orientation",
+            "writing-mode"
+        ],
+        "layout": [
+            "overflow",
+            "overflow-x",
+            "overflow-y",
+            "display",
+            "position",
+            "top",
+            "right",
+            "bottom",
+            "left",
+            "inset",
+            "inset-x",
+            "inset-y"
+        ],
+        "effects": [
+            "shadow",
+            "shadow-opacity",
+            "opacity",
+            "blur",
+            "brightness",
+            "contrast",
+            "grayscale",
+            "hue-rotate",
+            "invert",
+            "saturate",
+            "sepia",
+            "drop-shadow"
+        ],
+        "filters": [
+            "backdrop-blur",
+            "backdrop-brightness",
+            "backdrop-contrast",
+            "backdrop-grayscale",
+            "backdrop-hue-rotate",
+            "backdrop-invert",
+            "backdrop-opacity",
+            "backdrop-saturate",
+            "backdrop-sepia"
+        ],
+        "mask": [
+            "mask-type",
+            "mask-mode",
+            "mask-repeat",
+            "mask-position",
+            "mask-size",
+            "mask-clip",
+            "mask-composite"
+        ],
+        "borders": [
+            "border",
+            "border-w",
+            "border-t",
+            "border-r",
+            "border-b",
+            "border-l",
+            "border-x",
+            "border-y",
+            "rounded",
+            "rounded-s",
+            "rounded-e",
+            "rounded-ss",
+            "rounded-se",
+            "rounded-es",
+            "rounded-ee"
+        ],
+        "scrollbar": [
+            "scrollbar",
+            "scrollbar-gutter",
+            "scrollbar-width"
+        ],
+        "color-scheme": [
+            "color-scheme"
+        ],
+        "other": [
+            "z",
+            "order",
+            "gap",
+            "grid-cols",
+            "grid-rows",
+            "flex",
+            "flex-basis",
+            "flex-grow",
+            "flex-shrink"
+        ]
+    }
+}

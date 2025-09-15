@@ -150,3 +150,5 @@
 "will-change|will-change" = { auto = "auto", scroll = "scroll-position", contents = "contents", transform = "transform" }
 "word-break|word-break" = { normal = "normal", "break-all" = "break-all", "keep-all" = "keep-all", "break-word" = "break-word" }
 "z|z-index" = { auto = "auto" }
+"mask-clip|mask-clip" = { border = "border-box", padding = "padding-box", content = "content-box", text = "text" }
+"mask-composite|mask-composite" = { add = "add", subtract = "subtract", intersect = "intersect", exclude = "exclude" }
