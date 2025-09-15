@@ -330,14 +330,11 @@ impl StyleEngine {
         for c in classes.into_iter() {
             let base = c.rsplit(':').next().unwrap_or(c);
             if let Some(name) = base.strip_prefix("bg-") {
-                if self.colors.contains_key(name) {
-                    needed.insert(name);
-                }
+                // Always consider; we'll validate later
+                needed.insert(name);
             }
             if let Some(name) = base.strip_prefix("text-") {
-                if self.colors.contains_key(name) {
-                    needed.insert(name);
-                }
+                needed.insert(name);
             }
         }
         if needed.is_empty() {
@@ -346,7 +343,7 @@ impl StyleEngine {
         let mut root = String::from(":root {\n");
         let mut dark = String::from(".dark {\n");
         for name in needed {
-            if let Some(val) = self.colors.get(name) {
+            if let Some(val) = crate::core::color::derive_color_value(self, name) {
                 use std::fmt::Write as _;
                 let _ = writeln!(root, "  --color-{}: {};", name, val);
                 let _ = writeln!(dark, "  --color-{}: {};", name, val);
