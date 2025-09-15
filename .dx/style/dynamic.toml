@@ -78,6 +78,7 @@
 "min-w|min-width" = { "0" = "0px", full = "100%", min = "min-content", max = "max-content", fit = "fit-content" }
 "mix-blend|mix-blend-mode" = { normal = "normal", multiply = "multiply", screen = "screen", overlay = "overlay", darken = "darken", lighten = "lighten", "color-dodge" = "color-dodge", "color-burn" = "color-burn", "hard-light" = "hard-light", "soft-light" = "soft-light", difference = "difference", exclusion = "exclusion", hue = "hue", saturation = "saturation", color = "color", luminosity = "luminosity", "plus-lighter" = "plus-lighter" }
 "object-fit|object-fit" = { contain = "contain", cover = "cover", fill = "fill", none = "none", "scale-down" = "scale-down" }
+"text|font-size" = { xs = "0.75rem", sm = "0.875rem", base = "1rem", lg = "1.125rem", xl = "1.25rem", "2xl" = "1.5rem", "3xl" = "1.875rem", "4xl" = "2.25rem", "5xl" = "3rem", "6xl" = "3.75rem", "7xl" = "4.5rem", "8xl" = "6rem", "9xl" = "8rem" }
 "object-position|object-position" = { bottom = "bottom", center = "center", left = "left", "left-bottom" = "left bottom", "left-top" = "left top", right = "right", "right-bottom" = "right bottom", "right-top" = "right top", top = "top" }
 "oldstyle-nums|font-variant-numeric" = { "" = "oldstyle-nums" }
 "ordinal|font-variant-numeric" = { "" = "ordinal" }
