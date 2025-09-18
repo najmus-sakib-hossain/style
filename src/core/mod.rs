@@ -398,8 +398,10 @@ pub fn rebuild_styles(
             let mut removed_bytes = 0usize;
             for r in &removed {
                 if let Some((off, len)) = state_guard.css_index.remove(r) {
-                    let abs = state_guard.utilities_offset + off;
-                    let _ = state_guard.css_out.blank_range(abs, len);
+                    // off is already relative to utilities body start (recorded that way when inserted)
+                    // blank_range expects a start relative to managed_base, so we must add utilities_offset.
+                    let rel = state_guard.utilities_offset + off;
+                    let _ = state_guard.css_out.blank_range(rel, len);
                     removed_bytes += len;
                 }
             }

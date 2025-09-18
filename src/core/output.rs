@@ -476,6 +476,9 @@ impl CssOutput {
     }
 
     pub fn blank_range(&mut self, start: usize, len: usize) -> std::io::Result<()> {
+        if len == 0 {
+            return Ok(());
+        }
         let abs_start = self.managed_base + start;
         match &mut self.backend {
             CssBackend::Writer {
@@ -487,13 +490,19 @@ impl CssOutput {
                 if abs_start + len > *logical_len {
                     return Ok(());
                 }
+                writer.flush()?; // ensure on-disk is current before direct overwrite
+                // We will always write len bytes, normalizing last byte to newline.
+                let space_len = if len > 0 { len - 1 } else { 0 };
                 writer.seek(SeekFrom::Start(abs_start as u64))?;
                 const SPACE_BLOCK: [u8; 1024] = [b' '; 1024];
-                let mut remaining = len;
+                let mut remaining = space_len;
                 while remaining > 0 {
-                    let chunk = remaining.min(1024);
+                    let chunk = remaining.min(SPACE_BLOCK.len());
                     writer.write_all(&SPACE_BLOCK[..chunk])?;
                     remaining -= chunk;
+                }
+                if len > 0 {
+                    writer.write_all(b"\n")?;
                 }
                 writer.seek(SeekFrom::Start(*logical_len as u64))?;
                 *dirty = true;
@@ -507,8 +516,12 @@ impl CssOutput {
                 if abs_start + len > *logical_len {
                     return Ok(());
                 }
-                for b in &mut mmap[abs_start..abs_start + len] {
+                let space_len = if len > 0 { len - 1 } else { 0 };
+                for b in &mut mmap[abs_start..abs_start + space_len] {
                     *b = b' ';
+                }
+                if len > 0 {
+                    mmap[abs_start + len - 1] = b'\n';
                 }
                 *dirty = true;
             }
