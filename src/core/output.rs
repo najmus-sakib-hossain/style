@@ -48,6 +48,7 @@ pub enum CssBackend {
 pub struct CssOutput {
     backend: CssBackend,
     managed_base: usize,
+    path: String,
 }
 
 impl CssOutput {
@@ -133,6 +134,7 @@ impl CssOutput {
                 last_flush: Instant::now(),
             },
             managed_base,
+            path: path.to_string(),
         })
     }
 
@@ -233,6 +235,7 @@ impl CssOutput {
                 last_flush: Instant::now(),
             },
             managed_base,
+            path: path.to_string(),
         })
     }
 
@@ -473,6 +476,10 @@ impl CssOutput {
             CssBackend::Mmap { logical_len, .. } => *logical_len,
         };
         total.saturating_sub(self.managed_base)
+    }
+
+    pub fn path(&self) -> &str {
+        &self.path
     }
 
     pub fn blank_range(&mut self, start: usize, len: usize) -> std::io::Result<()> {

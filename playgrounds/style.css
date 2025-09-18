@@ -14,44 +14,34 @@ Dx Style - @0.0.0
 @layer theme {
   :root {
     --color-black: black;
-    --color-red-500: oklch(0.637 0.237 25.331);
+    --color-red-500: oklch(63.7% .237 25.331);
     --color-white: white;
   }
 
   .dark {
     --color-black: black;
-    --color-red-500: oklch(0.637 0.237 25.331);
+    --color-red-500: oklch(63.7% .237 25.331);
     --color-white: white;
   }
 }
 
-@layer components {}
+@layer components {
+  
+}
 
 @layer base {
-
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
+  *, :after, :before, ::backdrop, ::file-selector-button {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
     border: 0 solid;
   }
 
-  html,
-  :host {
+  html, :host {
     line-height: 1.5;
     -webkit-text-size-adjust: 100%;
     tab-size: 4;
-    font-family: ui-sans-serif,
-      system-ui,
-      sans-serif,
-      'Apple Color Emoji',
-      'Segoe UI Emoji',
-      'Segoe UI Symbol',
-      'Noto Color Emoji';
+    font-family: ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
     font-feature-settings: normal;
     font-variation-settings: normal;
     -webkit-tap-highlight-color: transparent;
@@ -68,12 +58,7 @@ Dx Style - @0.0.0
     text-decoration: underline dotted;
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
+  h1, h2, h3, h4, h5, h6 {
     font-size: inherit;
     font-weight: inherit;
   }
@@ -84,23 +69,12 @@ Dx Style - @0.0.0
     text-decoration: inherit;
   }
 
-  b,
-  strong {
+  b, strong {
     font-weight: bolder;
   }
 
-  code,
-  kbd,
-  samp,
-  pre {
-    font-family: ui-monospace,
-      SFMono-Regular,
-      Menlo,
-      Monaco,
-      Consolas,
-      'Liberation Mono',
-      'Courier New',
-      monospace;
+  code, kbd, samp, pre {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
     font-feature-settings: normal;
     font-variation-settings: normal;
     font-size: 1em;
@@ -110,8 +84,7 @@ Dx Style - @0.0.0
     font-size: 80%;
   }
 
-  sub,
-  sup {
+  sub, sup {
     font-size: 75%;
     line-height: 0;
     position: relative;
@@ -119,11 +92,11 @@ Dx Style - @0.0.0
   }
 
   sub {
-    bottom: -0.25em;
+    bottom: -.25em;
   }
 
   sup {
-    top: -0.5em;
+    top: -.5em;
   }
 
   table {
@@ -144,42 +117,27 @@ Dx Style - @0.0.0
     display: list-item;
   }
 
-  ol,
-  ul,
-  menu {
+  ol, ul, menu {
     list-style: none;
   }
 
-  img,
-  svg,
-  video,
-  canvas,
-  audio,
-  iframe,
-  embed,
-  object {
+  img, svg, video, canvas, audio, iframe, embed, object {
     display: block;
   }
 
-  img,
-  video {
+  img, video {
     max-width: 100%;
     height: auto;
   }
 
-  button,
-  input,
-  select,
-  optgroup,
-  textarea,
-  ::file-selector-button {
+  button, input, select, optgroup, textarea, ::file-selector-button {
     font: inherit;
     font-feature-settings: inherit;
     font-variation-settings: inherit;
     letter-spacing: inherit;
     color: inherit;
     border-radius: 0;
-    background-color: transparent;
+    background-color: #0000;
     opacity: 1;
   }
 
@@ -199,7 +157,7 @@ Dx Style - @0.0.0
     opacity: 1;
   }
 
-  @supports (not (-webkit-appearance: -apple-pay-button)) or (contain-intrinsic-size: 1px) {
+  @supports (not ((-webkit-appearance: -apple-pay-button))) or (contain-intrinsic-size: 1px) {
     ::placeholder {
       color: color-mix(in oklab, currentcolor 50%, transparent);
     }
@@ -226,15 +184,7 @@ Dx Style - @0.0.0
     padding: 0;
   }
 
-  ::-webkit-datetime-edit,
-  ::-webkit-datetime-edit-year-field,
-  ::-webkit-datetime-edit-month-field,
-  ::-webkit-datetime-edit-day-field,
-  ::-webkit-datetime-edit-hour-field,
-  ::-webkit-datetime-edit-minute-field,
-  ::-webkit-datetime-edit-second-field,
-  ::-webkit-datetime-edit-millisecond-field,
-  ::-webkit-datetime-edit-meridiem-field {
+  ::-webkit-datetime-edit, ::-webkit-datetime-edit-year-field, ::-webkit-datetime-edit-month-field, ::-webkit-datetime-edit-day-field, ::-webkit-datetime-edit-hour-field, ::-webkit-datetime-edit-minute-field, ::-webkit-datetime-edit-second-field, ::-webkit-datetime-edit-millisecond-field, ::-webkit-datetime-edit-meridiem-field {
     padding-block: 0;
   }
 
@@ -246,1110 +196,746 @@ Dx Style - @0.0.0
     box-shadow: none;
   }
 
-  button,
-  input:where([type='button'], [type='reset'], [type='submit']),
-  ::file-selector-button {
+  button, input:where([type="button"], [type="reset"], [type="submit"]), ::file-selector-button {
     appearance: button;
   }
 
-  ::-webkit-inner-spin-button,
-  ::-webkit-outer-spin-button {
+  ::-webkit-inner-spin-button, ::-webkit-outer-spin-button {
     height: auto;
   }
 
-  [hidden]:where(:not([hidden='until-found'])) {
+  [hidden]:where(:not([hidden="until-found"])) {
     display: none !important;
   }
 }
 
 @layer properties {
-  @property --border-collapse {
-    syntax: "*";
-    inherits: true;
-    initial-value: separate;
-  }
-
-  @property --fill-opacity {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --perspective {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: 0;
-  }
-
-  @property --scroll-padding-block {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: 0px;
-  }
-
-  @property --scroll-padding-bottom {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: 0px;
-  }
-
-  @property --scroll-snap-align {
-    syntax: "*";
-    inherits: false;
-    initial-value: none;
-  }
-
-  @property --sepia {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 0;
-  }
-
-  @property --content {
-    syntax: "*";
-    inherits: false;
-    initial-value: '';
-  }
-
-  @property --shadow-colored {
-    syntax: "*";
-    inherits: false;
-  }
-
-  @property --text-shadow-xs {
-    syntax: "<shadow>";
-    inherits: false;
-    initial-value: 0 1px 1px rgb(0 0 0 / 0.2);
-  }
-
-  @property --transition-property {
-    syntax: "*";
-    inherits: false;
-    initial-value: all;
-  }
-
-  @property --place-content {
-    syntax: "*";
-    inherits: false;
-    initial-value: normal;
+  @property --right {
+    syntax: "<length-percentage>"; inherits: false; initial-value: auto;
   }
 
   @property --place-items {
-    syntax: "*";
-    inherits: false;
-    initial-value: normal;
-  }
-
-  @property --scroll-margin {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: 0px;
-  }
-
-  @property --scale-y {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --inset-inline {
-    syntax: "<length-percentage>";
-    inherits: false;
-    initial-value: 0;
-  }
-
-  @property --contrast {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --flex-shrink {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --object-position {
-    syntax: "<position>";
-    inherits: false;
-    initial-value: 50% 50%;
-  }
-
-  @property --backdrop-blur {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: 0;
-  }
-
-  @property --isolation {
-    syntax: "*";
-    inherits: false;
-    initial-value: auto;
-  }
-
-  @property --stroke-opacity {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --transition-timing-function {
-    syntax: "<timing-function>";
-    inherits: false;
-    initial-value: ease;
-  }
-
-  @property --text-decoration-thickness {
-    syntax: "<length-percentage>";
-    inherits: false;
-    initial-value: auto;
-  }
-
-  @property --will-change {
-    syntax: "*";
-    inherits: false;
-    initial-value: auto;
-  }
-
-  @property --scroll-padding-right {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: 0px;
-  }
-
-  @property --text-shadow {
-    syntax: "<shadow>";
-    inherits: false;
-    initial-value: 0 0 #0000;
-  }
-
-  @property --mix-blend-mode {
-    syntax: "*";
-    inherits: false;
-    initial-value: normal;
-  }
-
-  @property --border-spacing-y {
-    syntax: "<length-percentage>";
-    inherits: false;
-    initial-value: 0;
-  }
-
-  @property --brightness {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --mask-composite {
-    syntax: "*";
-    inherits: false;
-    initial-value: intersect;
-  }
-
-  @property --box-shadow {
-    syntax: "<shadow>";
-    inherits: false;
-    initial-value: none;
-  }
-
-  @property --numeric-figures {
-    syntax: "*";
-    inherits: false;
-    initial-value: normal;
-  }
-
-  @property --scroll-snap-type {
-    syntax: "*";
-    inherits: false;
-    initial-value: none;
-  }
-
-  @property --text-shadow-md {
-    syntax: "<shadow>";
-    inherits: false;
-    initial-value: 0 1px 1px rgb(0 0 0 / 0.1), 0 1px 2px rgb(0 0 0 / 0.1), 0 2px 4px rgb(0 0 0 / 0.1);
-  }
-
-  @property --text-shadow-sm {
-    syntax: "<shadow>";
-    inherits: false;
-    initial-value: 0 1px 0 rgb(0 0 0 / 0.075), 0 1px 1px rgb(0 0 0 / 0.075), 0 2px 2px rgb(0 0 0 / 0.075);
-  }
-
-  @property --brand-hue {
-    syntax: "<angle>";
-    inherits: false;
-    initial-value: 0deg;
-  }
-
-  @property --aspect-w {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --translate-x {
-    syntax: "<length-percentage>";
-    inherits: false;
-    initial-value: 0;
-  }
-
-  @property --break-after {
-    syntax: "*";
-    inherits: false;
-    initial-value: auto;
-  }
-
-  @property --backdrop-invert {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 0;
-  }
-
-  @property --scroll-behavior {
-    syntax: "*";
-    inherits: true;
-    initial-value: auto;
-  }
-
-  @property --unicode-bidi {
-    syntax: "*";
-    inherits: false;
-    initial-value: normal;
-  }
-
-  @property --line-clamp {
-    syntax: "<integer>";
-    inherits: false;
-    initial-value: none;
-  }
-
-  @property --transition-delay {
-    syntax: "<time>";
-    inherits: false;
-    initial-value: 0s;
-  }
-
-  @property --gradient-to {
-    syntax: "<color>";
-    inherits: false;
-    initial-value: transparent;
-  }
-
-  @property --text-orientation {
-    syntax: "*";
-    inherits: true;
-    initial-value: mixed;
-  }
-
-  @property --mask-clip {
-    syntax: "*";
-    inherits: false;
-    initial-value: border-box;
-  }
-
-  @property --shadow {
-    syntax: "<shadow>";
-    inherits: false;
-    initial-value: 0 0 #0000;
-  }
-
-  @property --text-wrap {
-    syntax: "*";
-    inherits: true;
-    initial-value: wrap;
-  }
-
-  @property --scroll-padding-inline {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: 0px;
-  }
-
-  @property --overflow-y {
-    syntax: "*";
-    inherits: false;
-    initial-value: visible;
-  }
-
-  @property --border-left-color {
-    syntax: "<color>";
-    inherits: false;
-    initial-value: currentColor;
-  }
-
-  @property --scroll-margin-top {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: 0px;
-  }
-
-  @property --bg-opacity {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --aspect-h {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --backdrop-filter {
-    syntax: "*";
-    inherits: false;
-    initial-value: none;
-  }
-
-  @property --hyphens {
-    syntax: "*";
-    inherits: true;
-    initial-value: manual;
-  }
-
-  @property --mask-origin {
-    syntax: "*";
-    inherits: false;
-    initial-value: border-box;
-  }
-
-  @property --pan-x {
-    syntax: "<length-percentage>";
-    inherits: false;
-    initial-value: 0;
-  }
-
-  @property --ordinal {
-    syntax: "*";
-    inherits: false;
-    initial-value: normal;
-  }
-
-  @property --pinch-zoom {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --ring-inset {
-    syntax: "*";
-    inherits: false;
-  }
-
-  @property --mask-image {
-    syntax: "<mask-source>";
-    inherits: false;
-    initial-value: none;
-  }
-
-  @property --background-blend-mode {
-    syntax: "*";
-    inherits: false;
-    initial-value: normal;
-  }
-
-  @property --caret-color {
-    syntax: "<color>";
-    inherits: true;
-    initial-value: auto;
-  }
-
-  @property --list-style-position {
-    syntax: "*";
-    inherits: true;
-    initial-value: outside;
-  }
-
-  @property --ring-offset-color {
-    syntax: "<color>";
-    inherits: false;
-    initial-value: #fff;
-  }
-
-  @property --text-shadow-lg {
-    syntax: "<shadow>";
-    inherits: false;
-    initial-value: 0 1px 2px rgb(0 0 0 / 0.1), 0 3px 2px rgb(0 0 0 / 0.1), 0 4px 8px rgb(0 0 0 / 0.1);
-  }
-
-  @property --numeric-spacing {
-    syntax: "*";
-    inherits: false;
-    initial-value: normal;
-  }
-
-  @property --ring-color {
-    syntax: "<color>";
-    inherits: false;
-    initial-value: #3b82f6;
-  }
-
-  @property --ring-offset-width {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: 0px;
-  }
-
-  @property --place-self {
-    syntax: "*";
-    inherits: false;
-    initial-value: auto;
-  }
-
-  @property --break-inside {
-    syntax: "*";
-    inherits: false;
-    initial-value: auto;
-  }
-
-  @property --bottom {
-    syntax: "<length-percentage>";
-    inherits: false;
-    initial-value: auto;
-  }
-
-  @property --gradient-to-position {
-    syntax: "<percentage>";
-    inherits: false;
-    initial-value: 100%;
-  }
-
-  @property --mask-position {
-    syntax: "<position>";
-    inherits: false;
-    initial-value: 0% 0%;
-  }
-
-  @property --scale-x {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --inset {
-    syntax: "<length-percentage>";
-    inherits: false;
-    initial-value: 0;
-  }
-
-  @property --overscroll {
-    syntax: "*";
-    inherits: false;
-    initial-value: auto;
-  }
-
-  @property --text-shadow-2xs {
-    syntax: "<shadow>";
-    inherits: false;
-    initial-value: 0 1px 0 rgb(0 0 0 / 0.15);
-  }
-
-  @property --writing-mode {
-    syntax: "*";
-    inherits: true;
-    initial-value: horizontal-tb;
-  }
-
-  @property --invert {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 0;
-  }
-
-  @property --grayscale {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 0;
-  }
-
-  @property --dynamic-opacity {
-    syntax: "<percentage>";
-    inherits: false;
-    initial-value: 100%;
-  }
-
-  @property --gradient-from-position {
-    syntax: "<percentage>";
-    inherits: false;
-    initial-value: 0%;
-  }
-
-  @property --grid-column {
-    syntax: "*";
-    inherits: false;
-    initial-value: none;
-  }
-
-  @property --grid-row {
-    syntax: "*";
-    inherits: false;
-    initial-value: none;
-  }
-
-  @property --backdrop-contrast {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --border-opacity {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --scroll-snap-strictness {
-    syntax: "*";
-    inherits: false;
-    initial-value: proximity;
-  }
-
-  @property --user-select {
-    syntax: "*";
-    inherits: false;
-    initial-value: auto;
-  }
-
-  @property --pan-y {
-    syntax: "<length-percentage>";
-    inherits: false;
-    initial-value: 0;
-  }
-
-  @property --rotate {
-    syntax: "<angle>";
-    inherits: false;
-    initial-value: 0deg;
-  }
-
-  @property --shadow-color {
-    syntax: "<color>";
-    inherits: false;
-    initial-value: #000;
-  }
-
-  @property --gradient-via-position {
-    syntax: "<percentage>";
-    inherits: false;
-    initial-value: 50%;
-  }
-
-  @property --slashed-zero {
-    syntax: "*";
-    inherits: false;
-    initial-value: normal;
-  }
-
-  @property --filter {
-    syntax: "*";
-    inherits: false;
-    initial-value: none;
-  }
-
-  @property --brand-accent {
-    syntax: "<color>";
-    inherits: false;
-    initial-value: #0000;
-  }
-
-  @property --flex-grow {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 0;
-  }
-
-  @property --backdrop-opacity {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --skew-x {
-    syntax: "<angle>";
-    inherits: false;
-    initial-value: 0deg;
-  }
-
-  @property --text-opacity {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --pointer-events {
-    syntax: "*";
-    inherits: false;
-    initial-value: auto;
-  }
-
-  @property --gradient-from {
-    syntax: "<color>";
-    inherits: false;
-    initial-value: transparent;
-  }
-
-  @property --container-padding-left {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: 0px;
-  }
-
-  @property --backdrop-brightness {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --forced-colors {
-    syntax: "*";
-    inherits: false;
-    initial-value: auto;
-  }
-
-  @property --spacing-scale {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --visibility {
-    syntax: "*";
-    inherits: false;
-    initial-value: visible;
-  }
-
-  @property --overflow-x {
-    syntax: "*";
-    inherits: false;
-    initial-value: visible;
-  }
-
-  @property --gradient-via {
-    syntax: "<color>";
-    inherits: false;
-    initial-value: transparent;
-  }
-
-  @property --mask-repeat {
-    syntax: "<repeat-style>";
-    inherits: false;
-    initial-value: no-repeat;
-  }
-
-  @property --position {
-    syntax: "*";
-    inherits: false;
-    initial-value: static;
-  }
-
-  @property --backdrop-sepia {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 0;
-  }
-
-  @property --resize {
-    syntax: "*";
-    inherits: false;
-    initial-value: none;
-  }
-
-  @property --right {
-    syntax: "<length-percentage>";
-    inherits: false;
-    initial-value: auto;
-  }
-
-  @property --ring-opacity {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --touch-action {
-    syntax: "*";
-    inherits: false;
-    initial-value: auto;
-  }
-
-  @property --flex {
-    syntax: "*";
-    inherits: false;
-    initial-value: 0 1 auto;
-  }
-
-  @property --vertical-align {
-    syntax: "<vertical-align>";
-    inherits: false;
-    initial-value: baseline;
-  }
-
-  @property --accent-color {
-    syntax: "<color>";
-    inherits: true;
-    initial-value: auto;
-  }
-
-  @property --ring-offset-shadow {
-    syntax: "<shadow>";
-    inherits: false;
-    initial-value: 0 0 #0000;
-  }
-
-  @property --inset-block {
-    syntax: "<length-percentage>";
-    inherits: false;
-    initial-value: 0;
-  }
-
-  @property --divide-opacity {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --scroll-margin-bottom {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: 0px;
-  }
-
-  @property --saturate {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --scroll-margin-right {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: 0px;
-  }
-
-  @property --overflow {
-    syntax: "*";
-    inherits: false;
-    initial-value: visible;
-  }
-
-  @property --skew-y {
-    syntax: "<angle>";
-    inherits: false;
-    initial-value: 0deg;
-  }
-
-  @property --scroll-padding-top {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: 0px;
-  }
-
-  @property --backdrop-grayscale {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 0;
-  }
-
-  @property --outline-offset {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: 0px;
-  }
-
-  @property --backdrop-saturate {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --list-style-image {
-    syntax: "<url>";
-    inherits: true;
-    initial-value: none;
-  }
-
-  @property --text-decoration-color {
-    syntax: "<color>";
-    inherits: true;
-    initial-value: currentColor;
-  }
-
-  @property --ring-shadow {
-    syntax: "<shadow>";
-    inherits: false;
-    initial-value: 0 0 #0000;
-  }
-
-  @property --text-decoration-skip-ink {
-    syntax: "*";
-    inherits: false;
-    initial-value: auto;
-  }
-
-  @property --border-right-color {
-    syntax: "<color>";
-    inherits: false;
-    initial-value: currentColor;
-  }
-
-  @property --scroll-padding {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: 0px;
-  }
-
-  @property --z-index {
-    syntax: "<integer>";
-    inherits: false;
-    initial-value: 0;
-  }
-
-  @property --border-bottom-color {
-    syntax: "<color>";
-    inherits: false;
-    initial-value: currentColor;
-  }
-
-  @property --border-color {
-    syntax: "<color>";
-    inherits: false;
-    initial-value: currentColor;
+    syntax: "*"; inherits: false; initial-value: normal;
   }
 
   @property --clip-path {
-    syntax: "<geometry-box>";
-    inherits: false;
-    initial-value: none;
+    syntax: "<geometry-box>"; inherits: false; initial-value: none;
   }
 
-  @property --container-padding-right {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: 0px;
+  @property --border-left-color {
+    syntax: "<color>"; inherits: false; initial-value: currentColor;
   }
 
-  @property --mask-size {
-    syntax: "<length-percentage>";
-    inherits: false;
-    initial-value: auto;
+  @property --numeric-spacing {
+    syntax: "*"; inherits: false; initial-value: normal;
   }
 
-  @property --left {
-    syntax: "<length-percentage>";
-    inherits: false;
-    initial-value: auto;
+  @property --object-position {
+    syntax: "<position>"; inherits: false; initial-value: 50% 50%;
   }
 
-  @property --outline-color {
-    syntax: "<color>";
-    inherits: true;
-    initial-value: currentColor;
+  @property --mask-repeat {
+    syntax: "<repeat-style>"; inherits: false; initial-value: no-repeat;
   }
 
-  @property --scroll-margin-left {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: 0px;
+  @property --skew-y {
+    syntax: "<angle>"; inherits: false; initial-value: 0deg;
   }
 
-  @property --scroll-snap-stop {
-    syntax: "*";
-    inherits: false;
-    initial-value: normal;
+  @property --scroll-margin-bottom {
+    syntax: "<length>"; inherits: false; initial-value: 0px;
   }
 
-  @property --top {
-    syntax: "<length-percentage>";
-    inherits: false;
-    initial-value: auto;
+  @property --pan-x {
+    syntax: "<length-percentage>"; inherits: false; initial-value: 0;
   }
 
-  @property --border-spacing-x {
-    syntax: "<length-percentage>";
-    inherits: false;
-    initial-value: 0;
-  }
-
-  @property --order {
-    syntax: "<integer>";
-    inherits: false;
-    initial-value: 0;
-  }
-
-  @property --underline-offset {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: auto;
-  }
-
-  @property --background-opacity {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --placeholder-opacity {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --easing-fn {
-    syntax: "*";
-    inherits: false;
-    initial-value: cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  @property --gradient-from-color {
-    syntax: "<color>";
-    inherits: false;
-    initial-value: transparent;
-  }
-
-  @property --mask-mode {
-    syntax: "*";
-    inherits: false;
-    initial-value: match-source;
-  }
-
-  @property --hue-rotate {
-    syntax: "<angle>";
-    inherits: false;
-    initial-value: 0deg;
-  }
-
-  @property --scroll-margin-block {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: 0px;
-  }
-
-  @property --scroll-padding-left {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: 0px;
-  }
-
-  @property --translate-y {
-    syntax: "<length-percentage>";
-    inherits: false;
-    initial-value: 0;
-  }
-
-  @property --backdrop-hue-rotate {
-    syntax: "<angle>";
-    inherits: false;
-    initial-value: 0deg;
-  }
-
-  @property --gradient-to-color {
-    syntax: "<color>";
-    inherits: false;
-    initial-value: transparent;
-  }
-
-  @property --clear {
-    syntax: "*";
-    inherits: false;
-    initial-value: none;
-  }
-
-  @property --object-fit {
-    syntax: "*";
-    inherits: false;
-    initial-value: fill;
-  }
-
-  @property --cursor {
-    syntax: "*";
-    inherits: true;
-    initial-value: auto;
-  }
-
-  @property --break-before {
-    syntax: "*";
-    inherits: false;
-    initial-value: auto;
-  }
-
-  @property --flex-basis {
-    syntax: "<flex-basis>";
-    inherits: false;
-    initial-value: auto;
-  }
-
-  @property --float {
-    syntax: "*";
-    inherits: false;
-    initial-value: none;
-  }
-
-  @property --gradient-via-colors {
-    syntax: "*";
-    inherits: false;
-  }
-
-  @property --scale {
-    syntax: "<number>";
-    inherits: false;
-    initial-value: 1;
-  }
-
-  @property --numeric-fraction {
-    syntax: "*";
-    inherits: false;
-    initial-value: normal;
-  }
-
-  @property --scroll-margin-inline {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: 0px;
-  }
-
-  @property --table-layout {
-    syntax: "*";
-    inherits: false;
-    initial-value: auto;
-  }
-
-  @property --transition-duration {
-    syntax: "<time>";
-    inherits: false;
-    initial-value: 0s;
-  }
-
-  @property --blur {
-    syntax: "<length>";
-    inherits: false;
-    initial-value: 0;
+  @property --flex-shrink {
+    syntax: "<number>"; inherits: false; initial-value: 1;
   }
 
   @property --border-top-color {
-    syntax: "<color>";
-    inherits: false;
-    initial-value: currentColor;
+    syntax: "<color>"; inherits: false; initial-value: currentColor;
   }
 
   @property --appearance {
-    syntax: "*";
-    inherits: false;
-    initial-value: none;
+    syntax: "*"; inherits: false; initial-value: none;
+  }
+
+  @property --accent-color {
+    syntax: "<color>"; inherits: true; initial-value: auto;
+  }
+
+  @property --backdrop-hue-rotate {
+    syntax: "<angle>"; inherits: false; initial-value: 0deg;
+  }
+
+  @property --backdrop-opacity {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --container-padding-left {
+    syntax: "<length>"; inherits: false; initial-value: 0px;
+  }
+
+  @property --flex {
+    syntax: "*"; inherits: false; initial-value: 0 1 auto;
+  }
+
+  @property --list-style-position {
+    syntax: "*"; inherits: true; initial-value: outside;
+  }
+
+  @property --scroll-padding-top {
+    syntax: "<length>"; inherits: false; initial-value: 0px;
+  }
+
+  @property --shadow {
+    syntax: "<shadow>"; inherits: false; initial-value: 0 0 #0000;
+  }
+
+  @property --vertical-align {
+    syntax: "<vertical-align>"; inherits: false; initial-value: baseline;
+  }
+
+  @property --slashed-zero {
+    syntax: "*"; inherits: false; initial-value: normal;
+  }
+
+  @property --writing-mode {
+    syntax: "*"; inherits: true; initial-value: horizontal-tb;
+  }
+
+  @property --scroll-snap-align {
+    syntax: "*"; inherits: false; initial-value: none;
+  }
+
+  @property --pan-y {
+    syntax: "<length-percentage>"; inherits: false; initial-value: 0;
+  }
+
+  @property --ring-offset-width {
+    syntax: "<length>"; inherits: false; initial-value: 0px;
+  }
+
+  @property --border-color {
+    syntax: "<color>"; inherits: false; initial-value: currentColor;
+  }
+
+  @property --brightness {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --table-layout {
+    syntax: "*"; inherits: false; initial-value: auto;
+  }
+
+  @property --transition-timing-function {
+    syntax: "<timing-function>"; inherits: false; initial-value: ease;
+  }
+
+  @property --scroll-padding-block {
+    syntax: "<length>"; inherits: false; initial-value: 0px;
+  }
+
+  @property --scroll-margin-block {
+    syntax: "<length>"; inherits: false; initial-value: 0px;
+  }
+
+  @property --spacing-scale {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --divide-opacity {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --backdrop-sepia {
+    syntax: "<number>"; inherits: false; initial-value: 0;
+  }
+
+  @property --scroll-padding-left {
+    syntax: "<length>"; inherits: false; initial-value: 0px;
+  }
+
+  @property --border-right-color {
+    syntax: "<color>"; inherits: false; initial-value: currentColor;
+  }
+
+  @property --grid-column {
+    syntax: "*"; inherits: false; initial-value: none;
+  }
+
+  @property --overscroll {
+    syntax: "*"; inherits: false; initial-value: auto;
+  }
+
+  @property --content {
+    syntax: "*"; inherits: false; initial-value: "";
+  }
+
+  @property --shadow-color {
+    syntax: "<color>"; inherits: false; initial-value: #000;
+  }
+
+  @property --mask-size {
+    syntax: "<length-percentage>"; inherits: false; initial-value: auto;
+  }
+
+  @property --scroll-padding-bottom {
+    syntax: "<length>"; inherits: false; initial-value: 0px;
+  }
+
+  @property --gradient-to {
+    syntax: "<color>"; inherits: false; initial-value: transparent;
   }
 
   @property --caption-side {
-    syntax: "*";
-    inherits: true;
-    initial-value: top;
+    syntax: "*"; inherits: true; initial-value: top;
+  }
+
+  @property --float {
+    syntax: "*"; inherits: false; initial-value: none;
+  }
+
+  @property --mask-mode {
+    syntax: "*"; inherits: false; initial-value: match-source;
+  }
+
+  @property --sepia {
+    syntax: "<number>"; inherits: false; initial-value: 0;
+  }
+
+  @property --scroll-behavior {
+    syntax: "*"; inherits: true; initial-value: auto;
+  }
+
+  @property --translate-x {
+    syntax: "<length-percentage>"; inherits: false; initial-value: 0;
+  }
+
+  @property --mask-origin {
+    syntax: "*"; inherits: false; initial-value: border-box;
+  }
+
+  @property --gradient-via-colors {
+    syntax: "*"; inherits: false;
+  }
+
+  @property --left {
+    syntax: "<length-percentage>"; inherits: false; initial-value: auto;
+  }
+
+  @property --transition-property {
+    syntax: "*"; inherits: false; initial-value: all;
+  }
+
+  @property --outline-color {
+    syntax: "<color>"; inherits: true; initial-value: currentColor;
+  }
+
+  @property --will-change {
+    syntax: "*"; inherits: false; initial-value: auto;
+  }
+
+  @property --perspective {
+    syntax: "<length>"; inherits: false; initial-value: 0;
+  }
+
+  @property --text-shadow-md {
+    syntax: "<shadow>"; inherits: false; initial-value: 0 1px 1px #0000001a, 0 1px 2px #0000001a, 0 2px 4px #0000001a;
+  }
+
+  @property --mix-blend-mode {
+    syntax: "*"; inherits: false; initial-value: normal;
+  }
+
+  @property --ring-color {
+    syntax: "<color>"; inherits: false; initial-value: #3b82f6;
+  }
+
+  @property --grayscale {
+    syntax: "<number>"; inherits: false; initial-value: 0;
+  }
+
+  @property --box-shadow {
+    syntax: "<shadow>"; inherits: false; initial-value: none;
+  }
+
+  @property --flex-grow {
+    syntax: "<number>"; inherits: false; initial-value: 0;
+  }
+
+  @property --scroll-padding-right {
+    syntax: "<length>"; inherits: false; initial-value: 0px;
+  }
+
+  @property --backdrop-saturate {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --scroll-padding-inline {
+    syntax: "<length>"; inherits: false; initial-value: 0px;
+  }
+
+  @property --scroll-margin-left {
+    syntax: "<length>"; inherits: false; initial-value: 0px;
+  }
+
+  @property --gradient-from {
+    syntax: "<color>"; inherits: false; initial-value: transparent;
+  }
+
+  @property --gradient-from-color {
+    syntax: "<color>"; inherits: false; initial-value: transparent;
+  }
+
+  @property --place-self {
+    syntax: "*"; inherits: false; initial-value: auto;
+  }
+
+  @property --stroke-opacity {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --text-decoration-thickness {
+    syntax: "<length-percentage>"; inherits: false; initial-value: auto;
+  }
+
+  @property --brand-accent {
+    syntax: "<color>"; inherits: false; initial-value: #0000;
+  }
+
+  @property --gradient-from-position {
+    syntax: "<percentage>"; inherits: false; initial-value: 0%;
+  }
+
+  @property --scroll-padding {
+    syntax: "<length>"; inherits: false; initial-value: 0px;
+  }
+
+  @property --mask-composite {
+    syntax: "*"; inherits: false; initial-value: intersect;
+  }
+
+  @property --dynamic-opacity {
+    syntax: "<percentage>"; inherits: false; initial-value: 100%;
+  }
+
+  @property --overflow-y {
+    syntax: "*"; inherits: false; initial-value: visible;
+  }
+
+  @property --scale-y {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --text-shadow {
+    syntax: "<shadow>"; inherits: false; initial-value: 0 0 #0000;
+  }
+
+  @property --position {
+    syntax: "*"; inherits: false; initial-value: static;
+  }
+
+  @property --border-collapse {
+    syntax: "*"; inherits: true; initial-value: separate;
+  }
+
+  @property --backdrop-contrast {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --backdrop-grayscale {
+    syntax: "<number>"; inherits: false; initial-value: 0;
+  }
+
+  @property --line-clamp {
+    syntax: "<integer>"; inherits: false; initial-value: none;
   }
 
   @property --drop-shadow {
-    syntax: "<shadow>";
-    inherits: false;
-    initial-value: 0 0 #0000;
+    syntax: "<shadow>"; inherits: false; initial-value: 0 0 #0000;
+  }
+
+  @property --mask-clip {
+    syntax: "*"; inherits: false; initial-value: border-box;
+  }
+
+  @property --backdrop-brightness {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --order {
+    syntax: "<integer>"; inherits: false; initial-value: 0;
+  }
+
+  @property --place-content {
+    syntax: "*"; inherits: false; initial-value: normal;
+  }
+
+  @property --scroll-snap-strictness {
+    syntax: "*"; inherits: false; initial-value: proximity;
+  }
+
+  @property --visibility {
+    syntax: "*"; inherits: false; initial-value: visible;
+  }
+
+  @property --inset {
+    syntax: "<length-percentage>"; inherits: false; initial-value: 0;
+  }
+
+  @property --backdrop-blur {
+    syntax: "<length>"; inherits: false; initial-value: 0;
+  }
+
+  @property --object-fit {
+    syntax: "*"; inherits: false; initial-value: fill;
+  }
+
+  @property --blur {
+    syntax: "<length>"; inherits: false; initial-value: 0;
+  }
+
+  @property --numeric-figures {
+    syntax: "*"; inherits: false; initial-value: normal;
+  }
+
+  @property --ring-offset-color {
+    syntax: "<color>"; inherits: false; initial-value: #fff;
+  }
+
+  @property --placeholder-opacity {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --container-padding-right {
+    syntax: "<length>"; inherits: false; initial-value: 0px;
+  }
+
+  @property --scroll-margin-right {
+    syntax: "<length>"; inherits: false; initial-value: 0px;
+  }
+
+  @property --ring-shadow {
+    syntax: "<shadow>"; inherits: false; initial-value: 0 0 #0000;
+  }
+
+  @property --border-bottom-color {
+    syntax: "<color>"; inherits: false; initial-value: currentColor;
+  }
+
+  @property --skew-x {
+    syntax: "<angle>"; inherits: false; initial-value: 0deg;
+  }
+
+  @property --text-orientation {
+    syntax: "*"; inherits: true; initial-value: mixed;
+  }
+
+  @property --isolation {
+    syntax: "*"; inherits: false; initial-value: auto;
+  }
+
+  @property --fill-opacity {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --scroll-snap-type {
+    syntax: "*"; inherits: false; initial-value: none;
+  }
+
+  @property --unicode-bidi {
+    syntax: "*"; inherits: false; initial-value: normal;
+  }
+
+  @property --forced-colors {
+    syntax: "*"; inherits: false; initial-value: auto;
+  }
+
+  @property --background-opacity {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --gradient-to-color {
+    syntax: "<color>"; inherits: false; initial-value: transparent;
+  }
+
+  @property --inset-block {
+    syntax: "<length-percentage>"; inherits: false; initial-value: 0;
+  }
+
+  @property --flex-basis {
+    syntax: "<flex-basis>"; inherits: false; initial-value: auto;
+  }
+
+  @property --invert {
+    syntax: "<number>"; inherits: false; initial-value: 0;
+  }
+
+  @property --border-spacing-y {
+    syntax: "<length-percentage>"; inherits: false; initial-value: 0;
+  }
+
+  @property --gradient-via {
+    syntax: "<color>"; inherits: false; initial-value: transparent;
+  }
+
+  @property --aspect-w {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --gradient-to-position {
+    syntax: "<percentage>"; inherits: false; initial-value: 100%;
+  }
+
+  @property --mask-position {
+    syntax: "<position>"; inherits: false; initial-value: 0% 0%;
+  }
+
+  @property --clear {
+    syntax: "*"; inherits: false; initial-value: none;
+  }
+
+  @property --contrast {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --rotate {
+    syntax: "<angle>"; inherits: false; initial-value: 0deg;
+  }
+
+  @property --scroll-margin-top {
+    syntax: "<length>"; inherits: false; initial-value: 0px;
+  }
+
+  @property --text-shadow-sm {
+    syntax: "<shadow>"; inherits: false; initial-value: 0 1px 0 #00000013, 0 1px 1px #00000013, 0 2px 2px #00000013;
+  }
+
+  @property --transition-delay {
+    syntax: "<time>"; inherits: false; initial-value: 0s;
+  }
+
+  @property --translate-y {
+    syntax: "<length-percentage>"; inherits: false; initial-value: 0;
+  }
+
+  @property --underline-offset {
+    syntax: "<length>"; inherits: false; initial-value: auto;
+  }
+
+  @property --z-index {
+    syntax: "<integer>"; inherits: false; initial-value: 0;
+  }
+
+  @property --pinch-zoom {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --hyphens {
+    syntax: "*"; inherits: true; initial-value: manual;
+  }
+
+  @property --bg-opacity {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --text-shadow-xs {
+    syntax: "<shadow>"; inherits: false; initial-value: 0 1px 1px #0003;
+  }
+
+  @property --saturate {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --overflow-x {
+    syntax: "*"; inherits: false; initial-value: visible;
+  }
+
+  @property --ring-inset {
+    syntax: "*"; inherits: false;
+  }
+
+  @property --text-opacity {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --text-wrap {
+    syntax: "*"; inherits: true; initial-value: wrap;
+  }
+
+  @property --transition-duration {
+    syntax: "<time>"; inherits: false; initial-value: 0s;
+  }
+
+  @property --backdrop-filter {
+    syntax: "*"; inherits: false; initial-value: none;
+  }
+
+  @property --user-select {
+    syntax: "*"; inherits: false; initial-value: auto;
+  }
+
+  @property --text-decoration-skip-ink {
+    syntax: "*"; inherits: false; initial-value: auto;
+  }
+
+  @property --mask-image {
+    syntax: "<mask-source>"; inherits: false; initial-value: none;
+  }
+
+  @property --bottom {
+    syntax: "<length-percentage>"; inherits: false; initial-value: auto;
+  }
+
+  @property --text-shadow-lg {
+    syntax: "<shadow>"; inherits: false; initial-value: 0 1px 2px #0000001a, 0 3px 2px #0000001a, 0 4px 8px #0000001a;
+  }
+
+  @property --aspect-h {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --top {
+    syntax: "<length-percentage>"; inherits: false; initial-value: auto;
+  }
+
+  @property --brand-hue {
+    syntax: "<angle>"; inherits: false; initial-value: 0deg;
+  }
+
+  @property --border-spacing-x {
+    syntax: "<length-percentage>"; inherits: false; initial-value: 0;
+  }
+
+  @property --filter {
+    syntax: "*"; inherits: false; initial-value: none;
+  }
+
+  @property --cursor {
+    syntax: "*"; inherits: true; initial-value: auto;
+  }
+
+  @property --gradient-via-position {
+    syntax: "<percentage>"; inherits: false; initial-value: 50%;
+  }
+
+  @property --caret-color {
+    syntax: "<color>"; inherits: true; initial-value: auto;
+  }
+
+  @property --overflow {
+    syntax: "*"; inherits: false; initial-value: visible;
+  }
+
+  @property --shadow-colored {
+    syntax: "*"; inherits: false;
+  }
+
+  @property --scale {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --inset-inline {
+    syntax: "<length-percentage>"; inherits: false; initial-value: 0;
+  }
+
+  @property --background-blend-mode {
+    syntax: "*"; inherits: false; initial-value: normal;
+  }
+
+  @property --list-style-image {
+    syntax: "<url>"; inherits: true; initial-value: none;
+  }
+
+  @property --outline-offset {
+    syntax: "<length>"; inherits: false; initial-value: 0px;
+  }
+
+  @property --break-inside {
+    syntax: "*"; inherits: false; initial-value: auto;
+  }
+
+  @property --backdrop-invert {
+    syntax: "<number>"; inherits: false; initial-value: 0;
+  }
+
+  @property --numeric-fraction {
+    syntax: "*"; inherits: false; initial-value: normal;
+  }
+
+  @property --break-after {
+    syntax: "*"; inherits: false; initial-value: auto;
+  }
+
+  @property --grid-row {
+    syntax: "*"; inherits: false; initial-value: none;
+  }
+
+  @property --border-opacity {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --ring-offset-shadow {
+    syntax: "<shadow>"; inherits: false; initial-value: 0 0 #0000;
+  }
+
+  @property --ring-opacity {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --scroll-margin {
+    syntax: "<length>"; inherits: false; initial-value: 0px;
+  }
+
+  @property --scroll-snap-stop {
+    syntax: "*"; inherits: false; initial-value: normal;
+  }
+
+  @property --scale-x {
+    syntax: "<number>"; inherits: false; initial-value: 1;
+  }
+
+  @property --text-decoration-color {
+    syntax: "<color>"; inherits: true; initial-value: currentColor;
+  }
+
+  @property --easing-fn {
+    syntax: "*"; inherits: false; initial-value: cubic-bezier(.4, 0, .2, 1) ;
+  }
+
+  @property --scroll-margin-inline {
+    syntax: "<length>"; inherits: false; initial-value: 0px;
+  }
+
+  @property --text-shadow-2xs {
+    syntax: "<shadow>"; inherits: false; initial-value: 0 1px 0 #00000026;
+  }
+
+  @property --hue-rotate {
+    syntax: "<angle>"; inherits: false; initial-value: 0deg;
+  }
+
+  @property --pointer-events {
+    syntax: "*"; inherits: false; initial-value: auto;
+  }
+
+  @property --ordinal {
+    syntax: "*"; inherits: false; initial-value: normal;
+  }
+
+  @property --resize {
+    syntax: "*"; inherits: false; initial-value: none;
+  }
+
+  @property --break-before {
+    syntax: "*"; inherits: false; initial-value: auto;
+  }
+
+  @property --touch-action {
+    syntax: "*"; inherits: false; initial-value: auto;
   }
 }
 
@@ -1383,7 +969,7 @@ Dx Style - @0.0.0
   }
 
   .rounded-md {
-    border-radius: 0.375rem;
+    border-radius: .375rem;
   }
 
   .text-center {
@@ -1401,5 +987,4 @@ Dx Style - @0.0.0
   .w-50 {
     width: 12.5rem;
   }
-
 }

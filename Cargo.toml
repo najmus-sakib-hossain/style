@@ -11,7 +11,6 @@ path = "src/lib.rs"
 indexmap = { version = "2.3.0", default-features = false }
 images = { package = "image", version = "0.25.2", optional = true }
 libm = { version = "0.2.8", optional = true }
-
 ahash = "0.8.12"
 colored = "3.0.0"
 cssparser = "0.35.0"
@@ -30,6 +29,7 @@ smallvec = "1.13.2"
 seahash = "4.1.0"
 twoway = "0.2"
 winapi = { version = "0.3", features = ["wincon","consoleapi","minwindef","processenv","winbase"] }
+lightningcss = "1.0.0-alpha.67"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

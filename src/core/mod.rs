@@ -3,6 +3,7 @@ use crate::{
 };
 mod animation;
 mod engine;
+mod formatter;
 mod group;
 use ahash::{AHashSet, AHasher};
 use colored::Colorize;
@@ -283,6 +284,41 @@ pub fn rebuild_styles(
                 state_guard.css_buffer.push(b'\n');
             }
             state_guard.css_buffer.extend_from_slice(b"}\n");
+            // Optional formatting only on initial full build or when forced
+            let apply_format =
+                is_initial_run || std::env::var("DX_FORCE_FORMAT").ok().as_deref() == Some("1");
+            if apply_format {
+                if let Ok(as_string) = String::from_utf8(state_guard.css_buffer.clone()) {
+                    if let Some(formatted) = formatter::format_css_pretty(&as_string) {
+                        state_guard.css_buffer.clear();
+                        state_guard
+                            .css_buffer
+                            .extend_from_slice(formatted.as_bytes());
+                        // Recompute utilities_offset since formatting may have changed positions
+                        if let Some(layer_pos) =
+                            twoway::find_bytes(&state_guard.css_buffer, b"@layer utilities")
+                        {
+                            // Find first '{' after the marker
+                            if let Some(rel_brace) = state_guard.css_buffer[layer_pos..]
+                                .iter()
+                                .position(|b| *b == b'{')
+                            {
+                                let after_brace = layer_pos + rel_brace + 1; // position right after '{'
+                                // Advance to next newline (start of body lines)
+                                if let Some(nl) = state_guard.css_buffer[after_brace..]
+                                    .iter()
+                                    .position(|b| *b == b'\n')
+                                {
+                                    state_guard.utilities_offset = after_brace + nl + 1;
+                                } else {
+                                    // No newline -> body empty so offset at end
+                                    state_guard.utilities_offset = state_guard.css_buffer.len();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             let fragment_vec = state_guard.css_buffer.clone();
             let build_utilities = util_phase_start.elapsed();
             let flush_start = Instant::now();
@@ -298,7 +334,35 @@ pub fn rebuild_styles(
             }
             state_guard.css_index.clear();
             // Utilities body without the final closing "}\n" (2 bytes) of the layer.
-            let body_slice: &[u8] = &fragment_vec[utilities_offset..fragment_len - 2];
+            if utilities_offset >= fragment_len
+                || fragment_len < 2
+                || utilities_offset + 2 > fragment_len
+            {
+                // Nothing indexable; avoid panic
+                state_guard.css_out.flush_now()?;
+                let flush_time = flush_start.elapsed();
+                (
+                    css_write_timer.elapsed(),
+                    WriteStats {
+                        mode: "full",
+                        classes_written: class_vec.len(),
+                        bytes_written: fragment_vec.len(),
+                        sub1_label: "layers+gen",
+                        sub1: gen_layers_utils,
+                        sub2_label: Some("utilities"),
+                        sub2: Some(build_utilities),
+                        sub3_label: Some("flush"),
+                        sub3: Some(flush_time),
+                    },
+                );
+                // Early continue of outer block by using a label is complicated; we just fall through with empty index
+                // Return from closure style requires restructure; keeping simple no indexing.
+            }
+            let body_slice: &[u8] = if utilities_offset + 2 <= fragment_len {
+                &fragment_vec[utilities_offset..fragment_len - 2]
+            } else {
+                &[]
+            };
             let mut cursor = 0usize;
             while cursor < body_slice.len() {
                 // Skip leading whitespace/newlines
@@ -406,7 +470,7 @@ pub fn rebuild_styles(
                 let gen_time = gen_start.elapsed();
                 let build_start = Instant::now();
                 let raw = std::mem::take(&mut state_guard.css_buffer);
-                let mut block = Vec::with_capacity(raw.len() + 32);
+                let mut block = Vec::with_capacity(raw.len() + 64);
                 for line in raw.split(|b| *b == b'\n') {
                     if line.is_empty() {
                         continue;
@@ -414,6 +478,10 @@ pub fn rebuild_styles(
                     block.extend_from_slice(b"  ");
                     block.extend_from_slice(line);
                     block.push(b'\n');
+                    // Add a blank line after completed rule for readability
+                    if line.ends_with(b"}") {
+                        block.push(b'\n');
+                    }
                 }
                 let build_time = build_start.elapsed();
                 let flush_start = Instant::now();
