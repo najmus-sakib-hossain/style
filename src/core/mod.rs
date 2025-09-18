@@ -471,6 +471,7 @@ pub fn rebuild_styles(
                 let build_start = Instant::now();
                 let raw = std::mem::take(&mut state_guard.css_buffer);
                 let mut block = Vec::with_capacity(raw.len() + 64);
+                block.push(b'\n');
                 for line in raw.split(|b| *b == b'\n') {
                     if line.is_empty() {
                         continue;
@@ -478,10 +479,6 @@ pub fn rebuild_styles(
                     block.extend_from_slice(b"  ");
                     block.extend_from_slice(line);
                     block.push(b'\n');
-                    // Add a blank line after completed rule for readability
-                    if line.ends_with(b"}") {
-                        block.push(b'\n');
-                    }
                 }
                 let build_time = build_start.elapsed();
                 let flush_start = Instant::now();
