@@ -31,6 +31,18 @@ seahash = "4.1.0"
 twoway = "0.2"
 winapi = { version = "0.3", features = ["wincon","consoleapi","minwindef","processenv","winbase"] }
 
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+float-cmp = "0.9"
+reqwest = "0.12.5"
+tokio = { version = "1.39.2", features = ["rt", "macros"] }
+
+[build-dependencies]
+flatc-rust = "0.2.0"
+toml = "0.9.5"
+flatbuffers = "25.2.10"
+serde = { version = "1.0.219", features = ["derive"] }
+
 [features]
 eager-flush = []
 default = ["std", "image"]
@@ -38,25 +50,14 @@ std = ["indexmap/std", "ahash/std", "ahash/runtime-rng"]
 image = ["dep:images"]
 libm = ["dep:libm"]
 
-[dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
-float-cmp = "0.9"
-reqwest = "0.12.5"
-tokio = { version = "1.39.2", features = ["rt", "macros"] }
 
-[[bench]]
-name = "hot_path"
-harness = false
+# [[bench]]
+# name = "hot_path"
+# harness = false
 
-[[bench]]
-name = "write_path"
-harness = false
-
-[build-dependencies]
-flatc-rust = "0.2.0"
-toml = "0.9.5"
-flatbuffers = "25.2.10"
-serde = { version = "1.0.219", features = ["derive"] }
+# [[bench]]
+# name = "write_path"
+# harness = false
 
 [profile.dev]
 opt-level = 2
