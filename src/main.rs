@@ -68,26 +68,84 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if existing.windows(18).any(|w| w == b"@layer properties") {
             set_properties_layer_present();
         }
-        let mut offset = 0usize;
-        for line in existing.split(|b| *b == b'\n') {
-            let trimmed = {
-                let mut i = 0;
-                while i < line.len() && (line[i] == b' ' || line[i] == b'\t') {
-                    i += 1;
+        // Attempt multi-line rule recovery for existing utilities (best-effort).
+        let mut cursor = 0usize;
+        while cursor < existing.len() {
+            // Skip whitespace/newlines
+            while cursor < existing.len()
+                && (existing[cursor] == b'\n'
+                    || existing[cursor] == b' '
+                    || existing[cursor] == b'\t')
+            {
+                cursor += 1;
+            }
+            if cursor >= existing.len() {
+                break;
+            }
+            let start = cursor;
+            if existing[cursor] == b'.' {
+                let mut sel_end = cursor + 1;
+                while sel_end < existing.len()
+                    && existing[sel_end] != b'{'
+                    && existing[sel_end] != b'\n'
+                {
+                    sel_end += 1;
                 }
-                &line[i..]
-            };
-            if trimmed.starts_with(b".") {
-                if let Some(brace) = trimmed.iter().position(|c| *c == b'{') {
-                    let cls = String::from_utf8_lossy(&trimmed[1..brace]).to_string();
-                    let len = line.len() + 1;
-                    css_index.insert(cls, (offset, len));
-                    offset += len;
-                } else {
-                    offset += line.len() + 1;
+                if sel_end < existing.len() && existing[sel_end] == b'{' {
+                    let raw = &existing[cursor + 1..sel_end];
+                    let mut end_trim = raw.len();
+                    while end_trim > 0 && (raw[end_trim - 1] == b' ' || raw[end_trim - 1] == b'\t')
+                    {
+                        end_trim -= 1;
+                    }
+                    if end_trim > 0 {
+                        let name = String::from_utf8_lossy(&raw[..end_trim]).to_string();
+                        if !name.is_empty() {
+                            let mut depth: isize = 0;
+                            let mut j = sel_end;
+                            let mut rule_end = sel_end;
+                            while j < existing.len() {
+                                let b = existing[j];
+                                if b == b'{' {
+                                    depth += 1;
+                                }
+                                if b == b'}' {
+                                    depth -= 1;
+                                }
+                                if depth == 0 && b == b'}' {
+                                    let mut k = j;
+                                    while k < existing.len() && existing[k] != b'\n' {
+                                        k += 1;
+                                    }
+                                    if k < existing.len() {
+                                        k += 1;
+                                    }
+                                    rule_end = k;
+                                    break;
+                                }
+                                j += 1;
+                            }
+                            if rule_end > start {
+                                css_index.insert(
+                                    name,
+                                    crate::core::RuleMeta {
+                                        off: start,
+                                        len: rule_end - start,
+                                    },
+                                );
+                                cursor = rule_end;
+                                continue;
+                            }
+                        }
+                    }
                 }
-            } else {
-                offset += line.len() + 1;
+            }
+            // Not a rule; move to next line
+            while cursor < existing.len() && existing[cursor] != b'\n' {
+                cursor += 1;
+            }
+            if cursor < existing.len() {
+                cursor += 1;
             }
         }
     }

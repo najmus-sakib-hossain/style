@@ -34,6 +34,12 @@ pub fn properties_layer_present() -> bool {
 
 static FIRST_LOG_DONE: AtomicBool = AtomicBool::new(false);
 
+#[derive(Clone, Copy, Debug)]
+pub struct RuleMeta {
+    pub off: usize, // offset relative to utilities body start
+    pub len: usize, // full rule span including all lines and trailing newline
+}
+
 pub struct AppState {
     pub html_hash: u64,
     pub class_cache: AHashSet<String>,
@@ -41,7 +47,7 @@ pub struct AppState {
     pub last_css_hash: u64,
     pub css_buffer: Vec<u8>,
     pub class_list_checksum: u64,
-    pub css_index: ahash::AHashMap<String, (usize, usize)>,
+    pub css_index: ahash::AHashMap<String, RuleMeta>,
     pub utilities_offset: usize,
 }
 
@@ -276,45 +282,90 @@ pub fn rebuild_styles(
                 state_guard.last_css_hash = frag_hash;
             }
             state_guard.css_index.clear();
-            let body_slice: Vec<u8> = fragment_vec[utilities_offset..fragment_len - 2].to_vec();
-            let mut rel = 0usize;
-            for line in body_slice.split(|b| *b == b'\n') {
-                if line.is_empty() {
-                    continue;
+            // Utilities body without the final closing "}\n" (2 bytes) of the layer.
+            let body_slice: &[u8] = &fragment_vec[utilities_offset..fragment_len - 2];
+            let mut cursor = 0usize;
+            while cursor < body_slice.len() {
+                // Skip leading whitespace/newlines
+                while cursor < body_slice.len()
+                    && (body_slice[cursor] == b'\n'
+                        || body_slice[cursor] == b' '
+                        || body_slice[cursor] == b'\t')
+                {
+                    cursor += 1;
                 }
-                let trimmed = {
-                    let mut i = 0;
-                    while i < line.len() && (line[i] == b' ' || line[i] == b'\t') {
-                        i += 1;
+                if cursor >= body_slice.len() {
+                    break;
+                }
+                let rule_start = cursor; // potential start
+                if body_slice[cursor] == b'.' {
+                    // Read selector until '{'
+                    let mut sel_end = cursor + 1;
+                    while sel_end < body_slice.len()
+                        && body_slice[sel_end] != b'{'
+                        && body_slice[sel_end] != b'\n'
+                    {
+                        sel_end += 1;
                     }
-                    &line[i..]
-                };
-                if trimmed.starts_with(b".") {
-                    if let Some(br) = trimmed.iter().position(|c| *c == b'{') {
-                        // Extract class selector up to first '{', trimming trailing spaces
-                        let raw = &trimmed[1..br];
-                        let end_trim = raw
-                            .iter()
-                            .rposition(|c| *c != b' ' && *c != b'\t')
-                            .map(|p| p + 1)
-                            .unwrap_or(0);
+                    if sel_end < body_slice.len() && body_slice[sel_end] == b'{' {
+                        // Extract class name between '.' and first '{'
+                        let raw = &body_slice[cursor + 1..sel_end];
+                        let mut end_trim = raw.len();
+                        while end_trim > 0
+                            && (raw[end_trim - 1] == b' ' || raw[end_trim - 1] == b'\t')
+                        {
+                            end_trim -= 1;
+                        }
                         if end_trim > 0 {
                             let name = String::from_utf8_lossy(&raw[..end_trim]).to_string();
                             if !name.is_empty() {
-                                let len = line.len() + 1;
-                                state_guard.css_index.insert(name, (rel, len));
-                                rel += len;
-                            } else {
-                                rel += line.len() + 1;
+                                // Balance braces to find end of rule
+                                let mut depth: isize = 0;
+                                let mut j = sel_end;
+                                let mut rule_end = sel_end;
+                                while j < body_slice.len() {
+                                    let b = body_slice[j];
+                                    if b == b'{' {
+                                        depth += 1;
+                                    }
+                                    if b == b'}' {
+                                        depth -= 1;
+                                    }
+                                    if depth == 0 && b == b'}' {
+                                        // consume to end-of-line
+                                        let mut k = j;
+                                        while k < body_slice.len() && body_slice[k] != b'\n' {
+                                            k += 1;
+                                        }
+                                        if k < body_slice.len() {
+                                            k += 1;
+                                        }
+                                        rule_end = k;
+                                        break;
+                                    }
+                                    j += 1;
+                                }
+                                if rule_end > rule_start {
+                                    state_guard.css_index.insert(
+                                        name,
+                                        RuleMeta {
+                                            off: rule_start,
+                                            len: rule_end - rule_start,
+                                        },
+                                    );
+                                    cursor = rule_end;
+                                    continue;
+                                }
                             }
-                        } else {
-                            rel += line.len() + 1;
                         }
-                    } else {
-                        rel += line.len() + 1;
                     }
-                } else {
-                    rel += line.len() + 1;
+                }
+                // Fallback: advance to next newline if not a rule
+                while cursor < body_slice.len() && body_slice[cursor] != b'\n' {
+                    cursor += 1;
+                }
+                if cursor < body_slice.len() {
+                    cursor += 1;
                 }
             }
             state_guard.css_out.flush_now()?;
@@ -352,43 +403,83 @@ pub fn rebuild_styles(
                 let build_time = build_start.elapsed();
                 let flush_start = Instant::now();
                 let start_rel = state_guard.css_out.append_inside_final_block(&block)?;
-                let mut rel_off = start_rel - state_guard.utilities_offset;
-                for line in block.split(|b| *b == b'\n') {
-                    if line.is_empty() {
-                        continue;
+                let mut rel_cursor = start_rel - state_guard.utilities_offset;
+                let mut cursor = 0usize;
+                while cursor < block.len() {
+                    // Skip whitespace/newlines
+                    while cursor < block.len()
+                        && (block[cursor] == b'\n'
+                            || block[cursor] == b' '
+                            || block[cursor] == b'\t')
+                    {
+                        cursor += 1;
                     }
-                    let trimmed = {
-                        let mut i = 0;
-                        while i < line.len() && (line[i] == b' ' || line[i] == b'\t') {
-                            i += 1;
+                    if cursor >= block.len() {
+                        break;
+                    }
+                    let rule_start_block = cursor;
+                    if block[cursor] == b'.' {
+                        let mut sel_end = cursor + 1;
+                        while sel_end < block.len()
+                            && block[sel_end] != b'{'
+                            && block[sel_end] != b'\n'
+                        {
+                            sel_end += 1;
                         }
-                        &line[i..]
-                    };
-                    if trimmed.starts_with(b".") {
-                        if let Some(br) = trimmed.iter().position(|c| *c == b'{') {
-                            let raw = &trimmed[1..br];
-                            let end_trim = raw
-                                .iter()
-                                .rposition(|c| *c != b' ' && *c != b'\t')
-                                .map(|p| p + 1)
-                                .unwrap_or(0);
+                        if sel_end < block.len() && block[sel_end] == b'{' {
+                            let raw = &block[cursor + 1..sel_end];
+                            let mut end_trim = raw.len();
+                            while end_trim > 0
+                                && (raw[end_trim - 1] == b' ' || raw[end_trim - 1] == b'\t')
+                            {
+                                end_trim -= 1;
+                            }
                             if end_trim > 0 {
                                 let name = String::from_utf8_lossy(&raw[..end_trim]).to_string();
                                 if !name.is_empty() {
-                                    let len = line.len() + 1;
-                                    state_guard.css_index.insert(name, (rel_off, len));
-                                    rel_off += len;
-                                } else {
-                                    rel_off += line.len() + 1;
+                                    let mut depth: isize = 0;
+                                    let mut j = sel_end;
+                                    let mut rule_end = sel_end;
+                                    while j < block.len() {
+                                        let b = block[j];
+                                        if b == b'{' {
+                                            depth += 1;
+                                        }
+                                        if b == b'}' {
+                                            depth -= 1;
+                                        }
+                                        if depth == 0 && b == b'}' {
+                                            let mut k = j;
+                                            while k < block.len() && block[k] != b'\n' {
+                                                k += 1;
+                                            }
+                                            if k < block.len() {
+                                                k += 1;
+                                            }
+                                            rule_end = k;
+                                            break;
+                                        }
+                                        j += 1;
+                                    }
+                                    if rule_end > rule_start_block {
+                                        let off = rel_cursor + rule_start_block;
+                                        let len = rule_end - rule_start_block;
+                                        state_guard.css_index.insert(name, RuleMeta { off, len });
+                                        rel_cursor += len;
+                                        cursor = rule_end;
+                                        continue;
+                                    }
                                 }
-                            } else {
-                                rel_off += line.len() + 1;
                             }
-                        } else {
-                            rel_off += line.len() + 1;
                         }
-                    } else {
-                        rel_off += line.len() + 1;
+                    }
+                    // Not a rule; advance to newline
+                    while cursor < block.len() && block[cursor] != b'\n' {
+                        cursor += 1;
+                    }
+                    if cursor < block.len() {
+                        cursor += 1;
+                        rel_cursor += 1;
                     }
                 }
                 state_guard.css_out.flush_now()?;
@@ -426,12 +517,10 @@ pub fn rebuild_styles(
         } else if !removed.is_empty() && added.is_empty() {
             let mut removed_bytes = 0usize;
             for r in &removed {
-                if let Some((off, len)) = state_guard.css_index.remove(r) {
-                    // off is already relative to utilities body start (recorded that way when inserted)
-                    // blank_range expects a start relative to managed_base, so we must add utilities_offset.
-                    let rel = state_guard.utilities_offset + off;
-                    let _ = state_guard.css_out.blank_range(rel, len);
-                    removed_bytes += len;
+                if let Some(meta) = state_guard.css_index.remove(r) {
+                    let rel = state_guard.utilities_offset + meta.off;
+                    let _ = state_guard.css_out.blank_range(rel, meta.len);
+                    removed_bytes += meta.len;
                 }
             }
             let flush_start = Instant::now();
