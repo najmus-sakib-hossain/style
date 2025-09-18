@@ -2,4 +2,6 @@ target
 modules
 node_modules
 trash
-*.bin
+.dx/*.bin
+.dx/style/style.bin
+.dx/cache/cache.bin
