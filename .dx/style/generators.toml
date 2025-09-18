@@ -28,11 +28,11 @@
 "backdrop-opacity|backdrop-filter" = { multiplier = 0.01, unit = "" }
 "backdrop-saturate|backdrop-filter" = { multiplier = 0.01, unit = "" }
 "backdrop-sepia|backdrop-filter" = { multiplier = 0.01, unit = "" }
-"bg-opacity|--tw-bg-opacity" = { multiplier = 0.01, unit = "" }
+"bg-opacity|--bg-opacity" = { multiplier = 0.01, unit = "" }
 "blur|filter" = { multiplier = 1, unit = "px" }
 "border-b-w|border-bottom-width" = { multiplier = 1, unit = "px" }
 "border-l-w|border-left-width" = { multiplier = 1, unit = "px" }
-"border-opacity|--tw-border-opacity" = { multiplier = 0.01, unit = "" }
+"border-opacity|--border-opacity" = { multiplier = 0.01, unit = "" }
 "border-r-w|border-right-width" = { multiplier = 1, unit = "px" }
 "border-spacing-x|border-spacing" = { multiplier = 0.25, unit = "rem" }
 "border-spacing-y|border-spacing" = { multiplier = 0.25, unit = "rem" }
@@ -47,7 +47,7 @@
 "contrast|filter" = { multiplier = 0.01, unit = "" }
 "decoration-thickness|text-decoration-thickness" = { multiplier = 1, unit = "px" }
 "delay|transition-delay" = { multiplier = 1, unit = "ms" }
-"divide-opacity|--tw-divide-opacity" = { multiplier = 0.01, unit = "" }
+"divide-opacity|--divide-opacity" = { multiplier = 0.01, unit = "" }
 "divide-x-w|border-left-width" = { multiplier = 1, unit = "px" }
 "divide-y-w|border-top-width" = { multiplier = 1, unit = "px" }
 "drop-shadow|filter" = { multiplier = 1, unit = "px" }
@@ -87,11 +87,11 @@
 "order|order" = { multiplier = 1, unit = "" }
 "outline-offset|outline-offset" = { multiplier = 1, unit = "px" }
 "outline-w|outline-width" = { multiplier = 1, unit = "px" }
-"placeholder-opacity|--tw-placeholder-opacity" = { multiplier = 0.01, unit = "" }
-"ring-offset-opacity|--tw-ring-offset-opacity" = { multiplier = 0.01, unit = "" }
-"ring-offset-w|--tw-ring-offset-width" = { multiplier = 1, unit = "px" }
-"ring-opacity|--tw-ring-opacity" = { multiplier = 0.01, unit = "" }
-"ring-w|--tw-ring-offset-shadow, --tw-ring-shadow, box-shadow" = { multiplier = 1, unit = "px" }
+"placeholder-opacity|--placeholder-opacity" = { multiplier = 0.01, unit = "" }
+"ring-offset-opacity|--ring-offset-opacity" = { multiplier = 0.01, unit = "" }
+"ring-offset-w|--ring-offset-width" = { multiplier = 1, unit = "px" }
+"ring-opacity|--ring-opacity" = { multiplier = 0.01, unit = "" }
+"ring-w|--ring-offset-shadow, --ring-shadow, box-shadow" = { multiplier = 1, unit = "px" }
 "rotate|--transform-rotate" = { multiplier = 1, unit = "deg" }
 "row-end|grid-row-end" = { multiplier = 1, unit = "" }
 "row-span|grid-row" = { multiplier = 1, unit = "" }
@@ -111,13 +111,13 @@
 "scroll-pr|scroll-padding-right" = { multiplier = 0.25, unit = "rem" }
 "scroll-pt|scroll-padding-top" = { multiplier = 0.25, unit = "rem" }
 "sepia|filter" = { multiplier = 0.01, unit = "" }
-"shadow-opacity|--tw-shadow-opacity" = { multiplier = 0.01, unit = "" }
+"shadow-opacity|--shadow-opacity" = { multiplier = 0.01, unit = "" }
 "skew-x|--transform-skew-x" = { multiplier = 1, unit = "deg" }
 "skew-y|--transform-skew-y" = { multiplier = 1, unit = "deg" }
 "space-x|--space-x-reverse,margin-left" = { multiplier = 0.25, unit = "rem" }
 "space-y|--space-y-reverse,margin-top" = { multiplier = 0.25, unit = "rem" }
 "stroke-w|stroke-width" = { multiplier = 1, unit = "" }
-"text-opacity|--tw-text-opacity" = { multiplier = 0.01, unit = "" }
+"text-opacity|--text-opacity" = { multiplier = 0.01, unit = "" }
 "translate-x|--transform-translate-x" = { multiplier = 0.25, unit = "rem" }
 "translate-y|--transform-translate-y" = { multiplier = 0.25, unit = "rem" }
 "underline-offset|text-underline-offset" = { multiplier = 1, unit = "px" }

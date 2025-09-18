@@ -226,23 +226,23 @@ pub fn rebuild_styles(
                 write_layer(&mut state_guard.css_buffer, "base", "");
             }
             set_base_layer_present();
-            {
-                let props = AppState::engine().property_at_rules();
-                if props.is_empty() {
-                    write_layer(&mut state_guard.css_buffer, "properties", "");
-                } else {
-                    let mut prop_body = String::new();
-                    for line in props.lines() {
-                        if line.is_empty() {
-                            continue;
-                        }
-                        prop_body.push_str(line);
-                        prop_body.push('\n');
-                    }
-                    write_layer(&mut state_guard.css_buffer, "properties", &prop_body);
-                }
-                set_properties_layer_present();
-            }
+            // {
+            //     let props = AppState::engine().property_at_rules();
+            //     if props.is_empty() {
+            //         write_layer(&mut state_guard.css_buffer, "properties", "");
+            //     } else {
+            //         let mut prop_body = String::new();
+            //         for line in props.lines() {
+            //             if line.is_empty() {
+            //                 continue;
+            //             }
+            //             prop_body.push_str(line);
+            //             prop_body.push('\n');
+            //         }
+            //         write_layer(&mut state_guard.css_buffer, "properties", &prop_body);
+            //     }
+            //     set_properties_layer_present();
+            // }
 
             let mut util_buf = Vec::new();
             generator::generate_class_rules_only(&mut util_buf, class_vec.iter());

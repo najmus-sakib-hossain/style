@@ -13,21 +13,21 @@
 "auto-cols|grid-auto-columns" = { auto = "auto", min = "min-content", max = "max-content", fr = "minmax(0, 1fr)" }
 "auto-rows|grid-auto-rows" = { auto = "auto", min = "min-content", max = "max-content", fr = "minmax(0, 1fr)" }
 "backface|backface-visibility" = { visible = "visible", hidden = "hidden" }
-"backdrop-blur|--tw-backdrop-blur" = { none = "blur(0)", xs = "blur(2px)", sm = "blur(4px)", "" = "blur(8px)", md = "blur(12px)", lg = "blur(16px)", xl = "blur(24px)", "2xl" = "blur(40px)", "3xl" = "blur(64px)" }
-"backdrop-grayscale|--tw-backdrop-grayscale" = { "0" = "grayscale(0)", "" = "grayscale(1)" }
-"backdrop-invert|--tw-backdrop-invert" = { "0" = "invert(0)", "" = "invert(1)" }
-"backdrop-sepia|--tw-backdrop-sepia" = { "0" = "sepia(0)", "" = "sepia(1)" }
+"backdrop-blur|--backdrop-blur" = { none = "blur(0)", xs = "blur(2px)", sm = "blur(4px)", "" = "blur(8px)", md = "blur(12px)", lg = "blur(16px)", xl = "blur(24px)", "2xl" = "blur(40px)", "3xl" = "blur(64px)" }
+"backdrop-grayscale|--backdrop-grayscale" = { "0" = "grayscale(0)", "" = "grayscale(1)" }
+"backdrop-invert|--backdrop-invert" = { "0" = "invert(0)", "" = "invert(1)" }
+"backdrop-sepia|--backdrop-sepia" = { "0" = "sepia(0)", "" = "sepia(1)" }
 "basis|flex-basis" = { auto = "auto", "1/2" = "50%", "1/3" = "33.333333%", "2/3" = "66.666667%", "1/4" = "25%", "2/4" = "50%", "3/4" = "75%", "1/5" = "20%", "2/5" = "40%", "3/5" = "60%", "4/5" = "80%", "1/6" = "16.666667%", "2/6" = "33.333333%", "3/6" = "50%", "4/6" = "66.666667%", "5/6" = "83.333333%", "1/12" = "8.333333%", "2/12" = "16.666667%", "3/12" = "25%", "4/12" = "33.333333%", "5/12" = "41.666667%", "6/12" = "50%", "7/12" = "58.333333%", "8/12" = "66.666667%", "9/12" = "75%", "10/12" = "83.333333%", "11/12" = "91.666667%", full = "100%" }
 "bg-attachment|background-attachment" = { fixed = "fixed", local = "local", scroll = "scroll" }
 "bg-blend|background-blend-mode" = { normal = "normal", multiply = "multiply", screen = "screen", overlay = "overlay", darken = "darken", lighten = "lighten", "color-dodge" = "color-dodge", "color-burn" = "color-burn", "hard-light" = "hard-light", "soft-light" = "soft-light", difference = "difference", exclusion = "exclusion", hue = "hue", saturation = "saturation", color = "color", luminosity = "luminosity", "plus-lighter" = "plus-lighter" }
 "bg-clip|background-clip" = { border = "border-box", padding = "padding-box", content = "content-box", text = "text" }
-"bg-gradient|background-image" = { "to-t" = "linear-gradient(to top, var(--tw-gradient-stops))", "to-tr" = "linear-gradient(to top right, var(--tw-gradient-stops))", "to-r" = "linear-gradient(to right, var(--tw-gradient-stops))", "to-br" = "linear-gradient(to bottom right, var(--tw-gradient-stops))", "to-b" = "linear-gradient(to bottom, var(--tw-gradient-stops))", "to-bl" = "linear-gradient(to bottom left, var(--tw-gradient-stops))", "to-l" = "linear-gradient(to left, var(--tw-gradient-stops))", "to-tl" = "linear-gradient(to top left, var(--tw-gradient-stops))", "conic" = "conic-gradient(var(--tw-gradient-stops))", "radial" = "radial-gradient(circle, var(--tw-gradient-stops))" }
+"bg-gradient|background-image" = { "to-t" = "linear-gradient(to top, var(--gradient-stops))", "to-tr" = "linear-gradient(to top right, var(--gradient-stops))", "to-r" = "linear-gradient(to right, var(--gradient-stops))", "to-br" = "linear-gradient(to bottom right, var(--gradient-stops))", "to-b" = "linear-gradient(to bottom, var(--gradient-stops))", "to-bl" = "linear-gradient(to bottom left, var(--gradient-stops))", "to-l" = "linear-gradient(to left, var(--gradient-stops))", "to-tl" = "linear-gradient(to top left, var(--gradient-stops))", "conic" = "conic-gradient(var(--gradient-stops))", "radial" = "radial-gradient(circle, var(--gradient-stops))" }
 "bg-image|background-image" = { none = "none" }
 "bg-origin|background-origin" = { border = "border-box", padding = "padding-box", content = "content-box" }
 "bg-position|background-position" = { bottom = "bottom", center = "center", left = "left", "left-bottom" = "left bottom", "left-top" = "left top", right = "right", "right-bottom" = "right bottom", "right-top" = "right top", top = "top" }
 "bg-repeat|background-repeat" = { "" = "repeat", "no-repeat" = "no-repeat", "repeat-x" = "repeat-x", "repeat-y" = "repeat-y", round = "round", space = "space" }
 "bg-size|background-size" = { auto = "auto", cover = "cover", contain = "contain" }
-"blur|--tw-blur" = { none = "blur(0)", xs = "blur(2px)", sm = "blur(4px)", "" = "blur(8px)", md = "blur(12px)", lg = "blur(16px)", xl = "blur(24px)", "2xl" = "blur(40px)", "3xl" = "blur(64px)" }
+"blur|--blur" = { none = "blur(0)", xs = "blur(2px)", sm = "blur(4px)", "" = "blur(8px)", md = "blur(12px)", lg = "blur(16px)", xl = "blur(24px)", "2xl" = "blur(40px)", "3xl" = "blur(64px)" }
 "border-collapse|border-collapse" = { collapse = "collapse", separate = "separate" }
 "border-style|border-style" = { solid = "solid", dashed = "dashed", dotted = "dotted", double = "double", hidden = "hidden", none = "none" }
 "box-decoration|box-decoration-break" = { clone = "clone", slice = "slice" }
@@ -43,7 +43,7 @@
 "diagonal-fractions|font-variant-numeric" = { "" = "diagonal-fractions" }
 "display|display" = { block = "block", "inline-block" = "inline-block", inline = "inline", flex = "flex", "inline-flex" = "inline-flex", table = "table", "inline-table" = "inline-table", "table-caption" = "table-caption", "table-cell" = "table-cell", "table-column" = "table-column", "table-column-group" = "table-column-group", "table-footer-group" = "table-footer-group", "table-header-group" = "table-header-group", "table-row-group" = "table-row-group", "table-row" = "table-row", "flow-root" = "flow-root", grid = "grid", "inline-grid" = "inline-grid", contents = "contents", "list-item" = "list-item", hidden = "none" }
 "divide-style|border-style" = { solid = "solid", dashed = "dashed", dotted = "dotted", double = "double", none = "none" }
-"drop-shadow|--tw-drop-shadow" = { xs = "drop-shadow(0 1px 1px rgb(0 0 0 / 0.05))", sm = "drop-shadow(0 1px 2px rgb(0 0 0 / 0.1))", "" = "drop-shadow(0 2px 4px rgb(0 0 0 / 0.1)) drop-shadow(0 1px 1px rgb(0 0 0 / 0.06))", md = "drop-shadow(0 4px 3px rgb(0 0 0 / 0.07)) drop-shadow(0 2px 2px rgb(0 0 0 / 0.06))", lg = "drop-shadow(0 10px 8px rgb(0 0 0 / 0.04)) drop-shadow(0 4px 3px rgb(0 0 0 / 0.1))", xl = "drop-shadow(0 20px 13px rgb(0 0 0 / 0.03)) drop-shadow(0 8px 5px rgb(0 0 0 / 0.08))", "2xl" = "drop-shadow(0 25px 25px rgb(0 0 0 / 0.15))", none = "drop-shadow(0 0 #0000)" }
+"drop-shadow|--drop-shadow" = { xs = "drop-shadow(0 1px 1px rgb(0 0 0 / 0.05))", sm = "drop-shadow(0 1px 2px rgb(0 0 0 / 0.1))", "" = "drop-shadow(0 2px 4px rgb(0 0 0 / 0.1)) drop-shadow(0 1px 1px rgb(0 0 0 / 0.06))", md = "drop-shadow(0 4px 3px rgb(0 0 0 / 0.07)) drop-shadow(0 2px 2px rgb(0 0 0 / 0.06))", lg = "drop-shadow(0 10px 8px rgb(0 0 0 / 0.04)) drop-shadow(0 4px 3px rgb(0 0 0 / 0.1))", xl = "drop-shadow(0 20px 13px rgb(0 0 0 / 0.03)) drop-shadow(0 8px 5px rgb(0 0 0 / 0.08))", "2xl" = "drop-shadow(0 25px 25px rgb(0 0 0 / 0.15))", none = "drop-shadow(0 0 #0000)" }
 "ease|transition-timing-function" = { linear = "linear", in = "cubic-bezier(0.4, 0, 1, 1)", out = "cubic-bezier(0, 0, 0.2, 1)", "in-out" = "cubic-bezier(0.4, 0, 0.2, 1)" }
 "fill|fill" = { none = "none", current = "currentColor" }
 "flex-direction|flex-direction" = { row = "row", "row-reverse" = "row-reverse", col = "column", "col-reverse" = "column-reverse" }
@@ -56,13 +56,13 @@
 "font-style|font-style" = { italic = "italic", "not-italic" = "normal" }
 "font-weight|font-weight" = { thin = "100", extralight = "200", light = "300", normal = "400", medium = "500", semibold = "600", bold = "700", extrabold = "800", black = "900" }
 "forced-color-adjust|forced-color-adjust" = { auto = "auto", none = "none" }
-"grayscale|--tw-grayscale" = { "0" = "grayscale(0)", "" = "grayscale(1)" }
+"grayscale|--grayscale" = { "0" = "grayscale(0)", "" = "grayscale(1)" }
 "grid-cols|grid-template-columns" = { "1" = "repeat(1, minmax(0, 1fr))", "2" = "repeat(2, minmax(0, 1fr))", "3" = "repeat(3, minmax(0, 1fr))", "4" = "repeat(4, minmax(0, 1fr))", "5" = "repeat(5, minmax(0, 1fr))", "6" = "repeat(6, minmax(0, 1fr))", "7" = "repeat(7, minmax(0, 1fr))", "8" = "repeat(8, minmax(0, 1fr))", "9" = "repeat(9, minmax(0, 1fr))", "10" = "repeat(10, minmax(0, 1fr))", "11" = "repeat(11, minmax(0, 1fr))", "12" = "repeat(12, minmax(0, 1fr))", none = "none" }
 "grid-flow|grid-auto-flow" = { row = "row", col = "column", dense = "dense", "row-dense" = "row dense", "col-dense" = "column dense" }
 "grid-rows|grid-template-rows" = { "1" = "repeat(1, minmax(0, 1fr))", "2" = "repeat(2, minmax(0, 1fr))", "3" = "repeat(3, minmax(0, 1fr))", "4" = "repeat(4, minmax(0, 1fr))", "5" = "repeat(5, minmax(0, 1fr))", "6" = "repeat(6, minmax(0, 1fr))", none = "none" }
 "h|height" = { auto = "auto", "1/2" = "50%", "1/3" = "33.333333%", "2/3" = "66.666667%", "1/4" = "25%", "2/4" = "50%", "3/4" = "75%", "1/5" = "20%", "2/5" = "40%", "3/5" = "60%", "4/5" = "80%", "1/6" = "16.666667%", "2/6" = "33.333333%", "3/6" = "50%", "4/6" = "66.666667%", "5/6" = "83.333333%", full = "100%", screen = "100vh", min = "min-content", max = "max-content", fit = "fit-content" }
 "hyphens|hyphens" = { none = "none", manual = "manual", auto = "auto" }
-"invert|--tw-invert" = { "0" = "invert(0)", "" = "invert(1)" }
+"invert|--invert" = { "0" = "invert(0)", "" = "invert(1)" }
 "isolation|isolation" = { isolate = "isolate", "auto" = "auto" }
 "justify-content|justify-content" = { normal = "normal", start = "flex-start", end = "flex-end", center = "center", between = "space-between", around = "space-around", evenly = "space-evenly", stretch = "stretch" }
 "justify-items|justify-items" = { start = "start", end = "end", center = "center", stretch = "stretch" }
@@ -122,10 +122,10 @@
 "scroll-behavior|scroll-behavior" = { auto = "auto", smooth = "smooth" }
 "scroll-snap-align|scroll-snap-align" = { start = "start", end = "end", center = "center", none = "none" }
 "scroll-snap-stop|scroll-snap-stop" = { normal = "normal", always = "always" }
-"scroll-snap-type|scroll-snap-type" = { none = "none", x = "x var(--tw-scroll-snap-strictness)", y = "y var(--tw-scroll-snap-strictness)", both = "both var(--tw-scroll-snap-strictness)" }
+"scroll-snap-type|scroll-snap-type" = { none = "none", x = "x var(--scroll-snap-strictness)", y = "y var(--scroll-snap-strictness)", both = "both var(--scroll-snap-strictness)" }
 "select|user-select" = { none = "none", text = "text", all = "all", auto = "auto" }
-"sepia|--tw-sepia" = { "0" = "sepia(0)", "" = "sepia(1)" }
-"shadow|--tw-shadow" = { xs = "0 1px 2px 0 rgb(0 0 0 / 0.05)", sm = "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)", "" = "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)", md = "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)", lg = "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)", xl = "0 25px 50px -12px rgb(0 0 0 / 0.25)", "2xl" = "0 25px 50px -12px rgb(0 0 0 / 0.25)", inner = "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)", none = "none" }
+"sepia|--sepia" = { "0" = "sepia(0)", "" = "sepia(1)" }
+"shadow|--shadow" = { xs = "0 1px 2px 0 rgb(0 0 0 / 0.05)", sm = "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)", "" = "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)", md = "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)", lg = "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)", xl = "0 25px 50px -12px rgb(0 0 0 / 0.25)", "2xl" = "0 25px 50px -12px rgb(0 0 0 / 0.25)", inner = "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)", none = "none" }
 "slashed-zero|font-variant-numeric" = { "" = "slashed-zero" }
 "sr|position,width,height,padding,margin,overflow,clip,white-space,border-width" = { only = "absolute; 1px; 1px; 0; -1px; hidden; rect(0, 0, 0, 0); nowrap; 0;", "not-only" = "static; auto; auto; 0; 0; visible; auto; normal; 0;" }
 "stacked-fractions|font-variant-numeric" = { "" = "stacked-fractions" }
