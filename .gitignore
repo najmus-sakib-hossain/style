@@ -6,3 +6,4 @@ trash
 .dx/style/style.bin
 .dx/cache/cache.bin
 *.bin
+.dx

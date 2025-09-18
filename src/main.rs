@@ -19,6 +19,88 @@ use lightningcss::stylesheet::{ParserOptions, StyleSheet};
 use std::thread;
 use std::time::{Duration, Instant};
 
+fn start_delayed_formatter(
+    state: Arc<Mutex<AppState>>,
+    index_path: String,
+    initial_delay_ms: u64,
+    interval_ms: u64,
+    debounce_ms: u64,
+    force_write: bool,
+) {
+    if interval_ms == 0 {
+        return;
+    }
+    rayon::spawn(move || {
+        if initial_delay_ms > 0 {
+            std::thread::sleep(Duration::from_millis(initial_delay_ms));
+        }
+        let mut last_classes_checksum: u64 = 0;
+        let mut last_run = Instant::now() - Duration::from_millis(interval_ms);
+        loop {
+            // Debounce: only proceed if enough time since last class change
+            let (current_checksum, time_ok) = {
+                if let Ok(g) = state.lock() {
+                    (
+                        g.class_list_checksum,
+                        last_run.elapsed() >= Duration::from_millis(interval_ms),
+                    )
+                } else {
+                    (0, false)
+                }
+            };
+            // If no new classes and debounce interval hasn't elapsed much, still allow periodic validation every interval
+            if current_checksum == last_classes_checksum && !time_ok {
+                std::thread::sleep(Duration::from_millis(50));
+                continue;
+            }
+            // Respect debounce_ms after a class change
+            if current_checksum != last_classes_checksum {
+                let changed_at = Instant::now();
+                while changed_at.elapsed() < Duration::from_millis(debounce_ms) {
+                    // If another change happens restart debounce
+                    let new_checksum = {
+                        state
+                            .lock()
+                            .ok()
+                            .map(|s| s.class_list_checksum)
+                            .unwrap_or(current_checksum)
+                    };
+                    if new_checksum != current_checksum {
+                        break;
+                    }
+                    std::thread::sleep(Duration::from_millis(25));
+                }
+            }
+            last_run = Instant::now();
+            last_classes_checksum = current_checksum;
+            let start = Instant::now();
+            unsafe {
+                std::env::set_var("DX_FORCE_FORMAT", "1");
+                std::env::set_var("DX_SILENT_FORMAT", "1");
+                if force_write {
+                    std::env::set_var("DX_FORCE_FULL", "1");
+                }
+            }
+            let _ = rebuild_styles(state.clone(), &index_path, false);
+            unsafe {
+                std::env::remove_var("DX_FORCE_FORMAT");
+                std::env::remove_var("DX_SILENT_FORMAT");
+                if force_write {
+                    std::env::remove_var("DX_FORCE_FULL");
+                }
+            }
+            let _dur = start.elapsed();
+            // println!(
+            //     "[auto-format] Pretty format pass{} (interval {} ms) in {:?}",
+            //     if force_write { " (force-write)" } else { "" },
+            //     interval_ms,
+            //     dur
+            // );
+            std::thread::sleep(Duration::from_millis(50));
+        }
+    });
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::load().unwrap_or_else(|_| Config::default());
 
@@ -174,6 +256,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     rebuild_styles(app_state.clone(), &config.paths.index_file, true)?;
+    // Schedule one delayed pretty-format pass (configurable)
+    start_delayed_formatter(
+        app_state.clone(),
+        config.paths.index_file.clone(),
+        config.format_delay_ms(),
+        config.format_interval_ms(),
+        config.format_debounce_ms(),
+        config.format_force_write(),
+    );
 
     // Start background validator thread (1.5s interval)
     start_css_validator(app_state.clone());

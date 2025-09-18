@@ -77,11 +77,13 @@ pub fn rebuild_styles(
     };
     let hash_duration = hash_timer.elapsed();
 
+    let force_full = std::env::var("DX_FORCE_FULL").ok().as_deref() == Some("1")
+        || std::env::var("DX_FORCE_FORMAT").ok().as_deref() == Some("1");
     {
         let state_guard = state.lock().unwrap();
         let html_same = state_guard.html_hash == new_html_hash;
         let css_complete = state_guard.css_index.len() == state_guard.class_cache.len();
-        if html_same && (!is_initial_run || css_complete) {
+        if !force_full && html_same && (!is_initial_run || css_complete) {
             return Ok(());
         }
     }
@@ -105,7 +107,10 @@ pub fn rebuild_styles(
         let s = state.lock().unwrap();
         s.css_index.len() != s.class_cache.len()
     };
-    if added.is_empty() && removed.is_empty() && !css_incomplete {
+    // When forced formatting is requested (auto-format pass), we must not early-return
+    // even if there are no class additions/removals, so that the pretty formatter runs.
+    let force_format = std::env::var("DX_FORCE_FORMAT").ok().as_deref() == Some("1");
+    if !force_format && added.is_empty() && removed.is_empty() && !css_incomplete {
         let mut state_guard = state.lock().unwrap();
         let mut h = AHasher::default();
         for c in &state_guard.class_cache {
@@ -159,7 +164,7 @@ pub fn rebuild_styles(
             .any(|c| !state_guard.css_index.contains_key(c));
         let only_additions = !added.is_empty() && removed.is_empty();
         let only_removals = !removed.is_empty() && added.is_empty();
-        let need_full = if is_initial_run {
+        let need_full = if force_full || is_initial_run {
             true
         } else if only_additions {
             added_has_color
@@ -285,8 +290,7 @@ pub fn rebuild_styles(
             }
             state_guard.css_buffer.extend_from_slice(b"}\n");
             // Optional formatting only on initial full build or when forced
-            let apply_format =
-                is_initial_run || std::env::var("DX_FORCE_FORMAT").ok().as_deref() == Some("1");
+            let apply_format = is_initial_run || force_format;
             if apply_format {
                 if let Ok(as_string) = String::from_utf8(state_guard.css_buffer.clone()) {
                     if let Some(formatted) = formatter::format_css_pretty(&as_string) {
@@ -328,9 +332,26 @@ pub fn rebuild_styles(
             let frag_hash = hh.finish();
             let fragment_len = fragment_vec.len();
             let utilities_offset = state_guard.utilities_offset;
+            let mut wrote = false;
             if state_guard.last_css_hash != frag_hash {
+                // Content changed after formatting -> always write.
                 state_guard.css_out.replace(&fragment_vec)?;
                 state_guard.last_css_hash = frag_hash;
+                wrote = true;
+            } else if std::env::var("DX_FORCE_FULL").ok().as_deref() == Some("1") {
+                // force_write explicitly requested via config (full rewrite every pass)
+                state_guard.css_out.replace(&fragment_vec)?;
+                state_guard.last_css_hash = frag_hash; // unchanged but re-written
+                wrote = true;
+            }
+            if force_format {
+                unsafe {
+                    if wrote {
+                        std::env::set_var("DX_FORMAT_STATUS", "rewritten");
+                    } else {
+                        std::env::set_var("DX_FORMAT_STATUS", "unchanged");
+                    }
+                }
             }
             state_guard.css_index.clear();
             // Utilities body without the final closing "}\n" (2 bytes) of the layer.
@@ -486,7 +507,6 @@ pub fn rebuild_styles(
                 let mut rel_cursor = start_rel - state_guard.utilities_offset;
                 let mut cursor = 0usize;
                 while cursor < block.len() {
-                    // Skip whitespace/newlines
                     while cursor < block.len()
                         && (block[cursor] == b'\n'
                             || block[cursor] == b' '
@@ -553,7 +573,6 @@ pub fn rebuild_styles(
                             }
                         }
                     }
-                    // Not a rule; advance to newline
                     while cursor < block.len() && block[cursor] != b'\n' {
                         cursor += 1;
                     }
@@ -613,7 +632,7 @@ pub fn rebuild_styles(
                     classes_written: removed.len(),
                     bytes_written: removed_bytes,
                     sub1_label: "blank",
-                    sub1: flush_time, // treat all as one phase
+                    sub1: flush_time,
                     sub2_label: None,
                     sub2: None,
                     sub3_label: None,
@@ -645,7 +664,8 @@ pub fn rebuild_styles(
         + cache_update_duration
         + css_write_duration;
 
-    if !FIRST_LOG_DONE.load(Ordering::Relaxed) {
+    let silent_format = std::env::var("DX_SILENT_FORMAT").ok().as_deref() == Some("1");
+    if !silent_format && !FIRST_LOG_DONE.load(Ordering::Relaxed) {
         // For the very first run, also show full timing details like subsequent runs.
         let mut write_detail = format!(
             "mode={} classes={} bytes={} {}={:?}",
@@ -674,7 +694,7 @@ pub fn rebuild_styles(
             write_detail
         );
         FIRST_LOG_DONE.store(true, Ordering::Relaxed);
-    } else {
+    } else if !silent_format {
         // Build write detail string
         let mut write_detail = format!(
             "mode={} classes={} bytes={} {}={:?}",

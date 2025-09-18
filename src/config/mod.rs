@@ -21,6 +21,32 @@ pub struct WatchConfig {
 pub struct Config {
     pub paths: PathsConfig,
     pub watch: Option<WatchConfig>,
+    #[serde(default)]
+    pub format: Option<FormatConfig>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct FormatConfig {
+    #[serde(default = "FormatConfig::default_delay")]
+    pub delay_ms: u64,
+    #[serde(default = "FormatConfig::default_interval")]
+    pub interval_ms: u64,
+    #[serde(default)]
+    pub force_write: bool,
+    #[serde(default = "FormatConfig::default_debounce")]
+    pub debounce_ms: u64,
+}
+
+impl FormatConfig {
+    fn default_delay() -> u64 {
+        10_000
+    }
+    fn default_interval() -> u64 {
+        10_000
+    }
+    fn default_debounce() -> u64 {
+        1_000
+    }
 }
 
 impl Config {
@@ -44,6 +70,12 @@ impl Default for Config {
             watch: Some(WatchConfig {
                 debounce_ms: Some(250),
             }),
+            format: Some(FormatConfig {
+                delay_ms: FormatConfig::default_delay(),
+                interval_ms: FormatConfig::default_interval(),
+                force_write: false,
+                debounce_ms: FormatConfig::default_debounce(),
+            }),
         }
     }
 }
@@ -54,5 +86,26 @@ impl Config {
     }
     pub fn resolved_cache_dir(&self) -> &str {
         self.paths.cache_dir.as_deref().unwrap_or(".dx/cache")
+    }
+    pub fn format_delay_ms(&self) -> u64 {
+        self.format
+            .as_ref()
+            .map(|f| f.delay_ms)
+            .unwrap_or(FormatConfig::default_delay())
+    }
+    pub fn format_interval_ms(&self) -> u64 {
+        self.format
+            .as_ref()
+            .map(|f| f.interval_ms)
+            .unwrap_or(FormatConfig::default_interval())
+    }
+    pub fn format_force_write(&self) -> bool {
+        self.format.as_ref().map(|f| f.force_write).unwrap_or(false)
+    }
+    pub fn format_debounce_ms(&self) -> u64 {
+        self.format
+            .as_ref()
+            .map(|f| f.debounce_ms)
+            .unwrap_or(FormatConfig::default_debounce())
     }
 }
