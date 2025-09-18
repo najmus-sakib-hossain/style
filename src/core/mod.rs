@@ -291,10 +291,25 @@ pub fn rebuild_styles(
                 };
                 if trimmed.starts_with(b".") {
                     if let Some(br) = trimmed.iter().position(|c| *c == b'{') {
-                        let name = String::from_utf8_lossy(&trimmed[1..br]).to_string();
-                        let len = line.len() + 1;
-                        state_guard.css_index.insert(name, (rel, len));
-                        rel += len;
+                        // Extract class selector up to first '{', trimming trailing spaces
+                        let raw = &trimmed[1..br];
+                        let end_trim = raw
+                            .iter()
+                            .rposition(|c| *c != b' ' && *c != b'\t')
+                            .map(|p| p + 1)
+                            .unwrap_or(0);
+                        if end_trim > 0 {
+                            let name = String::from_utf8_lossy(&raw[..end_trim]).to_string();
+                            if !name.is_empty() {
+                                let len = line.len() + 1;
+                                state_guard.css_index.insert(name, (rel, len));
+                                rel += len;
+                            } else {
+                                rel += line.len() + 1;
+                            }
+                        } else {
+                            rel += line.len() + 1;
+                        }
                     } else {
                         rel += line.len() + 1;
                     }
@@ -351,10 +366,24 @@ pub fn rebuild_styles(
                     };
                     if trimmed.starts_with(b".") {
                         if let Some(br) = trimmed.iter().position(|c| *c == b'{') {
-                            let name = String::from_utf8_lossy(&trimmed[1..br]).to_string();
-                            let len = line.len() + 1;
-                            state_guard.css_index.insert(name, (rel_off, len));
-                            rel_off += len;
+                            let raw = &trimmed[1..br];
+                            let end_trim = raw
+                                .iter()
+                                .rposition(|c| *c != b' ' && *c != b'\t')
+                                .map(|p| p + 1)
+                                .unwrap_or(0);
+                            if end_trim > 0 {
+                                let name = String::from_utf8_lossy(&raw[..end_trim]).to_string();
+                                if !name.is_empty() {
+                                    let len = line.len() + 1;
+                                    state_guard.css_index.insert(name, (rel_off, len));
+                                    rel_off += len;
+                                } else {
+                                    rel_off += line.len() + 1;
+                                }
+                            } else {
+                                rel_off += line.len() + 1;
+                            }
                         } else {
                             rel_off += line.len() + 1;
                         }
