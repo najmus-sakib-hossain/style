@@ -6,8 +6,7 @@ use std::time::{Duration, Instant};
 
 static mut MMAP_THRESHOLD_BYTES: u64 = 64 * 1024;
 
-const MANAGED_MARKER: &str = "
-/*
+const MANAGED_MARKER: &str = "/*
   ████████   ██             ██
  ██░░░░░░   ░██    ██   ██ ░██
 ░██        ██████ ░░██ ██  ░██  █████
@@ -18,8 +17,7 @@ const MANAGED_MARKER: &str = "
 ░░░░░░░░     ░░   ░░      ░░░  ░░░░░░
 Dx Style - @0.0.0
 */\n";
-const MANAGED_MARKER_PREFIX: &str = "
-/*
+const MANAGED_MARKER_PREFIX: &str = "/*
   ████████   ██             ██
  ██░░░░░░   ░██    ██   ██ ░██
 ░██        ██████ ░░██ ██  ░██  █████
