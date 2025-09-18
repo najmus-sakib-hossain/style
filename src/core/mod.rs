@@ -208,41 +208,42 @@ pub fn rebuild_styles(
             }
             write_layer(&mut state_guard.css_buffer, "theme", &theme_body);
             write_layer(&mut state_guard.css_buffer, "components", "");
-            // if let Some(base_raw) = AppState::engine().base_layer_raw.as_ref() {
-            //     if !base_raw.is_empty() {
-            //         let mut base_body = String::new();
-            //         for line in base_raw.trim_end().lines() {
-            //             if line.trim().is_empty() {
-            //                 continue;
-            //             }
-            //             base_body.push_str(line);
-            //             base_body.push('\n');
-            //         }
-            //         write_layer(&mut state_guard.css_buffer, "base", &base_body);
-            //     } else {
-            //         write_layer(&mut state_guard.css_buffer, "base", "");
-            //     }
-            // } else {
-            //     write_layer(&mut state_guard.css_buffer, "base", "");
-            // }
-            // set_base_layer_present();
-            // {
-            //     let props = AppState::engine().property_at_rules();
-            //     if props.is_empty() {
-            //         write_layer(&mut state_guard.css_buffer, "properties", "");
-            //     } else {
-            //         let mut prop_body = String::new();
-            //         for line in props.lines() {
-            //             if line.is_empty() {
-            //                 continue;
-            //             }
-            //             prop_body.push_str(line);
-            //             prop_body.push('\n');
-            //         }
-            //         write_layer(&mut state_guard.css_buffer, "properties", &prop_body);
-            //     }
-            //     set_properties_layer_present();
-            // }
+            if let Some(base_raw) = AppState::engine().base_layer_raw.as_ref() {
+                if !base_raw.is_empty() {
+                    let mut base_body = String::new();
+                    for line in base_raw.trim_end().lines() {
+                        if line.trim().is_empty() {
+                            continue;
+                        }
+                        base_body.push_str(line);
+                        base_body.push('\n');
+                    }
+                    write_layer(&mut state_guard.css_buffer, "base", &base_body);
+                } else {
+                    write_layer(&mut state_guard.css_buffer, "base", "");
+                }
+            } else {
+                write_layer(&mut state_guard.css_buffer, "base", "");
+            }
+            set_base_layer_present();
+            {
+                let props = AppState::engine().property_at_rules();
+                if props.is_empty() {
+                    write_layer(&mut state_guard.css_buffer, "properties", "");
+                } else {
+                    let mut prop_body = String::new();
+                    for line in props.lines() {
+                        if line.is_empty() {
+                            continue;
+                        }
+                        prop_body.push_str(line);
+                        prop_body.push('\n');
+                    }
+                    write_layer(&mut state_guard.css_buffer, "properties", &prop_body);
+                }
+                set_properties_layer_present();
+            }
+
             let mut util_buf = Vec::new();
             generator::generate_class_rules_only(&mut util_buf, class_vec.iter());
             let gen_layers_utils = phase_start.elapsed();
