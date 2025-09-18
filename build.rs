@@ -294,6 +294,8 @@ fn main() {
     let properties_vec = builder.create_vector(&property_offsets);
     let base_css = fs::read_to_string(style_dir.join("base.css")).unwrap_or_default();
     let base_css_offset = builder.create_string(&base_css);
+    let property_css = fs::read_to_string(style_dir.join("property.css")).unwrap_or_default();
+    let property_css_offset = builder.create_string(&property_css);
 
     let table_wip = builder.start_table();
     builder.push_slot(4, styles_vec, WIPOffset::new(0));
@@ -306,6 +308,7 @@ fn main() {
     builder.push_slot(18, anim_gen_vec, WIPOffset::new(0));
     builder.push_slot(20, properties_vec, WIPOffset::new(0));
     builder.push_slot(22, base_css_offset, WIPOffset::new(0));
+    builder.push_slot(24, property_css_offset, WIPOffset::new(0));
     let config_root = builder.end_table(table_wip);
 
     builder.finish(config_root, None);

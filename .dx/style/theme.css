@@ -399,6 +399,7 @@
   }
 
   @keyframes ping {
+
     75%,
     100% {
       transform: scale(2);
@@ -413,6 +414,7 @@
   }
 
   @keyframes bounce {
+
     0%,
     100% {
       transform: translateY(-25%);
@@ -444,11 +446,7 @@
   --default-transition-duration: 150ms;
   --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   --default-font-family: --theme(--font-sans, initial);
-  --default-font-feature-settings: --theme(--font-sans--font-feature-settings, initial);
-  --default-font-variation-settings: --theme(--font-sans--font-variation-settings, initial);
   --default-mono-font-family: --theme(--font-mono, initial);
-  --default-mono-font-feature-settings: --theme(--font-mono--font-feature-settings, initial);
-  --default-mono-font-variation-settings: --theme(--font-mono--font-variation-settings, initial);
 }
 
 @theme default inline reference {

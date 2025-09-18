@@ -66,6 +66,7 @@ table Config {
   animation_generators: [AnimationGenerator];
   properties: [Property];
   base_css: string;
+  property_css: string;
 }
 
 root_type Config;

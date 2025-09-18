@@ -173,7 +173,7 @@ pub fn rebuild_styles(
             let phase_start = Instant::now();
             state_guard
                 .css_buffer
-                .extend_from_slice(b"@layer theme, components, utilities, base, properties;\n");
+                .extend_from_slice(b"@layer theme, components, base, properties, utilities;\n");
             fn write_layer(buf: &mut Vec<u8>, name: &str, body: &str) {
                 let trimmed = body.trim();
                 if trimmed.is_empty() {
@@ -226,23 +226,37 @@ pub fn rebuild_styles(
                 write_layer(&mut state_guard.css_buffer, "base", "");
             }
             set_base_layer_present();
-            // {
-            //     let props = AppState::engine().property_at_rules();
-            //     if props.is_empty() {
-            //         write_layer(&mut state_guard.css_buffer, "properties", "");
-            //     } else {
-            //         let mut prop_body = String::new();
-            //         for line in props.lines() {
-            //             if line.is_empty() {
-            //                 continue;
-            //             }
-            //             prop_body.push_str(line);
-            //             prop_body.push('\n');
-            //         }
-            //         write_layer(&mut state_guard.css_buffer, "properties", &prop_body);
-            //     }
-            //     set_properties_layer_present();
-            // }
+            {
+                let engine = AppState::engine();
+                // Prefer explicit property layer raw content if provided.
+                let mut prop_body = if let Some(prop_raw) = engine.property_layer_raw.as_ref() {
+                    if prop_raw.trim().is_empty() {
+                        String::new()
+                    } else {
+                        let mut b = String::new();
+                        for line in prop_raw.lines() {
+                            if line.trim().is_empty() {
+                                continue;
+                            }
+                            b.push_str(line);
+                            b.push('\n');
+                        }
+                        b
+                    }
+                } else {
+                    String::new()
+                };
+                // Fallback: if still empty, synthesize from registered @property at-rules.
+                if prop_body.is_empty() {
+                    let at_rules = engine.property_at_rules();
+                    if !at_rules.trim().is_empty() {
+                        prop_body.push_str(at_rules.trim_end());
+                        prop_body.push('\n');
+                    }
+                }
+                write_layer(&mut state_guard.css_buffer, "properties", &prop_body);
+                set_properties_layer_present();
+            }
 
             let mut util_buf = Vec::new();
             generator::generate_class_rules_only(&mut util_buf, class_vec.iter());
@@ -567,12 +581,33 @@ pub fn rebuild_styles(
         + css_write_duration;
 
     if !FIRST_LOG_DONE.load(Ordering::Relaxed) {
-        let line_fmt = format!(
-            "Initial: {} added, {} removed",
+        // For the very first run, also show full timing details like subsequent runs.
+        let mut write_detail = format!(
+            "mode={} classes={} bytes={} {}={:?}",
+            write_stats.mode,
+            write_stats.classes_written,
+            write_stats.bytes_written,
+            write_stats.sub1_label,
+            write_stats.sub1
+        );
+        if let (Some(l2), Some(d2)) = (write_stats.sub2_label, write_stats.sub2) {
+            write_detail.push_str(&format!(" {}={:?}", l2, d2));
+        }
+        if let (Some(l3), Some(d3)) = (write_stats.sub3_label, write_stats.sub3) {
+            write_detail.push_str(&format!(" {}={:?}", l3, d3));
+        }
+        println!(
+            "Initial: {} added, {} removed | (Total: {} -> Hash: {}, Parse: {}, Diff: {}, Cache: {}, Write: {} [{}])",
             format!("{}", added.len()).green(),
             format!("{}", removed.len()).red(),
+            format_duration(total_processing),
+            format_duration(hash_duration),
+            format_duration(parse_extract_duration),
+            format_duration(diff_duration),
+            format_duration(cache_update_duration),
+            format_duration(css_write_duration),
+            write_detail
         );
-        println!("{}", line_fmt);
         FIRST_LOG_DONE.store(true, Ordering::Relaxed);
     } else {
         // Build write detail string

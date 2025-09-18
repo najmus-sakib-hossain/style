@@ -53,6 +53,7 @@ pub struct StyleEngine {
     pub properties: Vec<PropertyMeta>,
     pub property_css: String,
     pub base_layer_raw: Option<String>,
+    pub property_layer_raw: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -190,6 +191,7 @@ impl StyleEngine {
             }
         };
         let base_layer_raw = config.base_css().map(|s| s.to_string());
+        let property_layer_raw = config.property_css().map(|s| s.to_string());
         Ok(Self {
             precompiled,
             _mmap: Arc::new(mmap),
@@ -202,6 +204,7 @@ impl StyleEngine {
             properties,
             property_css,
             base_layer_raw,
+            property_layer_raw,
         })
     }
 
@@ -235,6 +238,7 @@ impl StyleEngine {
             properties: Vec::new(),
             property_css: String::new(),
             base_layer_raw: None,
+            property_layer_raw: None,
         }
     }
 
