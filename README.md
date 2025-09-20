@@ -1,4 +1,5 @@
 # Dx
+
 Enhance Developer Experience
 
 ```rust
@@ -84,16 +85,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 Any class starting with `bg-` or `text-` automatically generates a CSS variable and utility rule.
 
 Resolution order for `<token>` in `bg-<token>` / `text-<token>`:
+
 1. If `<token>` exists in `colors.toml`, that value is used.
 2. Else if `<token>` is a standard CSS color keyword (e.g. `rebeccapurple`, `transparent`, `currentcolor`).
 3. Else if `<token>` matches hex shorthand or long form without `#` (3/4/6/8 hex digits), it is interpreted as `#<token>`.
 
 Generated artifacts:
+
 - Variable: `--color-<token>` in `:root` and `.dark` scopes.
 - Utility: `.bg-<token> { background-color: var(--color-<token>) }` or `.text-<token> { color: var(--color-<token>) }`.
 
 Examples:
-```
+
+```css
 bg-ff0          => --color-ff0: #ff0;
 text-112233cc   => --color-112233cc: #112233cc;
 bg-rebeccapurple => --color-rebeccapurple: rebeccapurple;
