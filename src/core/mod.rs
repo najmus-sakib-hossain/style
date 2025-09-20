@@ -682,11 +682,15 @@ pub fn rebuild_styles(
             write_detail.push_str(&format!(" {}={:?}", l3, d3));
         }
         println!(
-            "{} added, {} removed -> {}",
-            format!("{}", added.len()).green(),
-            format!("{}", removed.len()).red(),
-            format_duration(total_processing).blue().bold(),
+            "{}",
+            "Dx Style is watching your files for changes...".cyan(),
         );
+        // println!(
+        //     "{} added, {} removed -> {}",
+        //     format!("{}", added.len()).green(),
+        //     format!("{}", removed.len()).red(),
+        //     format_duration(total_processing).blue().bold(),
+        // );
         // println!(
         //     "Initial: {} added, {} removed | (Total: {} -> Hash: {}, Parse: {}, Diff: {}, Cache: {}, Write: {} [{}])",
         //     format!("{}", added.len()).green(),
