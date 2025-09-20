@@ -682,17 +682,23 @@ pub fn rebuild_styles(
             write_detail.push_str(&format!(" {}={:?}", l3, d3));
         }
         println!(
-            "Initial: {} added, {} removed | (Total: {} -> Hash: {}, Parse: {}, Diff: {}, Cache: {}, Write: {} [{}])",
+            "{} added, {} removed {}",
             format!("{}", added.len()).green(),
             format!("{}", removed.len()).red(),
-            format_duration(total_processing),
-            format_duration(hash_duration),
-            format_duration(parse_extract_duration),
-            format_duration(diff_duration),
-            format_duration(cache_update_duration),
-            format_duration(css_write_duration),
-            write_detail
+            format_duration(total_processing).green(),
         );
+        // println!(
+        //     "Initial: {} added, {} removed | (Total: {} -> Hash: {}, Parse: {}, Diff: {}, Cache: {}, Write: {} [{}])",
+        //     format!("{}", added.len()).green(),
+        //     format!("{}", removed.len()).red(),
+        //     format_duration(total_processing),
+        //     format_duration(hash_duration),
+        //     format_duration(parse_extract_duration),
+        //     format_duration(diff_duration),
+        //     format_duration(cache_update_duration),
+        //     format_duration(css_write_duration),
+        //     write_detail
+        // );
         FIRST_LOG_DONE.store(true, Ordering::Relaxed);
     } else if !silent_format {
         // Build write detail string
@@ -711,17 +717,23 @@ pub fn rebuild_styles(
             write_detail.push_str(&format!(" {}={:?}", l3, d3));
         }
         println!(
-            "Processed: {} added, {} removed | (Total: {} -> Hash: {}, Parse: {}, Diff: {}, Cache: {}, Write: {} [{}])",
+            "{} added, {} removed {}",
             format!("{}", added.len()).green(),
             format!("{}", removed.len()).red(),
-            format_duration(total_processing),
-            format_duration(hash_duration),
-            format_duration(parse_extract_duration),
-            format_duration(diff_duration),
-            format_duration(cache_update_duration),
-            format_duration(css_write_duration),
-            write_detail
+            format_duration(total_processing).green(),
         );
+        // println!(
+        //     "Processed: {} added, {} removed | (Total: {} -> Hash: {}, Parse: {}, Diff: {}, Cache: {}, Write: {} [{}])",
+        //     format!("{}", added.len()).green(),
+        //     format!("{}", removed.len()).red(),
+        //     format_duration(total_processing),
+        //     format_duration(hash_duration),
+        //     format_duration(parse_extract_duration),
+        //     format_duration(diff_duration),
+        //     format_duration(cache_update_duration),
+        //     format_duration(css_write_duration),
+        //     write_detail
+        // );
     }
 
     if !added.is_empty() || !removed.is_empty() {
