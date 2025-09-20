@@ -682,10 +682,10 @@ pub fn rebuild_styles(
             write_detail.push_str(&format!(" {}={:?}", l3, d3));
         }
         println!(
-            "{} added, {} removed {}",
+            "{} added, {} removed -> {}",
             format!("{}", added.len()).green(),
             format!("{}", removed.len()).red(),
-            format_duration(total_processing).green(),
+            format_duration(total_processing).blue().bold(),
         );
         // println!(
         //     "Initial: {} added, {} removed | (Total: {} -> Hash: {}, Parse: {}, Diff: {}, Cache: {}, Write: {} [{}])",
@@ -717,10 +717,10 @@ pub fn rebuild_styles(
             write_detail.push_str(&format!(" {}={:?}", l3, d3));
         }
         println!(
-            "{} added, {} removed {}",
+            "{} added, {} removed -> {}",
             format!("{}", added.len()).green(),
             format!("{}", removed.len()).red(),
-            format_duration(total_processing).green(),
+            format_duration(total_processing).blue().bold(),
         );
         // println!(
         //     "Processed: {} added, {} removed | (Total: {} -> Hash: {}, Parse: {}, Diff: {}, Cache: {}, Write: {} [{}])",
