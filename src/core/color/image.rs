@@ -1,6 +1,8 @@
-use crate::core::color::{color::Argb, quantize::Quantizer, quantize::QuantizerCelebi, score::Score};
+use crate::core::color::{
+    color::Argb, quantize::Quantizer, quantize::QuantizerCelebi, score::Score,
+};
 pub use images::imageops::FilterType;
-use images::{imageops::resize, ImageReader as Reader, RgbaImage};
+use images::{ImageReader as Reader, RgbaImage, imageops::resize};
 use std::{
     io::{Cursor, Result},
     path::Path,

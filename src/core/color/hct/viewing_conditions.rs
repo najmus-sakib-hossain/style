@@ -2,7 +2,7 @@
 #[allow(unused_imports)]
 use crate::core::color::utils::no_std::FloatExt;
 use crate::core::color::{
-    color::{y_from_lstar, WHITE_POINT_D65},
+    color::{WHITE_POINT_D65, y_from_lstar},
     utils::math::lerp,
 };
 use core::f64::consts::PI;

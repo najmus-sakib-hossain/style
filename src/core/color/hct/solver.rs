@@ -3,7 +3,7 @@ use super::{Cam16, ViewingConditions};
 #[allow(unused_imports)]
 use crate::core::color::utils::no_std::FloatExt;
 use crate::core::color::{
-    color::{y_from_lstar, Argb, LinearRgb},
+    color::{Argb, LinearRgb, y_from_lstar},
     utils::math::{matrix_multiply, sanitize_degrees_double, signum},
 };
 use core::f64::consts::PI;

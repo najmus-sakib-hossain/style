@@ -470,11 +470,7 @@ impl MaterialDynamicColors {
             |scheme| &scheme.primary_palette,
             |scheme| {
                 if _is_monochrome(scheme) {
-                    if scheme.is_dark {
-                        100.0
-                    } else {
-                        0.0
-                    }
+                    if scheme.is_dark { 100.0 } else { 0.0 }
                 } else if scheme.is_dark {
                     80.0
                 } else {
@@ -508,11 +504,7 @@ impl MaterialDynamicColors {
             |scheme| &scheme.primary_palette,
             |scheme| {
                 if _is_monochrome(scheme) {
-                    if scheme.is_dark {
-                        10.0
-                    } else {
-                        90.0
-                    }
+                    if scheme.is_dark { 10.0 } else { 90.0 }
                 } else if scheme.is_dark {
                     20.0
                 } else {
@@ -540,11 +532,7 @@ impl MaterialDynamicColors {
                 if _is_fidelity(scheme) {
                     scheme.source_color_hct.get_tone()
                 } else if _is_monochrome(scheme) {
-                    if scheme.is_dark {
-                        85.0
-                    } else {
-                        25.0
-                    }
+                    if scheme.is_dark { 85.0 } else { 25.0 }
                 } else if scheme.is_dark {
                     30.0
                 } else {
@@ -580,11 +568,7 @@ impl MaterialDynamicColors {
                 if _is_fidelity(scheme) {
                     DynamicColor::foreground_tone(Self::primary_container().get_tone(scheme), 4.5)
                 } else if _is_monochrome(scheme) {
-                    if scheme.is_dark {
-                        0.0
-                    } else {
-                        100.0
-                    }
+                    if scheme.is_dark { 0.0 } else { 100.0 }
                 } else if scheme.is_dark {
                     90.0
                 } else {
@@ -654,11 +638,7 @@ impl MaterialDynamicColors {
             |scheme| &scheme.secondary_palette,
             |scheme| {
                 if _is_monochrome(scheme) {
-                    if scheme.is_dark {
-                        10.0
-                    } else {
-                        100.0
-                    }
+                    if scheme.is_dark { 10.0 } else { 100.0 }
                 } else if scheme.is_dark {
                     20.0
                 } else {
@@ -686,11 +666,7 @@ impl MaterialDynamicColors {
                 let initial_tone = if scheme.is_dark { 30.0 } else { 90.0 };
 
                 if _is_monochrome(scheme) {
-                    if scheme.is_dark {
-                        30.0
-                    } else {
-                        90.0
-                    }
+                    if scheme.is_dark { 30.0 } else { 90.0 }
                 } else if !_is_fidelity(scheme) {
                     initial_tone
                 } else {
@@ -757,11 +733,7 @@ impl MaterialDynamicColors {
             |scheme| &scheme.tertiary_palette,
             |scheme| {
                 if _is_monochrome(scheme) {
-                    if scheme.is_dark {
-                        90.0
-                    } else {
-                        25.0
-                    }
+                    if scheme.is_dark { 90.0 } else { 25.0 }
                 } else if scheme.is_dark {
                     80.0
                 } else {
@@ -795,11 +767,7 @@ impl MaterialDynamicColors {
             |scheme| &scheme.tertiary_palette,
             |scheme| {
                 if _is_monochrome(scheme) {
-                    if scheme.is_dark {
-                        10.0
-                    } else {
-                        90.0
-                    }
+                    if scheme.is_dark { 10.0 } else { 90.0 }
                 } else if scheme.is_dark {
                     20.0
                 } else {
@@ -825,17 +793,9 @@ impl MaterialDynamicColors {
             |scheme| &scheme.tertiary_palette,
             |scheme| {
                 if _is_monochrome(scheme) {
-                    if scheme.is_dark {
-                        60.0
-                    } else {
-                        49.0
-                    }
+                    if scheme.is_dark { 60.0 } else { 49.0 }
                 } else if !_is_fidelity(scheme) {
-                    if scheme.is_dark {
-                        30.0
-                    } else {
-                        90.0
-                    }
+                    if scheme.is_dark { 30.0 } else { 90.0 }
                 } else {
                     fix_if_disliked(
                         scheme
@@ -874,11 +834,7 @@ impl MaterialDynamicColors {
                 if _is_fidelity(scheme) {
                     DynamicColor::foreground_tone(Self::tertiary_container().get_tone(scheme), 4.5)
                 } else if _is_monochrome(scheme) {
-                    if scheme.is_dark {
-                        0.0
-                    } else {
-                        100.0
-                    }
+                    if scheme.is_dark { 0.0 } else { 100.0 }
                 } else if scheme.is_dark {
                     90.0
                 } else {

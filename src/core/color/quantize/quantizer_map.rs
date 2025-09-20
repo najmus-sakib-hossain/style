@@ -1,5 +1,5 @@
 use super::{Quantizer, QuantizerResult};
-use crate::core::color::{color::Argb, IndexMap};
+use crate::core::color::{IndexMap, color::Argb};
 
 #[derive(Default)]
 pub struct QuantizerMap;

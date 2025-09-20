@@ -1,12 +1,28 @@
+import SwitcherIcon from "@/components/switcher-icon";
+
 export default function Home() {
   return (
-    <div className="border h-10 w-10 rounded-full fixed top-1/2 left-1/2 translate-x-[-50%] translate-y-[-50%]">
-      <div className="absolute top-0 left-0 h-full w-1/2 bg-background rounded-tl-full rounded-bl-full" />
-      <div className="z-50 border h-4 w-4 rounded-full fixed top-1/2 left-1/2 translate-x-[-50%] translate-y-[-50%]">
-        <div className="absolute top-0 left-0 h-full w-1/2 bg-foreground rounded-tl-full rounded-bl-full" />
-        <div className="absolute top-0 right-0 h-full w-1/2 bg-background rounded-tr-full rounded-br-full" />
+    <div className="h-screen w-full flex justify-center items-center space-x-8 p-4">
+      <div className="flex flex-col items-center">
+        <SwitcherIcon />
+        <span className="text-sm mt-2 text-center">Light</span>
       </div>
-      <div className="absolute top-0 right-0 h-full w-1/2 bg-foreground rounded-tr-full rounded-br-full" />
+      <div className="flex flex-col items-center">
+        <SwitcherIcon />
+        <span className="text-sm mt-2 text-center">Dark</span>
+      </div>
+      <div className="flex flex-col items-center">
+        <SwitcherIcon />
+        <span className="text-sm mt-2 text-center">Tinted
+          {/*  - Color + Linear + Radial + Conical Gradient */}
+        </span>
+      </div>
+      <div className="flex flex-col items-center">
+        <SwitcherIcon />
+        <span className="text-sm mt-2 text-center">Clear
+          {/*  - Image + Mesh + Pattern */}
+        </span>
+      </div>
     </div>
   );
 }

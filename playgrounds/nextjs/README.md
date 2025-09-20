@@ -12,7 +12,6 @@ To run:
 bun dev
 ```
 
-
 To set up shadcn/ui, run:
 
 ```bash

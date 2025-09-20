@@ -1,8 +1,8 @@
 use super::{PointProvider, PointProviderLab, QuantizerResult};
 use crate::core::color::{
+    IndexMap,
     color::{Argb, Lab},
     utils::random::Random,
-    IndexMap,
 };
 #[cfg(not(feature = "std"))]
 use alloc::{vec, vec::Vec};

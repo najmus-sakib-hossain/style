@@ -190,17 +190,9 @@ mod tests {
         let (a_abs, b_abs, c_abs) = (a.abs(), b.abs(), c.abs());
 
         if a_abs <= b_abs && a_abs <= c_abs {
-            if a >= 0.0 {
-                1.0
-            } else {
-                -1.0
-            }
+            if a >= 0.0 { 1.0 } else { -1.0 }
         } else if b_abs <= a_abs && b_abs <= c_abs {
-            if b >= 0.0 {
-                1.0
-            } else {
-                -1.0
-            }
+            if b >= 0.0 { 1.0 } else { -1.0 }
         } else if c >= 0.0 {
             1.0
         } else {
