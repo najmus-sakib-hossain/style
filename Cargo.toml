@@ -1,3 +1,9 @@
+[workspace]
+members = [
+	".",
+	"tools/shorthand_dump",
+]
+
 [package]
 name = "style"
 version = "0.0.0"

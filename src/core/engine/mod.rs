@@ -54,6 +54,10 @@ pub struct StyleEngine {
     pub property_css: String,
     pub base_layer_raw: Option<String>,
     pub property_layer_raw: Option<String>,
+    // Abbreviation maps
+    pub prop_abbr_to_name: Option<std::collections::HashMap<String, String>>,
+    pub prop_val_abbrs:
+        Option<std::collections::HashMap<String, std::collections::HashMap<String, String>>>,
 }
 
 #[derive(Clone, Debug)]
@@ -62,6 +66,7 @@ pub struct PropertyMeta {
     pub syntax: String,
     pub inherits: bool,
     pub initial: String,
+    pub abbr: Option<String>,
 }
 
 impl StyleEngine {
@@ -163,9 +168,33 @@ impl StyleEngine {
                     syntax: p.syntax().unwrap_or("").to_string(),
                     inherits: p.inherits(),
                     initial: p.initial().unwrap_or("").to_string(),
+                    abbr: p.abbr().map(|s| s.to_string()),
                 })
                 .collect()
         });
+        // Build abbreviation maps
+        let mut prop_abbr_to_name = std::collections::HashMap::new();
+        let mut prop_val_abbrs: std::collections::HashMap<
+            String,
+            std::collections::HashMap<String, String>,
+        > = std::collections::HashMap::new();
+        if let Some(plist) = config.properties() {
+            for p in plist {
+                let pname = p.name().to_string();
+                if let Some(a) = p.abbr() {
+                    prop_abbr_to_name.insert(a.to_string(), pname.clone());
+                }
+                let mut vmap = std::collections::HashMap::new();
+                if let Some(vals) = p.values() {
+                    for v in vals {
+                        vmap.insert(v.abbr().to_string(), v.name().to_string());
+                    }
+                }
+                if !vmap.is_empty() {
+                    prop_val_abbrs.insert(pname, vmap);
+                }
+            }
+        }
         let property_css = {
             if properties.is_empty() {
                 String::new()
@@ -205,6 +234,8 @@ impl StyleEngine {
             property_css,
             base_layer_raw,
             property_layer_raw,
+            prop_abbr_to_name: Some(prop_abbr_to_name),
+            prop_val_abbrs: Some(prop_val_abbrs),
         })
     }
 
@@ -239,6 +270,8 @@ impl StyleEngine {
             property_css: String::new(),
             base_layer_raw: None,
             property_layer_raw: None,
+            prop_abbr_to_name: None,
+            prop_val_abbrs: None,
         }
     }
 
@@ -264,10 +297,28 @@ impl StyleEngine {
         } else {
             ("", class_name)
         };
+        // Resolve shorthand like `d:f` into `display:flex` before the rest of the pipeline
+        let mut base_resolved = base_class.to_string();
+        if let Some((lhs, rhs)) = base_class.split_once(':') {
+            if !lhs.is_empty() && !rhs.is_empty() {
+                if let Some(map) = &self.prop_abbr_to_name {
+                    if let Some(prop_name) = map.get(lhs) {
+                        if let Some(valmaps) = &self.prop_val_abbrs {
+                            if let Some(vmap) = valmaps.get(prop_name) {
+                                if let Some(full_value) = vmap.get(rhs) {
+                                    base_resolved = format!("{}:{}", prop_name, full_value);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         let (media_queries, pseudo_classes, wrappers) =
             crate::core::engine::apply_wrappers_and_states(self, prefix_segment);
         let core_css_raw = crate::core::engine::expand_composite(self, class_name)
-            .or_else(|| self.precompiled.get(base_class).cloned())
+            .or_else(|| self.precompiled.get(&base_resolved).cloned())
             .or_else(|| crate::core::color::generate_color_css(self, base_class))
             .or_else(|| {
                 if class_name.contains(' ') {
@@ -276,8 +327,16 @@ impl StyleEngine {
                     crate::core::animation::generate_animation_css(class_name)
                 }
             })
-            .or_else(|| crate::core::engine::generate_dynamic_css(self, base_class))
-            .or_else(|| crate::core::engine::expand_composite(self, base_class));
+            .or_else(|| crate::core::engine::generate_dynamic_css(self, &base_resolved))
+            .or_else(|| crate::core::engine::expand_composite(self, &base_resolved))
+            .or_else(|| {
+                // Final fallback: if we have a resolved "prop:val", synthesize the declaration directly
+                if base_resolved.contains(':') {
+                    Some(base_resolved.clone())
+                } else {
+                    None
+                }
+            });
         core_css_raw.map(|mut css| {
             css = crate::core::engine::sanitize_declarations(&css);
             let mut escaped_ident = String::with_capacity(class_name.len() + 8);

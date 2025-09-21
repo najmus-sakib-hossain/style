@@ -14,7 +14,7 @@ def load_json(path: Path) -> Dict[str, Any]:
         return json.load(f)
 
 
-def filter_dict(data: Any, keep_keys: Optional[Set[str]] = None) -> Any:
+def filter_dict(data: Any, keep_keys: Optional[Set[str]] = None, drop_keys: Set[str] = DROP_KEYS) -> Any:
     """Recursively drop unimportant keys and return simplified data.
 
     - Removes keys in DROP_KEYS anywhere in the structure.
@@ -23,10 +23,10 @@ def filter_dict(data: Any, keep_keys: Optional[Set[str]] = None) -> Any:
     if isinstance(data, dict):
         data_dict = cast(Dict[str, Any], data)
         out: Dict[str, Any] = {}
-        for k, v in data_dict.items():
-            if k in DROP_KEYS:
+        for k, v in data_dict.items():  # type: ignore
+            if k in drop_keys:
                 continue
-            filtered = filter_dict(v, keep_keys)
+            filtered = filter_dict(v, keep_keys, drop_keys)
             # Skip empty dicts
             if isinstance(filtered, dict) and not filtered:
                 continue
@@ -43,7 +43,7 @@ def filter_dict(data: Any, keep_keys: Optional[Set[str]] = None) -> Any:
         return out
     elif isinstance(data, list):
         data_list = cast(List[Any], data)
-        return [filter_dict(x) for x in data_list]
+        return [filter_dict(x, keep_keys, drop_keys) for x in data_list]  # type: ignore
     else:
         return data
 
@@ -72,7 +72,7 @@ def write_toml_value(key: str, value: Any, lines: List[str], indent: int = 0) ->
     elif isinstance(value, list):
         value_list = cast(List[Any], value)
         arr_items: list[str] = []
-        for item in value_list:
+        for item in value_list:  # type: ignore
             if isinstance(item, str):
                 arr_items.append(toml_escape_str(item))
             elif isinstance(item, bool):
@@ -81,7 +81,7 @@ def write_toml_value(key: str, value: Any, lines: List[str], indent: int = 0) ->
                 arr_items.append(str(item))
             elif isinstance(item, dict):
                 # Inline tables for simple dicts in arrays
-                arr_items.append(inline_table(cast(Dict[str, Any], item)))
+                arr_items.append(inline_table(cast(Dict[str, Any], item)))  # type: ignore
             else:
                 arr_items.append(toml_escape_str(str(item)))
         lines.append(f"{pad}{key} = [ " + ", ".join(arr_items) + " ]")
@@ -173,9 +173,9 @@ def to_toml(data: Dict[str, Any]) -> str:
     return result
 
 
-def convert_file(src: Path, dest: Path) -> None:
+def convert_file(src: Path, dest: Path, drop_keys: Set[str] = DROP_KEYS, keep_keys: Optional[Set[str]] = None) -> None:
     raw = load_json(src)
-    filtered = filter_dict(raw, keep_keys=None)
+    filtered = filter_dict(raw, keep_keys=keep_keys, drop_keys=drop_keys)
     toml_str = to_toml(filtered)
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(toml_str, encoding="utf-8")
@@ -185,7 +185,6 @@ def main(argv: List[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Convert CSS JSON data to filtered TOML files.")
     parser.add_argument("--input", type=Path, default=Path("inspirations/data/css"), help="Input directory containing JSON files")
     parser.add_argument("--output", type=Path, default=Path(".dx/style/css"), help="Output directory for TOML files")
-    parser.add_argument("--include-schemas", action="store_true", help="Include *.schema.json files (skipped by default)")
     parser.add_argument(
         "--only-keys",
         type=str,
@@ -204,14 +203,11 @@ def main(argv: List[str] | None = None) -> int:
         keep_keys = {k.strip() for k in args.only_keys.split(",") if k.strip()}
 
     for src in sorted(input_dir.glob("*.json")):
-        if not args.include_schemas and src.name.endswith(".schema.json"):
+        if src.name.endswith(".schema.json"):
             continue
         dest = output_dir / (src.stem + ".toml")
-        raw = load_json(src)
-        filtered = filter_dict(raw, keep_keys=keep_keys)
-        toml_str = to_toml(filtered)
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text(toml_str, encoding="utf-8")
+        drop_keys = set() if src.name in ("types.json", "units.json") else DROP_KEYS  # type: ignore
+        convert_file(src, dest, drop_keys, keep_keys)  # type: ignore
         print(f"Converted {src} -> {dest}")
 
     return 0

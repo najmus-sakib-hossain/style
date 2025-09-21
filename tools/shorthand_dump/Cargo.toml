@@ -1,0 +1,12 @@
+[package]
+name = "shorthand_dump"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+flatbuffers = "25.2.10"
+memmap2 = "0.9.5"
+anyhow = "1.0"
+
+[build-dependencies]
+flatc-rust = "0.2.0"
