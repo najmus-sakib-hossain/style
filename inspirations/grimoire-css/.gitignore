@@ -1,0 +1,22 @@
+.env
+*.log
+*.tmp
+*.swp
+target
+**/*.rs.bk
+.idea
+.vscode/
+*.code-workspace
+.DS_Store
+Thumbs.db
+*.bak
+*.bk
+*.patch
+
+# benchmark
+benchmark/input
+benchmark/grimoire_css_output
+benchmark/tailwind_css_output
+benchmark/node_modules
+
+test_app
