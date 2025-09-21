@@ -1,3 +1,4 @@
+# Trash
 
 ```rust
 use colored::Colorize;
@@ -284,7 +285,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 
 ```md
-# Style
+## Style
 1. animation_generators.toml
 2. colors.toml
 3. container_queries.toml
@@ -425,6 +426,7 @@ src/
 ```
 
 ## Other Stuffs
+
 ```bash
 npx @tailwindcss/cli -i ./style.css -o ./output.css --watch
 cargo watch -c -x run
@@ -432,6 +434,8 @@ cargo watch -x "run -- --port 8080 --mode dev"
 ```
 
 Figured out how to use scss in dx-styles
+
+```toml
 [dependencies]
 # For fast JS/TS parsing
 swc_ecma_parser = "0.141.2"
@@ -449,9 +453,10 @@ tera = "1.19"
 
 # For walking file directories
 walkdir = "2.5"
+```
 
 git config --global user.name "najmus-sakib-hossain"
-git config --global user.email "manfromexistence@proton.me"
+git config --global user.email "<manfromexistence@proton.me>"
 
 for file in $(ls *.rs | grep -v -E 'main.rs|lib.rs'); do dir_name="${file%.rs}"; mkdir "$dir_name"; mv "$file" "$dir_name/mod.rs"; done
 
@@ -578,14 +583,7 @@ export default function Home() {
 }
 ```
 
-
-
-
-
-
-
-
-1. the initial scan is looking bad both visually and make sure its optimized correctly    
+1. the initial scan is looking bad both visually and make sure its optimized correctly
 2. currently we are using rkyv for cache but its very slow - so use we can assign every styles in styles.toml from means styles.bin a number like 1,2,3 so we are referring classnames as numbers so instead of writing long classnames to rkyv we can use a memory HashMap and make it as cache storing what classnames has already been used in the project and we will compare it with styles.bin so its very fast.
 
 make sure to use lightingcss to verify generated css is right
@@ -603,7 +601,6 @@ fn main() {
     header::render("Theme");
 }
 ```
-
 
 ```rust
 mod header;
@@ -640,8 +637,9 @@ tokio = { version = "1", features = ["full"] }
 crossbeam-deque = "0.8"
 libc = "0.2"
 ```
+
 cargo add tokio-uring memmap2 rayon tokio crossbeam-deque libc
- 
+
 ```bash
 tree -a -I "inspirations|target|.git"
 ```
@@ -652,6 +650,7 @@ tree -a -I "inspirations|target|.git"
    - **Current**: The cache is written to disk (`cache.bin`) on every update in `ClassnameCache::set`. This can be slow for frequent updates.
    - **Suggestion**: Implement a debounced write mechanism to batch cache updates. Use a separate thread or `tokio::spawn` to write to disk periodically (e.g., every 1-2 seconds) if changes occur. This reduces I/O overhead.
    - **Implementation Idea**:
+
      ```rust
      use std::sync::mpsc::{channel, Sender};
      use std::thread;
@@ -682,6 +681,7 @@ tree -a -I "inspirations|target|.git"
    - **Current**: `generator::generate_css` uses `rayon` for collecting CSS rules but could parallelize more tasks, like CSS minification or file writes.
    - **Suggestion**: Use `rayon` to parallelize the parsing and minification steps in `generate_css` for large class sets. Split the workload into chunks and process them concurrently.
    - **Implementation Idea**:
+
      ```rust
      let css_rules: Vec<_> = class_names.par_iter()
          .collect::<Vec<_>>()
@@ -696,6 +696,7 @@ tree -a -I "inspirations|target|.git"
    - **Current**: The cache in `ClassnameCache` checks file modification times, but frequent file changes can lead to cache misses.
    - **Suggestion**: Use a content-based hash (e.g., SHA-256) of file contents instead of modification times for cache validation. This ensures cache hits for unchanged content even if the file's timestamp changes.
    - **Implementation Idea**:
+
      ```rust
      use sha2::{Digest, Sha256};
 
@@ -711,6 +712,7 @@ tree -a -I "inspirations|target|.git"
    - **Current**: `ClassnameCache` stores all classnames in memory, which can grow large for big projects.
    - **Suggestion**: Use an on-disk key-value store like `sled` for caching classnames, with only hot (frequently accessed) entries kept in memory. This reduces memory footprint while maintaining performance.
    - **Implementation Idea**:
+
      ```toml
      # Cargo.toml
      [dependencies]
@@ -721,6 +723,7 @@ tree -a -I "inspirations|target|.git"
    - **Current**: Errors are handled with `.expect()`, which can crash the program.
    - **Suggestion**: Use proper error propagation with `Result` and a custom error type to make the codebase more robust. This improves maintainability and user experience.
    - **Implementation Idea**:
+
      ```rust
      #[derive(Debug)]
      enum DxError {
@@ -733,6 +736,7 @@ tree -a -I "inspirations|target|.git"
    - **Current**: The file watcher processes all events in a loop, which can be slow for large directories.
    - **Suggestion**: Use `notify-debouncer-full`'s batch processing more effectively by filtering events early and processing only relevant ones in parallel with `rayon`.
    - **Implementation Idea**:
+
      ```rust
      for event in events.into_iter().filter(|e| e.event.paths.iter().any(|p| utils::is_code_file(p) && p != &output_file)) {
          rayon::scope(|s| {
@@ -753,6 +757,7 @@ tree -a -I "inspirations|target|.git"
    - **Current**: Hardcoded paths and settings limit flexibility.
    - **Suggestion**: Introduce a configuration file (e.g., `dx.config.toml`) to specify input/output directories, cache settings, and watch intervals. Use `serde` to parse it.
    - **Implementation Idea**:
+
      ```toml
      # dx.config.toml
      input_dir = "inspirations/website"
@@ -765,6 +770,7 @@ tree -a -I "inspirations|target|.git"
    - **Current**: Logging is basic and console-based.
    - **Suggestion**: Use `tracing` or `log` crates for structured logging with configurable levels (e.g., debug, info). Write logs to a file for debugging in production.
    - **Implementation Idea**:
+
      ```toml
      # Cargo.toml
      [dependencies]
@@ -829,6 +835,7 @@ tree -a -I "inspirations|target|.git"
    - Cache parsed configurations in memory to avoid repeated parsing.
 
 ### Setup
+
 ```md
 # Project: Tailwind to dx-styles.toml Transformation
 
@@ -889,7 +896,6 @@ echo "--------------------------------------------------------------------------
     done
 ) | sort -rn | cut -d' ' -f2-
 ```
-
 
 ```rust
 use std::collections::{HashMap, HashSet, VecDeque};
