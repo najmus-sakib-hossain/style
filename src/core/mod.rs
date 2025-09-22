@@ -232,37 +232,38 @@ pub fn rebuild_styles(
                 write_layer(&mut state_guard.css_buffer, "base", "");
             }
             set_base_layer_present();
-            {
-                let engine = AppState::engine();
-                // Prefer explicit property layer raw content if provided.
-                let mut prop_body = if let Some(prop_raw) = engine.property_layer_raw.as_ref() {
-                    if prop_raw.trim().is_empty() {
-                        String::new()
-                    } else {
-                        let mut b = String::new();
-                        for line in prop_raw.lines() {
-                            if line.trim().is_empty() {
-                                continue;
-                            }
-                            b.push_str(line);
-                            b.push('\n');
-                        }
-                        b
-                    }
-                } else {
-                    String::new()
-                };
-                // Fallback: if still empty, synthesize from registered @property at-rules.
-                if prop_body.is_empty() {
-                    let at_rules = engine.property_at_rules();
-                    if !at_rules.trim().is_empty() {
-                        prop_body.push_str(at_rules.trim_end());
-                        prop_body.push('\n');
-                    }
-                }
-                write_layer(&mut state_guard.css_buffer, "properties", &prop_body);
-                set_properties_layer_present();
-            }
+
+            // {
+            //     let engine = AppState::engine();
+            //     // Prefer explicit property layer raw content if provided.
+            //     let mut prop_body = if let Some(prop_raw) = engine.property_layer_raw.as_ref() {
+            //         if prop_raw.trim().is_empty() {
+            //             String::new()
+            //         } else {
+            //             let mut b = String::new();
+            //             for line in prop_raw.lines() {
+            //                 if line.trim().is_empty() {
+            //                     continue;
+            //                 }
+            //                 b.push_str(line);
+            //                 b.push('\n');
+            //             }
+            //             b
+            //         }
+            //     } else {
+            //         String::new()
+            //     };
+            //     // Fallback: if still empty, synthesize from registered @property at-rules.
+            //     if prop_body.is_empty() {
+            //         let at_rules = engine.property_at_rules();
+            //         if !at_rules.trim().is_empty() {
+            //             prop_body.push_str(at_rules.trim_end());
+            //             prop_body.push('\n');
+            //         }
+            //     }
+            //     write_layer(&mut state_guard.css_buffer, "properties", &prop_body);
+            //     set_properties_layer_present();
+            // }
 
             let mut util_buf = Vec::new();
             generator::generate_class_rules_only(&mut util_buf, class_vec.iter());
@@ -681,28 +682,28 @@ pub fn rebuild_styles(
         if let (Some(l3), Some(d3)) = (write_stats.sub3_label, write_stats.sub3) {
             write_detail.push_str(&format!(" {}={:?}", l3, d3));
         }
-        println!(
-            "{}",
-            "Dx Style is watching your files for changes...".cyan(),
-        );
+        // println!(
+        //     "{}",
+        //     "Dx Style is watching your files for changes...".cyan(),
+        // );
         // println!(
         //     "{} added, {} removed -> {}",
         //     format!("{}", added.len()).green(),
         //     format!("{}", removed.len()).red(),
         //     format_duration(total_processing).blue().bold(),
         // );
-        // println!(
-        //     "Initial: {} added, {} removed | (Total: {} -> Hash: {}, Parse: {}, Diff: {}, Cache: {}, Write: {} [{}])",
-        //     format!("{}", added.len()).green(),
-        //     format!("{}", removed.len()).red(),
-        //     format_duration(total_processing),
-        //     format_duration(hash_duration),
-        //     format_duration(parse_extract_duration),
-        //     format_duration(diff_duration),
-        //     format_duration(cache_update_duration),
-        //     format_duration(css_write_duration),
-        //     write_detail
-        // );
+        println!(
+            "Initial: {} added, {} removed | (Total: {} -> Hash: {}, Parse: {}, Diff: {}, Cache: {}, Write: {} [{}])",
+            format!("{}", added.len()).green(),
+            format!("{}", removed.len()).red(),
+            format_duration(total_processing),
+            format_duration(hash_duration),
+            format_duration(parse_extract_duration),
+            format_duration(diff_duration),
+            format_duration(cache_update_duration),
+            format_duration(css_write_duration),
+            write_detail
+        );
         FIRST_LOG_DONE.store(true, Ordering::Relaxed);
     } else if !silent_format {
         // Build write detail string
@@ -720,24 +721,24 @@ pub fn rebuild_styles(
         if let (Some(l3), Some(d3)) = (write_stats.sub3_label, write_stats.sub3) {
             write_detail.push_str(&format!(" {}={:?}", l3, d3));
         }
-        println!(
-            "{} added, {} removed -> {}",
-            format!("{}", added.len()).green(),
-            format!("{}", removed.len()).red(),
-            format_duration(total_processing).blue().bold(),
-        );
         // println!(
-        //     "Processed: {} added, {} removed | (Total: {} -> Hash: {}, Parse: {}, Diff: {}, Cache: {}, Write: {} [{}])",
+        //     "{} added, {} removed -> {}",
         //     format!("{}", added.len()).green(),
         //     format!("{}", removed.len()).red(),
-        //     format_duration(total_processing),
-        //     format_duration(hash_duration),
-        //     format_duration(parse_extract_duration),
-        //     format_duration(diff_duration),
-        //     format_duration(cache_update_duration),
-        //     format_duration(css_write_duration),
-        //     write_detail
+        //     format_duration(total_processing).blue().bold(),
         // );
+        println!(
+            "Processed: {} added, {} removed | (Total: {} -> Hash: {}, Parse: {}, Diff: {}, Cache: {}, Write: {} [{}])",
+            format!("{}", added.len()).green(),
+            format!("{}", removed.len()).red(),
+            format_duration(total_processing),
+            format_duration(hash_duration),
+            format_duration(parse_extract_duration),
+            format_duration(diff_duration),
+            format_duration(cache_update_duration),
+            format_duration(css_write_duration),
+            write_detail
+        );
     }
 
     if !added.is_empty() || !removed.is_empty() {
