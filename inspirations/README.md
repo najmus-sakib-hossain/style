@@ -1,1 +1,6 @@
-git clone https://github.com/tailwindlabs/tailwindcss.com && cd tailwindcss.com && rm -rf .git && cd ..
+# Some Inspirations for DX Style
+
+```bash
+git clone https://github.com/mdn/data.git css && cd css && rm -rf .git && cd ..
+git clone https://github.com/persevie/grimoire-css && cd grimoire-css && rm -rf .git && cd ..
+```

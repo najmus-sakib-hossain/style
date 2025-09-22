@@ -50,15 +50,6 @@ std = ["indexmap/std", "ahash/std", "ahash/runtime-rng"]
 image = ["dep:images"]
 libm = ["dep:libm"]
 
-
-# [[bench]]
-# name = "hot_path"
-# harness = false
-
-# [[bench]]
-# name = "write_path"
-# harness = false
-
 [profile.dev]
 opt-level = 2
 debug = true
