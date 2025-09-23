@@ -15,7 +15,7 @@ const MANAGED_MARKER: &str = "/*
        ░██  ░██     ██     ░██░██░░░░
  ████████   ░░██   ██      ███░░██████
 ░░░░░░░░     ░░   ░░      ░░░  ░░░░░░
-Dx Style - @0.0.0
+Dx Style v0.0.1 | MIT License | https://dx.com
 */\n";
 const MANAGED_MARKER_PREFIX: &str = "/*
   ████████   ██             ██
@@ -26,7 +26,7 @@ const MANAGED_MARKER_PREFIX: &str = "/*
        ░██  ░██     ██     ░██░██░░░░
  ████████   ░░██   ██      ███░░██████
 ░░░░░░░░     ░░   ░░      ░░░  ░░░░░░
-Dx Style - @0.0.0
+Dx Style v0.0.1 | MIT License | https://dx.com
 */\n";
 
 pub enum CssBackend {
