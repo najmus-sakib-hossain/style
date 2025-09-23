@@ -1,4 +1,4 @@
-# Grouping is a feature in dx style where instead of using different instanches of properties for different values you use ```()``` to group them together.
+# Grouping is a feature in dx style where instead of using different instanches of properties for different values you use ```()``` to group them together
 
 For example:
 
@@ -71,6 +71,14 @@ $ -> this is a variable
 
 ~ -> this is for bitwise NOT and much more
 
+## Status
+
+* Supported: grouping expansion `prefix(a b)` → `prefix:a`, `prefix:b` when scanning classes.
+* Supported: nested groups (balanced parentheses) and multiple chained prefixes like `lg(md(bg-red-500))`.
+* Supported: scanning both `class` and `dx-*` attributes; inline `#...` comments are ignored; trailing `+` is ignored during extraction.
+* Not yet: rewriting HTML to inject expanded classes, external references `@user:component(...)`, `-` removals, and `card(...)` registry/logging.
+* Not yet: abbreviation compression/expansion inside grouping (e.g., `BHWT`) and emitting inline comment mirrors into HTML.
+
 Some unused symbols are reserved:
 
 ```txt
@@ -105,11 +113,3 @@ _
 ```
 
 These symbols are reserved for future use and will not be used in the current version of dx style.
-
-## Status
-
-* Supported: grouping expansion `prefix(a b)` → `prefix:a`, `prefix:b` when scanning classes.
-* Supported: nested groups (balanced parentheses) and multiple chained prefixes like `lg(md(bg-red-500))`.
-* Supported: scanning both `class` and `dx-*` attributes; inline `#...` comments are ignored; trailing `+` is ignored during extraction.
-* Not yet: rewriting HTML to inject expanded classes, external references `@user:component(...)`, `-` removals, and `card(...)` registry/logging.
-* Not yet: abbreviation compression/expansion inside grouping (e.g., `BHWT`) and emitting inline comment mirrors into HTML.
