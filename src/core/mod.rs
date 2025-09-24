@@ -10,6 +10,7 @@ use colored::Colorize;
 use std::hash::Hasher;
 pub mod color;
 pub mod output;
+use cssparser::serialize_identifier;
 use output::CssOutput;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -485,134 +486,72 @@ pub fn rebuild_styles(
                 },
             )
         } else if only_additions {
+            // Fast incremental add: build block and index without rescanning bytes
             let gen_start = Instant::now();
-            generator::generate_class_rules_only(&mut state_guard.css_buffer, added.iter());
-            if !state_guard.css_buffer.is_empty() {
-                let gen_time = gen_start.elapsed();
-                let build_start = Instant::now();
-                let raw = std::mem::take(&mut state_guard.css_buffer);
-                let mut block = Vec::with_capacity(raw.len() + 64);
-                block.push(b'\n');
-                for line in raw.split(|b| *b == b'\n') {
+            let engine = AppState::engine();
+            let mut block: Vec<u8> = Vec::new();
+            block.push(b'\n');
+            // Store temporary offsets relative to start of block
+            let mut offsets: Vec<(String, usize, usize)> = Vec::with_capacity(added.len());
+            let mut cursor_in_block = 1usize; // account for leading '\n'
+            let mut escaped = String::with_capacity(64);
+            for class in &added {
+                let css = engine.css_for_class(class).unwrap_or_else(|| {
+                    escaped.clear();
+                    serialize_identifier(class, &mut escaped).unwrap();
+                    format!(".{} {{}}\n", escaped)
+                });
+                // Ensure trailing newline
+                let css = if css.ends_with('\n') {
+                    css
+                } else {
+                    format!("{}\n", css)
+                };
+                // Record start of rule at '.' (skip the two-space indent)
+                let rule_start_block = cursor_in_block + 2;
+                // Write indented lines
+                for line in css.lines() {
                     if line.is_empty() {
                         continue;
                     }
                     block.extend_from_slice(b"  ");
-                    block.extend_from_slice(line);
+                    block.extend_from_slice(line.as_bytes());
                     block.push(b'\n');
+                    cursor_in_block += 2 + line.len() + 1; // indent + line + newline
                 }
-                let build_time = build_start.elapsed();
-                let flush_start = Instant::now();
-                let start_rel = state_guard.css_out.append_inside_final_block(&block)?;
-                let mut rel_cursor = start_rel - state_guard.utilities_offset;
-                let mut cursor = 0usize;
-                while cursor < block.len() {
-                    while cursor < block.len()
-                        && (block[cursor] == b'\n'
-                            || block[cursor] == b' '
-                            || block[cursor] == b'\t')
-                    {
-                        cursor += 1;
-                    }
-                    if cursor >= block.len() {
-                        break;
-                    }
-                    let rule_start_block = cursor;
-                    if block[cursor] == b'.' {
-                        let mut sel_end = cursor + 1;
-                        while sel_end < block.len()
-                            && block[sel_end] != b'{'
-                            && block[sel_end] != b'\n'
-                        {
-                            sel_end += 1;
-                        }
-                        if sel_end < block.len() && block[sel_end] == b'{' {
-                            let raw = &block[cursor + 1..sel_end];
-                            let mut end_trim = raw.len();
-                            while end_trim > 0
-                                && (raw[end_trim - 1] == b' ' || raw[end_trim - 1] == b'\t')
-                            {
-                                end_trim -= 1;
-                            }
-                            if end_trim > 0 {
-                                let name = String::from_utf8_lossy(&raw[..end_trim]).to_string();
-                                if !name.is_empty() {
-                                    let mut depth: isize = 0;
-                                    let mut j = sel_end;
-                                    let mut rule_end = sel_end;
-                                    while j < block.len() {
-                                        let b = block[j];
-                                        if b == b'{' {
-                                            depth += 1;
-                                        }
-                                        if b == b'}' {
-                                            depth -= 1;
-                                        }
-                                        if depth == 0 && b == b'}' {
-                                            let mut k = j;
-                                            while k < block.len() && block[k] != b'\n' {
-                                                k += 1;
-                                            }
-                                            if k < block.len() {
-                                                k += 1;
-                                            }
-                                            rule_end = k;
-                                            break;
-                                        }
-                                        j += 1;
-                                    }
-                                    if rule_end > rule_start_block {
-                                        let off = rel_cursor + rule_start_block;
-                                        let len = rule_end - rule_start_block;
-                                        state_guard.css_index.insert(name, RuleMeta { off, len });
-                                        rel_cursor += len;
-                                        cursor = rule_end;
-                                        continue;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    while cursor < block.len() && block[cursor] != b'\n' {
-                        cursor += 1;
-                    }
-                    if cursor < block.len() {
-                        cursor += 1;
-                        rel_cursor += 1;
-                    }
-                }
-                state_guard.css_out.flush_now()?;
-                let flush_time = flush_start.elapsed();
-                (
-                    css_write_timer.elapsed(),
-                    WriteStats {
-                        mode: "add",
-                        classes_written: added.len(),
-                        bytes_written: block.len(),
-                        sub1_label: "gen",
-                        sub1: gen_time,
-                        sub2_label: Some("build"),
-                        sub2: Some(build_time),
-                        sub3_label: Some("flush"),
-                        sub3: Some(flush_time),
-                    },
-                )
-            } else {
-                (
-                    css_write_timer.elapsed(),
-                    WriteStats {
-                        mode: "add",
-                        classes_written: 0,
-                        bytes_written: 0,
-                        sub1_label: "gen",
-                        sub1: gen_start.elapsed(),
-                        sub2_label: None,
-                        sub2: None,
-                        sub3_label: None,
-                        sub3: None,
-                    },
-                )
+                let rule_len = cursor_in_block.saturating_sub(rule_start_block);
+                offsets.push((class.clone(), rule_start_block, rule_len));
             }
+            let gen_time = gen_start.elapsed();
+            let build_time = std::time::Duration::from_micros(0);
+            let flush_start = Instant::now();
+            let start_rel = state_guard.css_out.append_inside_final_block(&block)?;
+            let rel_base = start_rel - state_guard.utilities_offset;
+            for (name, off_blk, len) in offsets {
+                state_guard.css_index.insert(
+                    name,
+                    RuleMeta {
+                        off: rel_base + off_blk,
+                        len,
+                    },
+                );
+            }
+            state_guard.css_out.flush_now()?;
+            let flush_time = flush_start.elapsed();
+            (
+                css_write_timer.elapsed(),
+                WriteStats {
+                    mode: "add",
+                    classes_written: added.len(),
+                    bytes_written: block.len(),
+                    sub1_label: "gen",
+                    sub1: gen_time,
+                    sub2_label: Some("build"),
+                    sub2: Some(build_time),
+                    sub3_label: Some("flush"),
+                    sub3: Some(flush_time),
+                },
+            )
         } else if !removed.is_empty() && added.is_empty() {
             let mut removed_bytes = 0usize;
             for r in &removed {
