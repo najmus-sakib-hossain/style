@@ -45,7 +45,8 @@
 
 :root {
   /* Clear Theme */
-  --background: oklch(0.13 0 0);
+  --background: url("../public/suzume-no-tojimari.png");
+  /* --background: oklch(0.13 0 0); */
   --foreground: oklch(1.00 0 0);
   --card: oklch(0.14 0 0);
   --card-foreground: oklch(1.00 0 0);
