@@ -634,7 +634,7 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
             let first_range = first_occ.attr_range.clone();
             replacements.push((
                 first_range,
-                format!("class=\"{} @{}({})\"", alias, alias, tokens_join),
+                format!("class=\"@{}({})\"", alias, tokens_join),
             ));
             if let Some((range, replacement)) = first_occ.dx_group_cleanup.clone() {
                 replacements.push((range, replacement));
@@ -748,8 +748,8 @@ mod tests {
         let result = rewrite_duplicate_classes(html).expect("rewrite");
         let rewritten = String::from_utf8(result.html.clone()).unwrap();
         assert!(
-            rewritten.contains("class=\"bft @bft(border flex text-red-500)\""),
-            "expected alias definition to use class-only grouping"
+            rewritten.contains("class=\"@bft(border flex text-red-500)\""),
+            "expected alias definition to use grouped class without duplicate alias"
         );
         assert!(
             rewritten.contains("class=\"bft\">World"),
@@ -783,7 +783,7 @@ mod tests {
             "untouched class should remain"
         );
         assert!(
-            rewritten.contains("class=\"bft1 @bft1(border flex text-red-500)\""),
+            rewritten.contains("class=\"@bft1(border flex text-red-500)\""),
             "expected alias to avoid collision via numeric suffix"
         );
         assert!(
@@ -801,9 +801,7 @@ mod tests {
         let result = rewrite_duplicate_classes(html).expect("rewrite");
         let rewritten = String::from_utf8(result.html.clone()).unwrap();
         assert!(
-            rewritten.contains(
-                "class=\"bfuta @bfuta(border flex uppercase text-red-500 after shadow)\""
-            ),
+            rewritten.contains("class=\"@bfuta(border flex uppercase text-red-500 after shadow)\""),
             "expected alias to use first five initials"
         );
         assert!(
