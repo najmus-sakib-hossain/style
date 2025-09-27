@@ -727,47 +727,49 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
             if let Some(rel_end) = memchr(quote, &html_bytes[value_start..]) {
                 let value_end = value_start + rel_end;
                 if let Ok(value_str) = std::str::from_utf8(&html_bytes[value_start..value_end]) {
-                        // Build token list and support parentheses that span tokens
-                        let tokens: Vec<&str> = value_str.split_whitespace().collect();
-                        let mut ti = 0usize;
-                        while ti < tokens.len() {
-                            let tk = tokens[ti];
-                            if tk.starts_with('@') {
-                                ti += 1;
+                    // Build token list and support parentheses that span tokens
+                    let tokens: Vec<&str> = value_str.split_whitespace().collect();
+                    let mut ti = 0usize;
+                    while ti < tokens.len() {
+                        let tk = tokens[ti];
+                        if tk.starts_with('@') {
+                            ti += 1;
+                            continue;
+                        }
+                        if let Some(open_idx) = tk.find('(') {
+                            let name = &tk[..open_idx];
+                            let mut inner_tokens: Vec<String> = Vec::new();
+                            let first_rem = &tk[open_idx + 1..];
+                            if !first_rem.is_empty() {
+                                inner_tokens.push(first_rem.trim_end_matches(')').to_string());
+                            }
+                            let mut found_close = tk.ends_with(')');
+                            let mut j = ti + 1;
+                            while j < tokens.len() && !found_close {
+                                let tk2 = tokens[j];
+                                if tk2.ends_with(')') {
+                                    inner_tokens.push(tk2.trim_end_matches(')').to_string());
+                                    found_close = true;
+                                    j += 1;
+                                    break;
+                                } else {
+                                    inner_tokens.push(tk2.to_string());
+                                }
+                                j += 1;
+                            }
+                            if found_close {
+                                inner_tokens.retain(|s| !s.is_empty());
+                                if !name.is_empty() && !inner_tokens.is_empty() {
+                                    manual_aliases
+                                        .entry(name.to_string())
+                                        .or_insert(inner_tokens);
+                                }
+                                ti = j;
                                 continue;
                             }
-                            if let Some(open_idx) = tk.find('(') {
-                                let name = &tk[..open_idx];
-                                let mut inner_tokens: Vec<String> = Vec::new();
-                                let first_rem = &tk[open_idx + 1..];
-                                if !first_rem.is_empty() {
-                                    inner_tokens.push(first_rem.trim_end_matches(')').to_string());
-                                }
-                                let mut found_close = tk.ends_with(')');
-                                let mut j = ti + 1;
-                                while j < tokens.len() && !found_close {
-                                    let tk2 = tokens[j];
-                                    if tk2.ends_with(')') {
-                                        inner_tokens.push(tk2.trim_end_matches(')').to_string());
-                                        found_close = true;
-                                        j += 1;
-                                        break;
-                                    } else {
-                                        inner_tokens.push(tk2.to_string());
-                                    }
-                                    j += 1;
-                                }
-                                if found_close {
-                                    inner_tokens.retain(|s| !s.is_empty());
-                                    if !name.is_empty() && !inner_tokens.is_empty() {
-                                        manual_aliases.entry(name.to_string()).or_insert(inner_tokens);
-                                    }
-                                    ti = j;
-                                    continue;
-                                }
-                            }
-                            ti += 1;
                         }
+                        ti += 1;
+                    }
                 }
                 pos_scan = value_end + 1;
                 continue;
@@ -993,7 +995,8 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
                         replacements.push((occ.attr_range.clone(), String::new()));
                     } else {
                         let new_value = out_tokens.join(" ");
-                        replacements.push((occ.attr_range.clone(), format!("class=\"{}\"", new_value)));
+                        replacements
+                            .push((occ.attr_range.clone(), format!("class=\"{}\"", new_value)));
                     }
                 }
                 if let Some((range, replacement)) = occ.dx_group_cleanup.clone() {
@@ -1052,7 +1055,8 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
                                 if value_str.ends_with(')') {
                                     let name = &value_str[..open_idx];
                                     if manual_aliases.contains_key(name) {
-                                        replacements.push((attr_start..(value_end + 2), String::new()));
+                                        replacements
+                                            .push((attr_start..(value_end + 2), String::new()));
                                     }
                                 }
                             }

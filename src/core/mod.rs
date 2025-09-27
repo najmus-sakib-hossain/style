@@ -137,6 +137,15 @@ pub fn rebuild_styles(
         &mut all_classes,
         Some(AppState::engine()),
     );
+    // If the rewrite removed grouped alias metadata (manual toggle off), but
+    // our previous state had group definitions, merge those so we preserve
+    // the cached CSS and definitions for developer convenience.
+    {
+        let prev_registry = { state.lock().unwrap().group_registry.clone() };
+        if prev_registry.is_empty() == false && group_registry.is_empty() {
+            group_registry.merge_preserve(&prev_registry);
+        }
+    }
     group_registry.set_dev_selectors(dev_group_selectors);
 
     let diff_timer = Instant::now();

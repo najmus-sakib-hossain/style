@@ -47,6 +47,19 @@ impl GroupRegistry {
         self.internal_tokens.contains(class)
     }
 
+    /// Merge definitions and cached CSS from a previous registry, preserving
+    /// any entries that don't exist in self. This is used when the parser
+    /// removes grouped utilities from the HTML (manual toggle) but we want to
+    /// keep the previously-generated CSS for those aliases in the output.
+    pub fn merge_preserve(&mut self, prev: &GroupRegistry) {
+        for (name, def) in prev.definitions.iter() {
+            self.definitions.entry(name.clone()).or_insert_with(|| def.clone());
+        }
+        for (k, v) in prev.cached_css.iter() {
+            self.cached_css.entry(k.clone()).or_insert_with(|| v.clone());
+        }
+    }
+
     pub fn analyze(
         events: &[GroupEvent],
         classes: &mut AHashSet<String>,
@@ -388,10 +401,7 @@ mod tests {
         assert!(classes.contains("card"));
         let mut registry = registry;
         let mut selectors = AHashMap::default();
-        selectors.insert(
-            "card".to_string(),
-            "@card(bg-red-500 h-50)".to_string(),
-        );
+        selectors.insert("card".to_string(), "@card(bg-red-500 h-50)".to_string());
         registry.set_dev_selectors(selectors);
         let css = registry.generate_css_for("card", &engine).expect("css");
         assert!(css.contains(".card"));
