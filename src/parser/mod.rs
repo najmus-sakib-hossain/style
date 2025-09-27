@@ -566,8 +566,518 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
         pos = attr_end;
     }
 
+    // If we didn't find duplicates, still scan for manual alias definitions that
+    // appear as single-token class attributes like `nbft(none border ...)` (no
+    // leading '@'). This allows users to toggle the '@' form on/off and have
+    // the generator expand/remove grouped utilities accordingly.
+    // First, regardless of duplicate detection, strip any parentheses groups
+    // from tokens that are written without a leading '@'. This implements the
+    // user's expectation that removing the '@' should remove all grouped
+    // utilities from the source HTML; e.g. `nbft(none border)` -> `nbft`.
+    {
+        let mut replacements: Vec<(Range<usize>, String)> = Vec::new();
+        let mut pos_scan = 0usize;
+        let n_all = html_bytes.len();
+        let finder = Finder::new(b"class");
+        while let Some(idx) = finder.find(&html_bytes[pos_scan..]) {
+            let attr_start = pos_scan + idx;
+            if attr_start > 0 {
+                let prev = html_bytes[attr_start - 1];
+                if (prev as char).is_ascii_alphanumeric() || prev == b'-' || prev == b'_' {
+                    pos_scan = attr_start + 5;
+                    continue;
+                }
+            }
+            let mut cursor = attr_start + 5;
+            while cursor < n_all && is_space(html_bytes[cursor]) {
+                cursor += 1;
+            }
+            if cursor >= n_all || html_bytes[cursor] != b'=' {
+                pos_scan = attr_start + 5;
+                continue;
+            }
+            cursor += 1;
+            while cursor < n_all && is_space(html_bytes[cursor]) {
+                cursor += 1;
+            }
+            if cursor >= n_all {
+                break;
+            }
+            let quote = html_bytes[cursor];
+            if quote != b'"' && quote != b'\'' {
+                pos_scan = attr_start + 5;
+                continue;
+            }
+            cursor += 1;
+            let value_start = cursor;
+            if let Some(rel_end) = memchr(quote, &html_bytes[value_start..]) {
+                let value_end = value_start + rel_end;
+                if let Ok(value_str) = std::str::from_utf8(&html_bytes[value_start..value_end]) {
+                    let mut out_tokens: Vec<String> = Vec::new();
+                    let mut changed = false;
+                    let tokens: Vec<&str> = value_str.split_whitespace().collect();
+                    let mut ti = 0usize;
+                    while ti < tokens.len() {
+                        let tk = tokens[ti];
+                        if tk.starts_with('@') {
+                            out_tokens.push(tk.to_string());
+                            ti += 1;
+                            continue;
+                        }
+                        if let Some(open_idx) = tk.find('(') {
+                            // found an opening; collapse the entire parentheses sequence
+                            let name = &tk[..open_idx];
+                            let mut found_close = tk.ends_with(')');
+                            let mut j = ti + 1;
+                            while j < tokens.len() && !found_close {
+                                if tokens[j].ends_with(')') {
+                                    found_close = true;
+                                    j += 1;
+                                    break;
+                                }
+                                j += 1;
+                            }
+                            if !name.is_empty() {
+                                out_tokens.push(name.to_string());
+                            }
+                            if found_close {
+                                changed = true;
+                                ti = j;
+                                continue;
+                            } else {
+                                // malformed (no closing)), just keep token as-is
+                                out_tokens.push(tk.to_string());
+                                ti += 1;
+                                continue;
+                            }
+                        }
+                        out_tokens.push(tk.to_string());
+                        ti += 1;
+                    }
+                    if changed {
+                        let replacement = if out_tokens.is_empty() {
+                            String::new()
+                        } else {
+                            format!("class=\"{}\"", out_tokens.join(" "))
+                        };
+                        replacements.push((attr_start..(value_end + 1), replacement));
+                    }
+                }
+                pos_scan = value_end + 1;
+                continue;
+            } else {
+                break;
+            }
+        }
+        if !replacements.is_empty() {
+            replacements.sort_by(|a, b| b.0.start.cmp(&a.0.start));
+            let mut html_string = String::from_utf8(html_bytes.to_vec()).ok()?;
+            for (range, replacement) in replacements {
+                html_string.replace_range(range, &replacement);
+            }
+            return Some(AutoGroupRewrite {
+                html: html_string.into_bytes(),
+                groups: Vec::new(),
+            });
+        }
+    }
+
     if occurrences.is_empty() {
-        return None;
+        // No auto-group occurrences found — detect manual alias usage like
+        // `name(inner1 inner2)` anywhere in the document (without a leading '@')
+        // and expand it inline so the source HTML contains the explicit
+        // utility tokens. This is the 'toggle off' behavior when the user
+        // removes the leading '@'.
+        let mut manual_aliases: AHashMap<String, Vec<String>> = AHashMap::default();
+        // First pass: collect alias definitions appearing inside class values
+        let mut pos_scan = 0usize;
+        let n_all = html_bytes.len();
+        let finder = Finder::new(b"class");
+        while let Some(idx) = finder.find(&html_bytes[pos_scan..]) {
+            let attr_start = pos_scan + idx;
+            if attr_start > 0 {
+                let prev = html_bytes[attr_start - 1];
+                if (prev as char).is_ascii_alphanumeric() || prev == b'-' || prev == b'_' {
+                    pos_scan = attr_start + 5;
+                    continue;
+                }
+            }
+            let mut cursor = attr_start + 5;
+            while cursor < n_all && is_space(html_bytes[cursor]) {
+                cursor += 1;
+            }
+            if cursor >= n_all || html_bytes[cursor] != b'=' {
+                pos_scan = attr_start + 5;
+                continue;
+            }
+            cursor += 1;
+            while cursor < n_all && is_space(html_bytes[cursor]) {
+                cursor += 1;
+            }
+            if cursor >= n_all {
+                break;
+            }
+            let quote = html_bytes[cursor];
+            if quote != b'"' && quote != b'\'' {
+                pos_scan = attr_start + 5;
+                continue;
+            }
+            cursor += 1;
+            let value_start = cursor;
+            if let Some(rel_end) = memchr(quote, &html_bytes[value_start..]) {
+                let value_end = value_start + rel_end;
+                if let Ok(value_str) = std::str::from_utf8(&html_bytes[value_start..value_end]) {
+                        // Build token list and support parentheses that span tokens
+                        let tokens: Vec<&str> = value_str.split_whitespace().collect();
+                        let mut ti = 0usize;
+                        while ti < tokens.len() {
+                            let tk = tokens[ti];
+                            if tk.starts_with('@') {
+                                ti += 1;
+                                continue;
+                            }
+                            if let Some(open_idx) = tk.find('(') {
+                                let name = &tk[..open_idx];
+                                let mut inner_tokens: Vec<String> = Vec::new();
+                                let first_rem = &tk[open_idx + 1..];
+                                if !first_rem.is_empty() {
+                                    inner_tokens.push(first_rem.trim_end_matches(')').to_string());
+                                }
+                                let mut found_close = tk.ends_with(')');
+                                let mut j = ti + 1;
+                                while j < tokens.len() && !found_close {
+                                    let tk2 = tokens[j];
+                                    if tk2.ends_with(')') {
+                                        inner_tokens.push(tk2.trim_end_matches(')').to_string());
+                                        found_close = true;
+                                        j += 1;
+                                        break;
+                                    } else {
+                                        inner_tokens.push(tk2.to_string());
+                                    }
+                                    j += 1;
+                                }
+                                if found_close {
+                                    inner_tokens.retain(|s| !s.is_empty());
+                                    if !name.is_empty() && !inner_tokens.is_empty() {
+                                        manual_aliases.entry(name.to_string()).or_insert(inner_tokens);
+                                    }
+                                    ti = j;
+                                    continue;
+                                }
+                            }
+                            ti += 1;
+                        }
+                }
+                pos_scan = value_end + 1;
+                continue;
+            } else {
+                break;
+            }
+        }
+
+        if manual_aliases.is_empty() {
+            return None;
+        }
+
+        // Second pass: rewrite class attributes, expanding any manual alias
+        // occurrences into their explicit token lists.
+        let mut replacements: Vec<(Range<usize>, String)> = Vec::new();
+        let mut pos2 = 0usize;
+        let n = html_bytes.len();
+        let finder = Finder::new(b"class");
+        while let Some(idx) = finder.find(&html_bytes[pos2..]) {
+            let attr_start = pos2 + idx;
+            if attr_start > 0 {
+                let prev = html_bytes[attr_start - 1];
+                if (prev as char).is_ascii_alphanumeric() || prev == b'-' || prev == b'_' {
+                    pos2 = attr_start + 5;
+                    continue;
+                }
+            }
+            let mut cursor = attr_start + 5;
+            while cursor < n && matches!(html_bytes[cursor], b' ' | b'\n' | b'\r' | b'\t') {
+                cursor += 1;
+            }
+            if cursor >= n || html_bytes[cursor] != b'=' {
+                pos2 = attr_start + 5;
+                continue;
+            }
+            cursor += 1;
+            while cursor < n && matches!(html_bytes[cursor], b' ' | b'\n' | b'\r' | b'\t') {
+                cursor += 1;
+            }
+            if cursor >= n {
+                break;
+            }
+            let quote = html_bytes[cursor];
+            if quote != b'"' && quote != b'\'' {
+                pos2 = attr_start + 5;
+                continue;
+            }
+            cursor += 1;
+            let value_start = cursor;
+            if let Some(rel_end) = memchr(quote, &html_bytes[value_start..]) {
+                let value_end = value_start + rel_end;
+                if let Ok(value_str) = std::str::from_utf8(&html_bytes[value_start..value_end]) {
+                    // For manual aliases without a leading '@' we remove the grouped
+                    // utility tokens from the class attribute. This implements the
+                    // "toggle off" behavior: when user writes `name(...)` (no @)
+                    // the grouped utilities should be removed from the source HTML.
+                    let mut out_tokens: Vec<String> = Vec::new();
+                    let mut changed = false;
+                    for tok in value_str.split_whitespace() {
+                        // Preserve explicit dev alias forms (starting with '@') unchanged
+                        if tok.starts_with('@') {
+                            out_tokens.push(tok.to_string());
+                            continue;
+                        }
+                        // If token is a grouped alias form like name(inner...) or a plain
+                        // alias name that we detected earlier, skip it (remove it).
+                        let mut skipped = false;
+                        if let Some(open_idx) = tok.find('(') {
+                            if tok.ends_with(')') {
+                                let name = &tok[..open_idx];
+                                if manual_aliases.contains_key(name) {
+                                    // drop this token
+                                    changed = true;
+                                    skipped = true;
+                                }
+                            }
+                        }
+                        if skipped {
+                            continue;
+                        }
+                        if manual_aliases.contains_key(tok) {
+                            // drop plain alias token
+                            changed = true;
+                            continue;
+                        }
+                        out_tokens.push(tok.to_string());
+                    }
+                    if changed {
+                        // If nothing remains, remove the class attribute entirely by
+                        // replacing the region with an empty string; otherwise write
+                        // back the reduced class attribute.
+                        let replacement = if out_tokens.is_empty() {
+                            String::new()
+                        } else {
+                            format!("class=\"{}\"", out_tokens.join(" "))
+                        };
+                        replacements.push((attr_start..(value_end + 1), replacement));
+                    }
+                }
+                pos2 = value_end + 1;
+                continue;
+            } else {
+                break;
+            }
+        }
+
+        if replacements.is_empty() {
+            return None;
+        }
+        replacements.sort_by(|a, b| b.0.start.cmp(&a.0.start));
+        let mut html_string = String::from_utf8(html_bytes.to_vec()).ok()?;
+        for (range, replacement) in replacements {
+            html_string.replace_range(range, &replacement);
+        }
+        return Some(AutoGroupRewrite {
+            html: html_string.into_bytes(),
+            groups: Vec::new(),
+        });
+    }
+
+    // Manual alias expansion: if user wrote `alias(token1 token2)` (without leading '@')
+    // treat it as a request to expand the alias back into the explicit utility tokens.
+    // Collect any manual alias definitions found in the occurrences. Handle both
+    // single-token forms like `nbft(none)` and multi-token forms where the
+    // parentheses span multiple whitespace-separated tokens: `nbft(none border)`.
+    let mut manual_aliases: AHashMap<String, Vec<String>> = AHashMap::default();
+    for occ in &occurrences {
+        let value_slice = &html_bytes[occ.value_range.clone()];
+        if let Ok(value_str) = std::str::from_utf8(value_slice) {
+            let tokens: Vec<&str> = occ
+                .token_ranges
+                .iter()
+                .map(|r| &value_str[r.clone()])
+                .collect();
+            let mut i = 0usize;
+            while i < tokens.len() {
+                let token = tokens[i];
+                // skip tokens that start with '@'
+                if token.starts_with('@') {
+                    i += 1;
+                    continue;
+                }
+                if let Some(open_idx) = token.find('(') {
+                    // We have an opening; find the matching token that contains ')'
+                    let name = &token[..open_idx];
+                    let mut inner_tokens: Vec<String> = Vec::new();
+                    // remainder after '(' in the first token
+                    let first_rem = &token[open_idx + 1..];
+                    if !first_rem.is_empty() {
+                        // this may include a trailing ')' — we'll trim later
+                        inner_tokens.push(first_rem.trim_end_matches(')').to_string());
+                    }
+                    let mut j = i + 1;
+                    let mut found_close = token.ends_with(')');
+                    while j < tokens.len() && !found_close {
+                        let tk = tokens[j];
+                        if tk.ends_with(')') {
+                            inner_tokens.push(tk.trim_end_matches(')').to_string());
+                            found_close = true;
+                            j += 1;
+                            break;
+                        } else {
+                            inner_tokens.push(tk.to_string());
+                        }
+                        j += 1;
+                    }
+                    if !found_close {
+                        // malformed, skip
+                        i += 1;
+                        continue;
+                    }
+                    // Clean empty tokens
+                    inner_tokens.retain(|s| !s.is_empty());
+                    if !name.is_empty() && !inner_tokens.is_empty() {
+                        manual_aliases.insert(name.to_string(), inner_tokens);
+                    }
+                    i = j;
+                    continue;
+                }
+                i += 1;
+            }
+        }
+    }
+
+    if !manual_aliases.is_empty() {
+        // Build replacements that expand manual aliases across all occurrences
+        let mut replacements: Vec<(Range<usize>, String)> = Vec::new();
+        for occ in &occurrences {
+            let value_slice = &html_bytes[occ.value_range.clone()];
+            if let Ok(value_str) = std::str::from_utf8(value_slice) {
+                // For manual aliases without '@' we remove grouped tokens from
+                // occurrence attributes. Preserve explicit dev aliases (starting
+                // with '@'). If the resulting class list is empty we remove the
+                // whole attribute.
+                let mut out_tokens: Vec<String> = Vec::new();
+                let mut changed = false;
+                for range in &occ.token_ranges {
+                    let token = &value_str[range.clone()];
+                    if token.starts_with('@') {
+                        out_tokens.push(token.to_string());
+                        continue;
+                    }
+                    let mut skip = false;
+                    if let Some(open_idx) = token.find('(') {
+                        if token.ends_with(')') {
+                            let name = &token[..open_idx];
+                            if manual_aliases.contains_key(name) {
+                                skip = true;
+                            }
+                        }
+                    }
+                    if manual_aliases.contains_key(token) {
+                        skip = true;
+                    }
+                    if skip {
+                        changed = true;
+                        continue;
+                    }
+                    out_tokens.push(token.to_string());
+                }
+                if changed {
+                    if out_tokens.is_empty() {
+                        replacements.push((occ.attr_range.clone(), String::new()));
+                    } else {
+                        let new_value = out_tokens.join(" ");
+                        replacements.push((occ.attr_range.clone(), format!("class=\"{}\"", new_value)));
+                    }
+                }
+                if let Some((range, replacement)) = occ.dx_group_cleanup.clone() {
+                    replacements.push((range, replacement));
+                }
+            }
+        }
+        // Also scan for single-token class attributes that match any alias name and
+        // expand them to the utility list. We must detect full-token equality.
+        let mut pos2 = 0usize;
+        let n = html_bytes.len();
+        let finder = Finder::new(b"class");
+        while let Some(idx) = finder.find(&html_bytes[pos2..]) {
+            let attr_start = pos2 + idx;
+            if attr_start > 0 {
+                let prev = html_bytes[attr_start - 1];
+                if (prev as char).is_ascii_alphanumeric() || prev == b'-' || prev == b'_' {
+                    pos2 = attr_start + 5;
+                    continue;
+                }
+            }
+            let mut cursor = attr_start + 5;
+            while cursor < n && matches!(html_bytes[cursor], b' ' | b'\n' | b'\r' | b'\t') {
+                cursor += 1;
+            }
+            if cursor >= n || html_bytes[cursor] != b'=' {
+                pos2 = attr_start + 5;
+                continue;
+            }
+            cursor += 1;
+            while cursor < n && matches!(html_bytes[cursor], b' ' | b'\n' | b'\r' | b'\t') {
+                cursor += 1;
+            }
+            if cursor >= n {
+                break;
+            }
+            let quote = html_bytes[cursor];
+            if quote != b'"' && quote != b'\'' {
+                pos2 = attr_start + 5;
+                continue;
+            }
+            cursor += 1;
+            let value_start = cursor;
+            if let Some(rel_end) = memchr(quote, &html_bytes[value_start..]) {
+                let value_end = value_start + rel_end;
+                // Extract value string
+                if let Ok(value_str) = std::str::from_utf8(&html_bytes[value_start..value_end]) {
+                    // Single-token attribute?
+                    if !value_str.contains(char::is_whitespace) {
+                        // If the single-token matches a manual alias or is a name(inner)
+                        // form, remove the class attribute (delete behavior).
+                        if manual_aliases.contains_key(value_str) {
+                            replacements.push((attr_start..(value_end + 2), String::new()));
+                        } else {
+                            if let Some(open_idx) = value_str.find('(') {
+                                if value_str.ends_with(')') {
+                                    let name = &value_str[..open_idx];
+                                    if manual_aliases.contains_key(name) {
+                                        replacements.push((attr_start..(value_end + 2), String::new()));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                pos2 = value_end + 1;
+                continue;
+            } else {
+                break;
+            }
+        }
+
+        if replacements.is_empty() {
+            return None;
+        }
+        replacements.sort_by(|a, b| b.0.start.cmp(&a.0.start));
+        let mut html_string = String::from_utf8(html_bytes.to_vec()).ok()?;
+        for (range, replacement) in replacements {
+            html_string.replace_range(range, &replacement);
+        }
+        return Some(AutoGroupRewrite {
+            html: html_string.into_bytes(),
+            groups: Vec::new(),
+        });
     }
 
     let mut grouped: AHashMap<u64, Vec<usize>> = AHashMap::default();

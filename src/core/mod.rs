@@ -76,6 +76,11 @@ pub fn rebuild_styles(
     let mut html_bytes = datasource::read_file(index_path)?;
     let mut dev_group_selectors: AHashMap<String, String> = AHashMap::default();
     if let Some(plan) = rewrite_duplicate_classes(&html_bytes) {
+        // Only create dev selectors for groups that were written with an explicit
+        // leading '@' (i.e. class="@alias(...)"). The rewrite function returns
+        // group metadata for auto-generated alias writes; however some rewrites
+        // (manual-expansion toggles) return groups empty. Respect that to allow
+        // toggling the presence of the legacy dev selector.
         if !plan.groups.is_empty() {
             for info in &plan.groups {
                 println!(
@@ -83,10 +88,17 @@ pub fn rebuild_styles(
                     info.alias,
                     info.classes.join(" ")
                 );
-                dev_group_selectors.insert(
-                    info.alias.clone(),
-                    format!("@{}({})", info.alias, info.classes.join(" ")),
-                );
+                // Only insert dev selector if the group in HTML was emitted with '@'
+                // (rewrite_duplicate_classes will record '@' in the replacement string
+                // for the first occurrence). Detect this by searching plan.html for
+                // the explicit @alias(...) substring.
+                let search = format!("@{}(", info.alias);
+                if String::from_utf8_lossy(&plan.html).contains(&search) {
+                    dev_group_selectors.insert(
+                        info.alias.clone(),
+                        format!("@{}({})", info.alias, info.classes.join(" ")),
+                    );
+                }
             }
         }
         if plan.html != html_bytes {

@@ -34,15 +34,9 @@ impl GroupRegistry {
     }
 
     pub fn set_dev_selectors(&mut self, mut selectors: AHashMap<String, String>) {
-        for (name, def) in &self.definitions {
-            if selectors.contains_key(name) || def.dev_tokens.is_empty() {
-                continue;
-            }
-            selectors.insert(
-                name.clone(),
-                format!("@{}({})", name, def.dev_tokens.join(" ")),
-            );
-        }
+        // Set dev selectors exactly as provided by the caller. This allows the caller
+        // (e.g. the auto-group rewrite) to control whether legacy `@alias(...)` dev
+        // selectors are present. Do not auto-insert defaults here to support toggling.
         self.dev_selectors = selectors;
         if !self.cached_css.is_empty() {
             self.cached_css.clear();
@@ -393,7 +387,12 @@ mod tests {
         let registry = GroupRegistry::analyze(&extracted.group_events, &mut classes, Some(&engine));
         assert!(classes.contains("card"));
         let mut registry = registry;
-        registry.set_dev_selectors(AHashMap::default());
+        let mut selectors = AHashMap::default();
+        selectors.insert(
+            "card".to_string(),
+            "@card(bg-red-500 h-50)".to_string(),
+        );
+        registry.set_dev_selectors(selectors);
         let css = registry.generate_css_for("card", &engine).expect("css");
         assert!(css.contains(".card"));
         assert!(css.contains(".card,.\\@card\\(bg-red-500\\ h-50\\)"));
