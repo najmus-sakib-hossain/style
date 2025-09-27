@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import LiquidGlass, { presets } from "@/components/liquid-glass";
+import LiquidGlass, { presets, colorTints } from "@/components/liquid-glass";
 
 export default function Home() {
   const [selectedMode, setSelectedMode] =
     useState<keyof typeof presets>("dock");
   const [isDraggable, setIsDraggable] = useState(true);
+  const [selectedColor, setSelectedColor] =
+    useState<keyof typeof colorTints>("none");
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-8">
@@ -55,6 +57,23 @@ export default function Home() {
                 </select>
               </div>
 
+              <div className="flex gap-2">
+                <label className="text-white text-sm">Color:</label>
+                <select
+                  value={selectedColor}
+                  onChange={(e) =>
+                    setSelectedColor(e.target.value as keyof typeof colorTints)
+                  }
+                  className="bg-white/10 text-white rounded px-3 py-1 text-sm border border-white/20"
+                >
+                  {Object.keys(colorTints).map((color) => (
+                    <option key={color} value={color} className="bg-gray-800">
+                      {color.charAt(0).toUpperCase() + color.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -76,6 +95,7 @@ export default function Home() {
           <LiquidGlass
             mode={selectedMode}
             draggable={isDraggable}
+            colorTint={selectedColor}
             onClick={() => console.log("Liquid glass clicked!")}
             className="shadow-2xl"
           >
@@ -108,10 +128,10 @@ export default function Home() {
         </div>
 
         {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
           {/* Feature 1 */}
           <div className="text-center">
-            <LiquidGlass mode="bubble" className="mb-4">
+            <LiquidGlass mode="bubble" colorTint="blue" className="mb-4">
               <div className="text-2xl">✨</div>
             </LiquidGlass>
             <h3 className="text-xl font-semibold text-white mb-2">
@@ -124,28 +144,71 @@ export default function Home() {
 
           {/* Feature 2 */}
           <div className="text-center">
-            <LiquidGlass mode="pill" elasticity={0.3} className="mb-4">
-              <span className="text-white font-medium">Elastic</span>
+            <LiquidGlass mode="pill" colorTint="purple" className="mb-4">
+              <span className="text-white font-medium">Hover Me</span>
             </LiquidGlass>
             <h3 className="text-xl font-semibold text-white mb-2">
-              Elastic Motion
+              Border Animation
             </h3>
             <p className="text-gray-300 text-sm">
-              Smooth elastic transformations that respond to mouse movement
+              Borders animate based on mouse position or mobile tilt
             </p>
           </div>
 
           {/* Feature 3 */}
           <div className="text-center">
-            <LiquidGlass mode="standard" draggable={true} className="mb-4">
+            <LiquidGlass mode="standard" colorTint="green" className="mb-4">
+              <span className="text-white font-medium">Click & Hold</span>
+            </LiquidGlass>
+            <h3 className="text-xl font-semibold text-white mb-2">
+              Click Expansion
+            </h3>
+            <p className="text-gray-300 text-sm">
+              White overlay expands from click point when held down
+            </p>
+          </div>
+
+          {/* Feature 4 */}
+          <div className="text-center">
+            <LiquidGlass
+              mode="free"
+              draggable={true}
+              colorTint="pink"
+              className="mb-4"
+            >
               <span className="text-white font-medium">Drag Me</span>
             </LiquidGlass>
             <h3 className="text-xl font-semibold text-white mb-2">
               Interactive
             </h3>
             <p className="text-gray-300 text-sm">
-              Fully interactive with drag support and hover effects
+              Fully interactive with drag support and elastic motion
             </p>
+          </div>
+        </div>
+
+        {/* Color Showcase */}
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-white mb-8">
+            Color Variations
+          </h2>
+          <div className="flex flex-wrap justify-center gap-6">
+            {Object.keys(colorTints).map((color, index) => (
+              <div key={color} className="text-center">
+                <LiquidGlass
+                  mode="pill"
+                  colorTint={color as keyof typeof colorTints}
+                  onClick={() =>
+                    setSelectedColor(color as keyof typeof colorTints)
+                  }
+                  className="mb-3 cursor-pointer hover:scale-105 transition-transform"
+                >
+                  <div className="text-white font-medium text-sm">
+                    {color.charAt(0).toUpperCase() + color.slice(1)}
+                  </div>
+                </LiquidGlass>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -155,25 +218,30 @@ export default function Home() {
             Available Presets
           </h2>
           <div className="flex flex-wrap justify-center gap-8">
-            {Object.keys(presets).map((preset) => (
-              <div key={preset} className="text-center">
-                <LiquidGlass
-                  mode={preset as keyof typeof presets}
-                  onClick={() =>
-                    setSelectedMode(preset as keyof typeof presets)
-                  }
-                  className="mb-3 cursor-pointer hover:scale-105 transition-transform"
-                >
-                  <div className="text-white font-medium text-sm">
-                    {preset.charAt(0).toUpperCase() + preset.slice(1)}
-                  </div>
-                </LiquidGlass>
-                <p className="text-gray-400 text-xs">
-                  {presets[preset as keyof typeof presets].width} ×{" "}
-                  {presets[preset as keyof typeof presets].height}
-                </p>
-              </div>
-            ))}
+            {Object.keys(presets).map((preset, index) => {
+              const colors = Object.keys(colorTints);
+              const colorIndex = index % colors.length;
+              return (
+                <div key={preset} className="text-center">
+                  <LiquidGlass
+                    mode={preset as keyof typeof presets}
+                    colorTint={colors[colorIndex] as keyof typeof colorTints}
+                    onClick={() =>
+                      setSelectedMode(preset as keyof typeof presets)
+                    }
+                    className="mb-3 cursor-pointer hover:scale-105 transition-transform"
+                  >
+                    <div className="text-white font-medium text-sm">
+                      {preset.charAt(0).toUpperCase() + preset.slice(1)}
+                    </div>
+                  </LiquidGlass>
+                  <p className="text-gray-400 text-xs">
+                    {presets[preset as keyof typeof presets].width} ×{" "}
+                    {presets[preset as keyof typeof presets].height}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -184,17 +252,22 @@ export default function Home() {
               How to Use
             </h3>
             <div className="text-gray-300 text-sm space-y-2">
-              <p>• Hover over components to see elastic effects</p>
+              <p>• Hover to see animated borders and elastic effects</p>
+              <p>• Click and hold to see white overlay expansion</p>
+              <p>• On mobile: Tilt your device to animate borders</p>
               <p>• Enable draggable mode to move components around</p>
-              <p>• Click on preset examples to switch modes</p>
-              <p>• Watch the liquid glass displacement in real-time</p>
+              <p>• Try different color tints for subtle glass effects</p>
+              <p>• Watch the SVG displacement filters in real-time</p>
             </div>
           </div>
         </div>
 
         {/* Footer */}
         <div className="text-center mt-16 text-gray-400 text-sm">
-          <p>Built with React, TypeScript, and SVG displacement mapping</p>
+          <p>
+            Built with React, TypeScript, SVG displacement mapping, and device
+            orientation API
+          </p>
         </div>
       </div>
     </div>

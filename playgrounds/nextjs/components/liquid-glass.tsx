@@ -1,104 +1,112 @@
-'use client'
+"use client";
 
-import React, { useRef, useState, useEffect, useCallback, useId, type CSSProperties } from 'react'
-import { displacementMap, polarDisplacementMap, prominentDisplacementMap } from './liquid-glass-utils'
+import React, { useRef, useState, useEffect, useCallback, useId } from "react";
 
 // Types
 interface LiquidGlassProps {
-  children: React.ReactNode
-  className?: string
-  style?: React.CSSProperties
-  width?: number
-  height?: number
-  radius?: number
-  mode?: 'dock' | 'pill' | 'bubble' | 'free' | 'standard'
-  displacementScale?: number
-  blurAmount?: number
-  saturation?: number
-  aberrationIntensity?: number
-  elasticity?: number
-  frost?: number
-  border?: number
-  alpha?: number
-  lightness?: number
-  blend?: string
-  draggable?: boolean
-  onClick?: () => void
-  onMouseEnter?: () => void
-  onMouseLeave?: () => void
+  children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+  width?: number;
+  height?: number;
+  radius?: number;
+  mode?: "dock" | "pill" | "bubble" | "free" | "standard";
+  displacementScale?: number;
+  frost?: number;
+  border?: number;
+  alpha?: number;
+  lightness?: number;
+  blur?: number;
+  saturation?: number;
+  draggable?: boolean;
+  colorTint?: "none" | "blue" | "purple" | "green" | "pink" | "orange";
+  onClick?: () => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 }
 
-// Preset configurations
+// Preset configurations matching public script.js
 const presets = {
   dock: {
     width: 336,
     height: 96,
     radius: 16,
-    displacementScale: -180,
+    scale: -180,
     frost: 0.05,
     border: 0.07,
     alpha: 0.93,
     lightness: 50,
+    blur: 11,
+    saturation: 1.5,
+    icons: true,
   },
   pill: {
     width: 200,
     height: 80,
     radius: 40,
-    displacementScale: -180,
+    scale: -180,
     frost: 0,
     border: 0.07,
     alpha: 0.93,
     lightness: 50,
+    blur: 11,
+    saturation: 1,
+    icons: false,
   },
   bubble: {
     width: 140,
     height: 140,
     radius: 70,
-    displacementScale: -180,
+    scale: -180,
     frost: 0,
     border: 0.07,
     alpha: 0.93,
     lightness: 50,
+    blur: 11,
+    saturation: 1,
+    icons: false,
   },
   free: {
     width: 140,
     height: 280,
     radius: 80,
-    displacementScale: -300,
+    scale: -300,
     frost: 0,
     border: 0.15,
     alpha: 0.74,
     lightness: 60,
+    blur: 10,
+    saturation: 1,
+    icons: false,
   },
   standard: {
     width: 270,
     height: 69,
     radius: 16,
-    displacementScale: 70,
+    scale: -180,
     frost: 0.05,
     border: 0.07,
     alpha: 0.93,
     lightness: 50,
+    blur: 11,
+    saturation: 1.2,
+    icons: false,
   },
-}
+};
 
-// Get displacement map based on mode
-const getDisplacementMap = (mode: string) => {
-  switch (mode) {
-    case 'standard':
-    case 'dock':
-    case 'pill':
-    case 'bubble':
-    case 'free':
-      return displacementMap
-    default:
-      return displacementMap
-  }
-}
+// Color tint configurations
+const colorTints = {
+  none: { hue: 0, saturation: 0 },
+  blue: { hue: 220, saturation: 0.3 },
+  purple: { hue: 280, saturation: 0.25 },
+  green: { hue: 140, saturation: 0.2 },
+  pink: { hue: 320, saturation: 0.25 },
+  orange: { hue: 30, saturation: 0.2 },
+};
 
-// Generate dynamic displacement image
-const generateDisplacementImage = (config: any) => {
-  const border = Math.min(config.width, config.height) * (config.border * 0.5)
+// Generate displacement image (matching public script.js)
+const buildDisplacementImage = (config: any) => {
+  const border = Math.min(config.width, config.height) * (config.border * 0.5);
 
   const svgString = `
     <svg viewBox="0 0 ${config.width} ${config.height}" xmlns="http://www.w3.org/2000/svg">
@@ -114,251 +122,335 @@ const generateDisplacementImage = (config: any) => {
       </defs>
       <rect x="0" y="0" width="${config.width}" height="${config.height}" fill="black"></rect>
       <rect x="0" y="0" width="${config.width}" height="${config.height}" rx="${config.radius}" fill="url(#red)" />
-      <rect x="0" y="0" width="${config.width}" height="${config.height}" rx="${config.radius}" fill="url(#blue)" style="mix-blend-mode: ${config.blend || 'difference'}" />
-      <rect x="${border}" y="${border}" width="${config.width - border * 2}" height="${config.height - border * 2}" rx="${config.radius}" fill="hsl(0 0% ${config.lightness}% / ${config.alpha})" style="filter:blur(${config.blur || 11}px)" />
+      <rect x="0" y="0" width="${config.width}" height="${config.height}" rx="${config.radius}" fill="url(#blue)" style="mix-blend-mode: difference" />
+      <rect x="${border}" y="${border}" width="${config.width - border * 2}" height="${config.height - border * 2}" rx="${config.radius}" fill="hsl(0 0% ${config.lightness}% / ${config.alpha})" style="filter:blur(${config.blur}px)" />
     </svg>
-  `
+  `;
 
-  const encoded = encodeURIComponent(svgString)
-  return `data:image/svg+xml,${encoded}`
-}
+  return `data:image/svg+xml,${encodeURIComponent(svgString)}`;
+};
 
-// SVG Filter Component
+// Device tilt detection
+const useDeviceOrientation = () => {
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleOrientation = (event: DeviceOrientationEvent) => {
+      const { beta, gamma } = event;
+      setTilt({
+        x: (gamma || 0) / 90, // Normalize to -1 to 1
+        y: (beta || 0) / 90,
+      });
+    };
+
+    if (
+      window.DeviceOrientationEvent &&
+      typeof (DeviceOrientationEvent as any).requestPermission === "function"
+    ) {
+      (DeviceOrientationEvent as any)
+        .requestPermission()
+        .then((response: string) => {
+          if (response === "granted") {
+            window.addEventListener("deviceorientation", handleOrientation);
+          }
+        });
+    } else if (window.DeviceOrientationEvent) {
+      window.addEventListener("deviceorientation", handleOrientation);
+    }
+
+    return () => {
+      window.removeEventListener("deviceorientation", handleOrientation);
+    };
+  }, []);
+
+  return tilt;
+};
+
+// SVG Filter Component (matching public HTML structure)
 const LiquidGlassFilter: React.FC<{
-  id: string
-  config: any
-  displacementMapUrl: string
+  id: string;
+  config: any;
+  displacementMapUrl: string;
 }> = ({ id, config, displacementMapUrl }) => (
-  <svg style={{ position: 'absolute', width: 0, height: 0 }} aria-hidden="true">
+  <svg style={{ position: "absolute", width: 0, height: 0 }} aria-hidden="true">
     <defs>
-      <filter id={id} x="-35%" y="-35%" width="170%" height="170%" colorInterpolationFilters="sRGB">
+      <filter
+        id={id}
+        x="-35%"
+        y="-35%"
+        width="170%"
+        height="170%"
+        colorInterpolationFilters="sRGB"
+      >
         <feImage
           x="0"
           y="0"
           width="100%"
           height="100%"
-          result="DISPLACEMENT_MAP"
+          result="map"
           href={displacementMapUrl}
           preserveAspectRatio="xMidYMid slice"
         />
 
-        {/* Red channel displacement */}
+        {/* RED channel with strongest displacement */}
         <feDisplacementMap
           in="SourceGraphic"
-          in2="DISPLACEMENT_MAP"
-          scale={config.displacementScale + (config.r || 0)}
+          in2="map"
+          id="redchannel"
           xChannelSelector="R"
           yChannelSelector="G"
-          result="RED_DISPLACED"
+          result="dispRed"
+          scale={config.scale + 0}
         />
         <feColorMatrix
-          in="RED_DISPLACED"
+          in="dispRed"
           type="matrix"
           values="1 0 0 0 0
-                 0 0 0 0 0
-                 0 0 0 0 0
-                 0 0 0 1 0"
-          result="RED_CHANNEL"
+                  0 0 0 0 0
+                  0 0 0 0 0
+                  0 0 0 1 0"
+          result="red"
         />
 
-        {/* Green channel displacement */}
+        {/* GREEN channel (reference / least displaced) */}
         <feDisplacementMap
           in="SourceGraphic"
-          in2="DISPLACEMENT_MAP"
-          scale={config.displacementScale + (config.g || 10)}
+          in2="map"
+          id="greenchannel"
           xChannelSelector="R"
           yChannelSelector="G"
-          result="GREEN_DISPLACED"
+          result="dispGreen"
+          scale={config.scale + 10}
         />
         <feColorMatrix
-          in="GREEN_DISPLACED"
+          in="dispGreen"
           type="matrix"
           values="0 0 0 0 0
-                 0 1 0 0 0
-                 0 0 0 0 0
-                 0 0 0 1 0"
-          result="GREEN_CHANNEL"
+                  0 1 0 0 0
+                  0 0 0 0 0
+                  0 0 0 1 0"
+          result="green"
         />
 
-        {/* Blue channel displacement */}
+        {/* BLUE channel with medium displacement */}
         <feDisplacementMap
           in="SourceGraphic"
-          in2="DISPLACEMENT_MAP"
-          scale={config.displacementScale + (config.b || 20)}
+          in2="map"
+          id="bluechannel"
           xChannelSelector="R"
           yChannelSelector="G"
-          result="BLUE_DISPLACED"
+          result="dispBlue"
+          scale={config.scale + 20}
         />
         <feColorMatrix
-          in="BLUE_DISPLACED"
+          in="dispBlue"
           type="matrix"
           values="0 0 0 0 0
-                 0 0 0 0 0
-                 0 0 1 0 0
-                 0 0 0 1 0"
-          result="BLUE_CHANNEL"
+                  0 0 0 0 0
+                  0 0 1 0 0
+                  0 0 0 1 0"
+          result="blue"
         />
 
-        {/* Combine channels */}
-        <feBlend in="RED_CHANNEL" in2="GREEN_CHANNEL" mode="screen" result="RG_COMBINED" />
-        <feBlend in="RG_COMBINED" in2="BLUE_CHANNEL" mode="screen" result="RGB_COMBINED" />
+        {/* Blend channels back together */}
+        <feBlend in="red" in2="green" mode="screen" result="rg" />
+        <feBlend in="rg" in2="blue" mode="screen" result="output" />
 
         {/* Final blur */}
-        <feGaussianBlur in="RGB_COMBINED" stdDeviation={config.displace || 0} />
+        <feGaussianBlur in="output" stdDeviation="0.7" />
       </filter>
     </defs>
   </svg>
-)
+);
 
 // Main LiquidGlass Component
 export default function LiquidGlass({
   children,
-  className = '',
+  className = "",
   style = {},
   width,
   height,
   radius,
-  mode = 'standard',
+  mode = "standard",
   displacementScale,
-  blurAmount = 4,
-  saturation = 150,
-  aberrationIntensity = 2,
-  elasticity = 0.15,
   frost,
   border,
   alpha,
   lightness,
-  blend,
+  blur,
+  saturation,
   draggable = false,
+  colorTint = "none",
   onClick,
   onMouseEnter,
   onMouseLeave,
 }: LiquidGlassProps) {
-  const filterId = useId()
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [isHovered, setIsHovered] = useState(false)
-  const [isActive, setIsActive] = useState(false)
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
-  const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 })
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
-  const [isDragging, setIsDragging] = useState(false)
+  const filterId = useId();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isActive, setIsActive] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [clickPosition, setClickPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const [clickDuration, setClickDuration] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isMobile, setIsMobile] = useState(false);
+
+  const deviceTilt = useDeviceOrientation();
+
+  // Detect mobile device
+  useEffect(() => {
+    setIsMobile(
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent,
+      ),
+    );
+  }, []);
 
   // Get preset config
-  const preset = presets[mode as keyof typeof presets] || presets.standard
+  const preset = presets[mode] || presets.standard;
+  const tint = colorTints[colorTint];
 
   // Merge config with props and preset
   const config = {
     width: width || preset.width,
     height: height || preset.height,
     radius: radius || preset.radius,
-    displacementScale: displacementScale || preset.displacementScale,
+    scale: displacementScale || preset.scale,
     frost: frost !== undefined ? frost : preset.frost,
     border: border !== undefined ? border : preset.border,
     alpha: alpha !== undefined ? alpha : preset.alpha,
     lightness: lightness !== undefined ? lightness : preset.lightness,
-    blend: blend || 'difference',
-    r: 0,
-    g: 10,
-    b: 20,
-    displace: aberrationIntensity * 0.5,
-    blur: 11,
-  }
+    blur: blur !== undefined ? blur : preset.blur,
+    saturation: saturation || preset.saturation,
+    icons: preset.icons,
+  };
 
   // Generate displacement map
-  const displacementMapUrl = generateDisplacementImage(config)
+  const displacementMapUrl = buildDisplacementImage(config);
 
-  // Mouse tracking
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!containerRef.current) return
+  // Mouse tracking with border animation
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!containerRef.current || isDragging) return;
 
-    const rect = containerRef.current.getBoundingClientRect()
-    const centerX = rect.left + rect.width / 2
-    const centerY = rect.top + rect.height / 2
+      const rect = containerRef.current.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
 
-    setMousePos({ x: e.clientX, y: e.clientY })
-    setMouseOffset({
-      x: ((e.clientX - centerX) / rect.width) * 100,
-      y: ((e.clientY - centerY) / rect.height) * 100,
-    })
-  }, [])
+      setMousePos({
+        x: e.clientX - centerX,
+        y: e.clientY - centerY,
+      });
+    },
+    [isDragging],
+  );
+
+  // Click handling for white overlay expansion
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (!containerRef.current) return;
+
+      const rect = containerRef.current.getBoundingClientRect();
+      setClickPosition({
+        x: ((e.clientX - rect.left) / rect.width) * 100,
+        y: ((e.clientY - rect.top) / rect.height) * 100,
+      });
+      setIsActive(true);
+      setClickDuration(0);
+
+      if (draggable) {
+        setIsDragging(true);
+        const startX = e.clientX - position.x;
+        const startY = e.clientY - position.y;
+
+        const handleGlobalMouseMove = (e: MouseEvent) => {
+          setPosition({
+            x: e.clientX - startX,
+            y: e.clientY - startY,
+          });
+        };
+
+        const handleGlobalMouseUp = () => {
+          setIsDragging(false);
+          document.removeEventListener("mousemove", handleGlobalMouseMove);
+          document.removeEventListener("mouseup", handleGlobalMouseUp);
+        };
+
+        document.addEventListener("mousemove", handleGlobalMouseMove);
+        document.addEventListener("mouseup", handleGlobalMouseUp);
+      }
+
+      // Increment click duration for white overlay expansion
+      const interval = setInterval(() => {
+        setClickDuration((prev) => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            return 100;
+          }
+          return prev + 2;
+        });
+      }, 20);
+
+      const handleMouseUpForWhite = () => {
+        clearInterval(interval);
+        setClickDuration(0);
+        setIsActive(false);
+        document.removeEventListener("mouseup", handleMouseUpForWhite);
+      };
+
+      document.addEventListener("mouseup", handleMouseUpForWhite);
+    },
+    [draggable, position],
+  );
+
+  // Calculate border rotation based on mouse/tilt
+  const calculateBorderRotation = () => {
+    if (isMobile) {
+      return Math.atan2(deviceTilt.y, deviceTilt.x) * (180 / Math.PI);
+    }
+    return Math.atan2(mousePos.y, mousePos.x) * (180 / Math.PI);
+  };
 
   // Calculate elastic transformation
-  const calculateTransform = useCallback(() => {
-    if (!containerRef.current) return 'translate(-50%, -50%)'
+  const calculateTransform = () => {
+    const elasticX = isMobile ? deviceTilt.x * 5 : mousePos.x * 0.02;
+    const elasticY = isMobile ? deviceTilt.y * 5 : mousePos.y * 0.02;
+    const scale = isActive ? 0.98 : 1;
 
-    const rect = containerRef.current.getBoundingClientRect()
-    const centerX = rect.left + rect.width / 2
-    const centerY = rect.top + rect.height / 2
+    return `translate(${position.x + elasticX}px, ${position.y + elasticY}px) scale(${scale})`;
+  };
 
-    const deltaX = mousePos.x - centerX
-    const deltaY = mousePos.y - centerY
-    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
-
-    // Elastic effect within 200px radius
-    const maxDistance = 200
-    const factor = Math.max(0, 1 - distance / maxDistance) * elasticity
-
-    const translateX = deltaX * factor * 0.1 + dragOffset.x
-    const translateY = deltaY * factor * 0.1 + dragOffset.y
-
-    // Scale effect
-    const scaleX = 1 + Math.abs(deltaX / rect.width) * factor * 0.3
-    const scaleY = 1 + Math.abs(deltaY / rect.height) * factor * 0.3
-    const scale = isActive ? 'scale(0.96)' : `scaleX(${Math.max(0.8, scaleX)}) scaleY(${Math.max(0.8, scaleY)})`
-
-    return `translate(calc(-50% + ${translateX}px), calc(-50% + ${translateY}px)) ${scale}`
-  }, [mousePos, elasticity, dragOffset, isActive])
-
-  // Drag functionality
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!draggable) return
-    setIsDragging(true)
-    setIsActive(true)
-
-    const rect = containerRef.current?.getBoundingClientRect()
-    if (rect) {
-      const startX = e.clientX - rect.left - rect.width / 2
-      const startY = e.clientY - rect.top - rect.height / 2
-
-      const handleGlobalMouseMove = (e: MouseEvent) => {
-        setDragOffset({
-          x: e.clientX - rect.left - rect.width / 2 - startX,
-          y: e.clientY - rect.top - rect.height / 2 - startY,
-        })
-      }
-
-      const handleGlobalMouseUp = () => {
-        setIsDragging(false)
-        setIsActive(false)
-        document.removeEventListener('mousemove', handleGlobalMouseMove)
-        document.removeEventListener('mouseup', handleGlobalMouseUp)
-      }
-
-      document.addEventListener('mousemove', handleGlobalMouseMove)
-      document.addEventListener('mouseup', handleGlobalMouseUp)
-    }
-  }, [draggable])
-
-  // Combined styles
-  const containerStyles: CSSProperties = {
-    position: 'relative',
-    top: '50%',
-    left: '50%',
+  // Container styles
+  const containerStyles: React.CSSProperties = {
+    position: "relative",
     width: config.width,
     height: config.height,
     borderRadius: config.radius,
     transform: calculateTransform(),
-    transition: isDragging ? 'none' : 'all 0.2s ease-out',
-    cursor: draggable ? 'grab' : onClick ? 'pointer' : 'default',
+    transition: isDragging ? "none" : "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+    cursor: draggable
+      ? isDragging
+        ? "grabbing"
+        : "grab"
+      : onClick
+        ? "pointer"
+        : "default",
     ...style,
-  }
+  };
 
-  const glassStyles: CSSProperties = {
-    width: '100%',
-    height: '100%',
-    borderRadius: 'inherit',
-    background: `hsl(0 0% 100% / ${config.frost})`,
-    backdropFilter: `url(#${filterId}) blur(${blurAmount}px) saturate(${saturation}%)`,
+  // Glass effect styles
+  const glassStyles: React.CSSProperties = {
+    width: "100%",
+    height: "100%",
+    borderRadius: "inherit",
+    position: "relative",
+    overflow: "hidden",
+    background: `hsla(${tint.hue}, ${tint.saturation * 100}%, 100%, ${config.frost})`,
+    backdropFilter: `url(#${filterId}) brightness(1.1) saturate(${config.saturation})`,
     boxShadow: `
       0 0 2px 1px rgba(255, 255, 255, 0.15) inset,
       0 0 10px 4px rgba(255, 255, 255, 0.1) inset,
@@ -366,43 +458,63 @@ export default function LiquidGlass({
       0px 8px 24px rgba(17, 17, 26, 0.05),
       0px 16px 56px rgba(17, 17, 26, 0.05)
     `,
-    overflow: 'hidden',
-  }
+  };
 
-  const contentStyles: CSSProperties = {
-    position: 'relative',
-    zIndex: 1,
-    width: '100%',
-    height: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '1rem',
-    color: 'white',
-    textShadow: '0px 2px 12px rgba(0, 0, 0, 0.4)',
-    pointerEvents: onClick ? 'auto' : 'none',
-  }
-
-  // Border gradient styles
-  const borderStyles: CSSProperties = {
-    position: 'absolute',
-    inset: 0,
-    borderRadius: 'inherit',
-    padding: '1.5px',
-    background: `linear-gradient(
-      ${135 + mouseOffset.x * 1.2}deg,
-      rgba(255, 255, 255, 0.0) 0%,
-      rgba(255, 255, 255, ${0.12 + Math.abs(mouseOffset.x) * 0.008}) ${Math.max(10, 33 + mouseOffset.y * 0.3)}%,
-      rgba(255, 255, 255, ${0.4 + Math.abs(mouseOffset.x) * 0.012}) ${Math.min(90, 66 + mouseOffset.y * 0.4)}%,
-      rgba(255, 255, 255, 0.0) 100%
+  // Animated border styles
+  const borderRotation = calculateBorderRotation();
+  const borderIntensity = isHovered ? 0.8 : 0.4;
+  const borderStyles: React.CSSProperties = {
+    position: "absolute",
+    inset: "-2px",
+    borderRadius: "inherit",
+    padding: "2px",
+    background: `conic-gradient(
+      from ${borderRotation}deg,
+      hsla(${tint.hue}, ${tint.saturation * 100}%, 100%, ${borderIntensity}),
+      hsla(${tint.hue + 60}, ${tint.saturation * 100}%, 90%, ${borderIntensity * 0.7}),
+      hsla(${tint.hue + 120}, ${tint.saturation * 100}%, 95%, ${borderIntensity}),
+      hsla(${tint.hue + 180}, ${tint.saturation * 100}%, 90%, ${borderIntensity * 0.5}),
+      hsla(${tint.hue}, ${tint.saturation * 100}%, 100%, ${borderIntensity})
     )`,
-    WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
-    WebkitMaskComposite: 'xor',
-    maskComposite: 'exclude',
-    mixBlendMode: 'screen',
-    opacity: 0.6,
-    pointerEvents: 'none',
-  }
+    WebkitMask:
+      "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+    WebkitMaskComposite: "xor",
+    maskComposite: "exclude",
+    opacity: isHovered ? 1 : 0.6,
+    transition: "all 0.3s ease",
+    pointerEvents: "none",
+  };
+
+  // White overlay for click expansion
+  const whiteOverlayStyles: React.CSSProperties = {
+    position: "absolute",
+    borderRadius: "inherit",
+    background:
+      "radial-gradient(circle, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 70%)",
+    width: `${clickDuration * 3}%`,
+    height: `${clickDuration * 3}%`,
+    left: clickPosition ? `${clickPosition.x}%` : "50%",
+    top: clickPosition ? `${clickPosition.y}%` : "50%",
+    transform: "translate(-50%, -50%)",
+    opacity: clickDuration > 0 ? 1 : 0,
+    transition: "all 0.1s ease-out",
+    pointerEvents: "none",
+    mixBlendMode: "overlay",
+  };
+
+  // Content styles
+  const contentStyles: React.CSSProperties = {
+    position: "relative",
+    zIndex: 1,
+    width: "100%",
+    height: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "1rem",
+    color: "white",
+    textShadow: "0px 2px 12px rgba(0, 0, 0, 0.4)",
+  };
 
   return (
     <>
@@ -418,61 +530,44 @@ export default function LiquidGlass({
         style={containerStyles}
         onMouseMove={handleMouseMove}
         onMouseEnter={() => {
-          setIsHovered(true)
-          onMouseEnter?.()
+          setIsHovered(true);
+          onMouseEnter?.();
         }}
         onMouseLeave={() => {
-          setIsHovered(false)
-          onMouseLeave?.()
+          setIsHovered(false);
+          onMouseLeave?.();
         }}
         onMouseDown={handleMouseDown}
         onClick={onClick}
       >
-        {/* Border layer */}
+        {/* Animated border */}
         <div style={borderStyles} />
 
-        {/* Glass layer */}
+        {/* Glass effect */}
         <div style={glassStyles}>
-          {/* Content */}
-          <div style={contentStyles}>
-            {children}
-          </div>
-        </div>
+          {/* White click expansion overlay */}
+          {clickPosition && <div style={whiteOverlayStyles} />}
 
-        {/* Hover effects */}
-        {onClick && (
-          <>
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                borderRadius: 'inherit',
-                opacity: isHovered || isActive ? 0.3 : 0,
-                background: 'radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%)',
-                mixBlendMode: 'overlay',
-                transition: 'opacity 0.2s ease-out',
-                pointerEvents: 'none',
-              }}
-            />
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                borderRadius: 'inherit',
-                opacity: isActive ? 0.5 : 0,
-                background: 'radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0) 80%)',
-                mixBlendMode: 'overlay',
-                transition: 'opacity 0.2s ease-out',
-                pointerEvents: 'none',
-              }}
-            />
-          </>
-        )}
+          {/* Hover enhancement */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: "inherit",
+              background: `hsla(${tint.hue}, ${tint.saturation * 50}%, 100%, ${isHovered ? 0.1 : 0})`,
+              transition: "all 0.3s ease",
+              pointerEvents: "none",
+            }}
+          />
+
+          {/* Content */}
+          <div style={contentStyles}>{children}</div>
+        </div>
       </div>
     </>
-  )
+  );
 }
 
 // Export preset configurations for external use
-export { presets }
-export type { LiquidGlassProps }
+export { presets, colorTints };
+export type { LiquidGlassProps };

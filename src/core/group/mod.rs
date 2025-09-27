@@ -131,17 +131,67 @@ impl GroupRegistry {
             return None;
         }
 
-        let mut accumulated = String::new();
         let alias_selector = make_selector(class);
+        let mut simple_bodies: Vec<String> = Vec::new();
+        let mut extra_css = String::new();
         for util in flattened {
             if let Some(mut css) = engine.css_for_class(&util) {
                 rewrite_selector(&mut css, &util, &alias_selector);
-                accumulated.push_str(&css);
-                if !accumulated.ends_with('\n') {
-                    accumulated.push('\n');
+                let trimmed_css = css.trim();
+                let mut handled_simple = false;
+                if let Some(open_idx) = trimmed_css.find('{') {
+                    if trimmed_css.ends_with('}') {
+                        let selector = trimmed_css[..open_idx].trim();
+                        let body = trimmed_css[open_idx + 1..trimmed_css.len() - 1].trim();
+                        if selector == alias_selector
+                            && !selector.contains(',')
+                            && !body.contains('{')
+                            && !body.contains('}')
+                        {
+                            simple_bodies.push(body.to_string());
+                            handled_simple = true;
+                        }
+                    }
+                }
+                if !handled_simple {
+                    if !extra_css.is_empty() && !extra_css.ends_with('\n') {
+                        extra_css.push('\n');
+                    }
+                    extra_css.push_str(trimmed_css);
+                    if !trimmed_css.ends_with('\n') {
+                        extra_css.push('\n');
+                    }
                 }
             }
         }
+
+        let mut accumulated = String::new();
+        if !simple_bodies.is_empty() {
+            accumulated.push_str(&alias_selector);
+            accumulated.push_str(" {\n");
+            for body in simple_bodies {
+                for line in body.lines() {
+                    let trimmed_line = line.trim();
+                    if trimmed_line.is_empty() {
+                        continue;
+                    }
+                    accumulated.push_str("  ");
+                    accumulated.push_str(trimmed_line);
+                    if !trimmed_line.ends_with(';') && !trimmed_line.ends_with('}') {
+                        accumulated.push(';');
+                    }
+                    accumulated.push('\n');
+                }
+            }
+            accumulated.push_str("}\n");
+        }
+        if !extra_css.is_empty() {
+            if !accumulated.is_empty() && !accumulated.ends_with('\n') {
+                accumulated.push('\n');
+            }
+            accumulated.push_str(&extra_css);
+        }
+
         if accumulated.is_empty() {
             return None;
         }
