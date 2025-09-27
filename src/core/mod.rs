@@ -7,7 +7,7 @@ mod animation;
 mod engine;
 mod formatter;
 pub mod group;
-use ahash::{AHashSet, AHasher};
+use ahash::{AHashMap, AHashSet, AHasher};
 use colored::Colorize;
 use std::borrow::Cow;
 use std::hash::Hasher;
@@ -74,18 +74,23 @@ pub fn rebuild_styles(
     is_initial_run: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut html_bytes = datasource::read_file(index_path)?;
+    let mut dev_group_selectors: AHashMap<String, String> = AHashMap::default();
     if let Some(plan) = rewrite_duplicate_classes(&html_bytes) {
+        if !plan.groups.is_empty() {
+            for info in &plan.groups {
+                println!(
+                    "[dx-style] auto group {} -> {}",
+                    info.alias,
+                    info.classes.join(" ")
+                );
+                dev_group_selectors.insert(
+                    info.alias.clone(),
+                    format!("@{}({})", info.alias, info.classes.join(" ")),
+                );
+            }
+        }
         if plan.html != html_bytes {
             std::fs::write(index_path, &plan.html)?;
-            if !plan.groups.is_empty() {
-                for info in &plan.groups {
-                    println!(
-                        "[dx-style] auto group {} -> {}",
-                        info.alias,
-                        info.classes.join(" ")
-                    );
-                }
-            }
             html_bytes = plan.html;
         }
     }
@@ -115,11 +120,12 @@ pub fn rebuild_styles(
     let parse_extract_duration = parse_timer.elapsed();
 
     let mut all_classes = extracted.classes;
-    let group_registry = group::GroupRegistry::analyze(
+    let mut group_registry = group::GroupRegistry::analyze(
         &extracted.group_events,
         &mut all_classes,
         Some(AppState::engine()),
     );
+    group_registry.set_dev_selectors(dev_group_selectors);
 
     let diff_timer = Instant::now();
     let (added, removed) = {

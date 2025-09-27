@@ -9,6 +9,7 @@ pub struct GroupDefinition {
     pub utilities: Vec<String>,
     pub allow_extend: bool,
     pub raw_tokens: Vec<String>,
+    pub dev_tokens: Vec<String>,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -16,6 +17,7 @@ pub struct GroupRegistry {
     definitions: AHashMap<String, GroupDefinition>,
     internal_tokens: AHashSet<String>,
     cached_css: AHashMap<String, String>,
+    dev_selectors: AHashMap<String, String>,
 }
 
 impl GroupRegistry {
@@ -29,6 +31,22 @@ impl GroupRegistry {
 
     pub fn definitions(&self) -> impl Iterator<Item = (&String, &GroupDefinition)> {
         self.definitions.iter()
+    }
+
+    pub fn set_dev_selectors(&mut self, mut selectors: AHashMap<String, String>) {
+        for (name, def) in &self.definitions {
+            if selectors.contains_key(name) || def.dev_tokens.is_empty() {
+                continue;
+            }
+            selectors.insert(
+                name.clone(),
+                format!("@{}({})", name, def.dev_tokens.join(" ")),
+            );
+        }
+        self.dev_selectors = selectors;
+        if !self.cached_css.is_empty() {
+            self.cached_css.clear();
+        }
     }
 
     pub fn is_internal_token(&self, class: &str) -> bool {
@@ -86,11 +104,15 @@ impl GroupRegistry {
                     utilities: Vec::new(),
                     allow_extend: false,
                     raw_tokens: Vec::new(),
+                    dev_tokens: Vec::new(),
                 });
             if !entry.utilities.contains(&actual_class) {
                 entry.utilities.push(actual_class.clone());
             }
             entry.raw_tokens.push(event.full_class.clone());
+            if !entry.dev_tokens.contains(&event.token) {
+                entry.dev_tokens.push(event.token.clone());
+            }
             if event.had_plus {
                 entry.allow_extend = true;
             }
@@ -132,6 +154,13 @@ impl GroupRegistry {
         }
 
         let alias_selector = make_selector(class);
+        let dev_selector = self
+            .dev_selectors
+            .get(class)
+            .and_then(|raw| parse_grouped_selector(raw, alias_selector.as_str()));
+        let combined_selector = dev_selector
+            .as_ref()
+            .map(|dev| format!("{},{}", alias_selector, dev));
         let mut simple_bodies: Vec<String> = Vec::new();
         let mut extra_css = String::new();
         for util in flattened {
@@ -165,34 +194,46 @@ impl GroupRegistry {
             }
         }
 
-        let mut accumulated = String::new();
+        let mut simple_block = String::new();
         if !simple_bodies.is_empty() {
-            accumulated.push_str(&alias_selector);
-            accumulated.push_str(" {\n");
+            let selector_output = combined_selector
+                .as_deref()
+                .unwrap_or_else(|| alias_selector.as_str());
+            simple_block.push_str(selector_output);
+            simple_block.push_str(" {\n");
             for body in simple_bodies {
                 for line in body.lines() {
                     let trimmed_line = line.trim();
                     if trimmed_line.is_empty() {
                         continue;
                     }
-                    accumulated.push_str("  ");
-                    accumulated.push_str(trimmed_line);
+                    simple_block.push_str("  ");
+                    simple_block.push_str(trimmed_line);
                     if !trimmed_line.ends_with(';') && !trimmed_line.ends_with('}') {
-                        accumulated.push(';');
+                        simple_block.push(';');
                     }
-                    accumulated.push('\n');
+                    simple_block.push('\n');
                 }
             }
-            accumulated.push_str("}\n");
+            simple_block.push_str("}\n");
+        }
+
+        let mut accumulated = String::new();
+        if !simple_block.is_empty() {
+            accumulated.push_str(&simple_block);
         }
         if !extra_css.is_empty() {
             if !accumulated.is_empty() && !accumulated.ends_with('\n') {
                 accumulated.push('\n');
             }
-            accumulated.push_str(&extra_css);
+            if let Some(ref combo) = combined_selector {
+                accumulated.push_str(&extra_css.replace(alias_selector.as_str(), combo));
+            } else {
+                accumulated.push_str(&extra_css);
+            }
         }
 
-        if accumulated.is_empty() {
+        if accumulated.trim().is_empty() {
             return None;
         }
 
@@ -263,10 +304,66 @@ fn rewrite_selector(css: &mut String, original: &str, alias_selector: &str) {
     *css = css.replace(&original_selector, alias_selector);
 }
 
+fn parse_grouped_selector(raw: &str, alias_selector: &str) -> Option<String> {
+    // TODO(dev-only): drop legacy @alias(...) selector once dev tools stop requiring it.
+    let raw = raw.trim();
+    if raw.is_empty() || !raw.starts_with('@') {
+        return None;
+    }
+    let Some(open_idx) = raw.find('(') else {
+        return None;
+    };
+    let alias_part = raw[1..open_idx].trim();
+    if alias_part.is_empty() {
+        return None;
+    }
+    let Some(inner) = raw[open_idx + 1..].trim().strip_suffix(')') else {
+        return None;
+    };
+
+    let mut parsed_alias = String::new();
+    cssparser::serialize_identifier(alias_part, &mut parsed_alias).ok()?;
+    let expected_alias = alias_selector.strip_prefix('.')?;
+    if parsed_alias != expected_alias {
+        return None;
+    }
+
+    let mut inner_sanitized = String::new();
+    let mut first = true;
+    for token in inner.split_whitespace() {
+        if token.is_empty() {
+            continue;
+        }
+        if !first {
+            inner_sanitized.push(' ');
+        }
+        first = false;
+        let mut sanitized = String::new();
+        cssparser::serialize_identifier(token, &mut sanitized).ok()?;
+        inner_sanitized.push_str(&sanitized);
+    }
+    if inner_sanitized.is_empty() {
+        return None;
+    }
+
+    let mut class_name = String::new();
+    class_name.push('@');
+    class_name.push_str(&parsed_alias);
+    class_name.push('(');
+    class_name.push_str(&inner_sanitized);
+    class_name.push(')');
+
+    let mut escaped = String::with_capacity(class_name.len() + 1);
+    escaped.push('.');
+    cssparser::serialize_identifier(&class_name, &mut escaped).ok()?;
+    Some(escaped)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::parser::extract_classes_fast;
+    use ahash::AHashMap;
     use std::io::Write;
 
     #[test]
@@ -296,8 +393,10 @@ mod tests {
         let registry = GroupRegistry::analyze(&extracted.group_events, &mut classes, Some(&engine));
         assert!(classes.contains("card"));
         let mut registry = registry;
+        registry.set_dev_selectors(AHashMap::default());
         let css = registry.generate_css_for("card", &engine).expect("css");
         assert!(css.contains(".card"));
+        assert!(css.contains(".card,.\\@card\\(bg-red-500\\ h-50\\)"));
         assert!(css.contains("background-color: red"));
         assert!(css.contains("height"));
         let _ = std::fs::remove_file(&temp_path);
