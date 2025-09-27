@@ -45,7 +45,7 @@
 
 :root {
   /* Clear Theme */
-  --background: url("../public/suzume-no-tojimari.png");
+  --background: url("/suzume-no-tojimari.png");
   /* --background: oklch(0.13 0 0); */
   --foreground: oklch(1.00 0 0);
   --card: oklch(0.14 0 0);
@@ -295,6 +295,10 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    background: var(--background);
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    color: var(--foreground);
   }
 }
