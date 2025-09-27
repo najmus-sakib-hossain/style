@@ -1,17 +1,29 @@
 "use client";
 
-import React, { useState } from "react";
-import LiquidGlass, { presets, colorTints } from "@/components/liquid-glass";
+import React, { useState, useRef } from "react";
+import LiquidGlass from "@/components/liquid-glass";
+import Goo from "@/gooey-react/src/index";
 
 export default function Home() {
-  const [selectedMode, setSelectedMode] =
-    useState<keyof typeof presets>("dock");
-  const [isDraggable, setIsDraggable] = useState(true);
-  const [selectedColor, setSelectedColor] =
-    useState<keyof typeof colorTints>("none");
+  const [showPill, setShowPill] = useState(false);
+  const [pillAnimating, setPillAnimating] = useState(false);
+  const circleRef = useRef<HTMLDivElement>(null);
+  const pillRef = useRef<HTMLDivElement>(null);
+
+  const handleCircleClick = () => {
+    if (pillAnimating) return; // Prevent multiple clicks during animation
+
+    setPillAnimating(true);
+    setShowPill(!showPill);
+
+    // Reset animation state after transition
+    setTimeout(() => {
+      setPillAnimating(false);
+    }, 1000); // Match animation duration
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-8">
       {/* Background pattern */}
       <div
         className="fixed inset-0 opacity-20"
@@ -24,249 +36,64 @@ export default function Home() {
         }}
       />
 
-      <div className="relative z-10">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-6xl font-bold mb-4 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-            Liquid Glass
-          </h1>
-          <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            A beautiful liquid glass effect component with SVG displacement
-            mapping, elastic transformations, and customizable presets.
-          </p>
-        </div>
-
-        {/* Controls */}
-        <div className="flex justify-center mb-12">
-          <div className="bg-black/20 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-            <div className="flex flex-col sm:flex-row gap-4 items-center">
-              <div className="flex gap-2">
-                <label className="text-white text-sm">Mode:</label>
-                <select
-                  value={selectedMode}
-                  onChange={(e) =>
-                    setSelectedMode(e.target.value as keyof typeof presets)
-                  }
-                  className="bg-white/10 text-white rounded px-3 py-1 text-sm border border-white/20"
-                >
-                  {Object.keys(presets).map((mode) => (
-                    <option key={mode} value={mode} className="bg-gray-800">
-                      {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex gap-2">
-                <label className="text-white text-sm">Color:</label>
-                <select
-                  value={selectedColor}
-                  onChange={(e) =>
-                    setSelectedColor(e.target.value as keyof typeof colorTints)
-                  }
-                  className="bg-white/10 text-white rounded px-3 py-1 text-sm border border-white/20"
-                >
-                  {Object.keys(colorTints).map((color) => (
-                    <option key={color} value={color} className="bg-gray-800">
-                      {color.charAt(0).toUpperCase() + color.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="draggable"
-                  checked={isDraggable}
-                  onChange={(e) => setIsDraggable(e.target.checked)}
-                  className="w-4 h-4"
-                />
-                <label htmlFor="draggable" className="text-white text-sm">
-                  Draggable
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Demo */}
-        <div className="flex justify-center mb-16">
+      <div className="relative flex items-center gap-16">
+        {/* Click Me Circle */}
+        <div ref={circleRef} className="relative">
           <LiquidGlass
-            mode={selectedMode}
-            draggable={isDraggable}
-            colorTint={selectedColor}
-            onClick={() => console.log("Liquid glass clicked!")}
-            className="shadow-2xl"
+            mode="bubble"
+            colorTint="blue"
+            onClick={handleCircleClick}
+            className={`transition-all duration-300 ${
+              showPill ? "scale-110" : "scale-100"
+            }`}
           >
-            <div className="flex items-center gap-3">
-              {selectedMode === "dock" && (
-                <>
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg"></div>
-                  <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-green-600 rounded-lg"></div>
-                  <div className="w-12 h-12 bg-gradient-to-br from-red-400 to-red-600 rounded-lg"></div>
-                  <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-lg"></div>
-                </>
-              )}
-              {selectedMode === "pill" && (
-                <span className="text-white font-semibold">Pill Button</span>
-              )}
-              {selectedMode === "bubble" && (
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-600 rounded-full"></div>
-              )}
-              {selectedMode === "free" && (
-                <div className="text-center">
-                  <div className="text-2xl mb-2">🎨</div>
-                  <div className="text-sm">Creative</div>
-                </div>
-              )}
-              {selectedMode === "standard" && (
-                <span className="text-white font-semibold">Standard Glass</span>
-              )}
+            <div className="text-center">
+              <div className="text-2xl mb-2">👆</div>
+              <div className="text-white font-semibold">
+                {showPill ? "Merge Back" : "Click Me"}
+              </div>
             </div>
           </LiquidGlass>
         </div>
 
-        {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
-          {/* Feature 1 */}
-          <div className="text-center">
-            <LiquidGlass mode="bubble" colorTint="blue" className="mb-4">
-              <div className="text-2xl">✨</div>
-            </LiquidGlass>
-            <h3 className="text-xl font-semibold text-white mb-2">
-              SVG Displacement
-            </h3>
-            <p className="text-gray-300 text-sm">
-              Advanced SVG filters create realistic glass displacement effects
-            </p>
+        {/* Gooey Pill Animation */}
+        {showPill && (
+          <div
+            ref={pillRef}
+            className={`absolute transition-all duration-1000 ease-out ${
+              pillAnimating
+                ? "animate-bounce-in-right"
+                : "animate-bounce-out-left"
+            }`}
+            style={{
+              right: showPill ? "0px" : "auto",
+              left: showPill ? "auto" : "0px",
+              transform: showPill
+                ? "translateX(0) scale(1)"
+                : "translateX(-100px) scale(0.8)",
+            }}
+          >
+            <Goo intensity="strong" className="relative">
+              <LiquidGlass
+                mode="pill"
+                colorTint="purple"
+                width={200}
+                height={80}
+                className="shadow-2xl"
+              >
+                <span className="text-white font-semibold">Gooey Pill!</span>
+              </LiquidGlass>
+            </Goo>
           </div>
+        )}
+      </div>
 
-          {/* Feature 2 */}
-          <div className="text-center">
-            <LiquidGlass mode="pill" colorTint="purple" className="mb-4">
-              <span className="text-white font-medium">Hover Me</span>
-            </LiquidGlass>
-            <h3 className="text-xl font-semibold text-white mb-2">
-              Border Animation
-            </h3>
-            <p className="text-gray-300 text-sm">
-              Borders animate based on mouse position or mobile tilt
-            </p>
-          </div>
-
-          {/* Feature 3 */}
-          <div className="text-center">
-            <LiquidGlass mode="standard" colorTint="green" className="mb-4">
-              <span className="text-white font-medium">Click & Hold</span>
-            </LiquidGlass>
-            <h3 className="text-xl font-semibold text-white mb-2">
-              Click Expansion
-            </h3>
-            <p className="text-gray-300 text-sm">
-              White overlay expands from click point when held down
-            </p>
-          </div>
-
-          {/* Feature 4 */}
-          <div className="text-center">
-            <LiquidGlass
-              mode="free"
-              draggable={true}
-              colorTint="pink"
-              className="mb-4"
-            >
-              <span className="text-white font-medium">Drag Me</span>
-            </LiquidGlass>
-            <h3 className="text-xl font-semibold text-white mb-2">
-              Interactive
-            </h3>
-            <p className="text-gray-300 text-sm">
-              Fully interactive with drag support and elastic motion
-            </p>
-          </div>
-        </div>
-
-        {/* Color Showcase */}
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-white mb-8">
-            Color Variations
-          </h2>
-          <div className="flex flex-wrap justify-center gap-6">
-            {Object.keys(colorTints).map((color, index) => (
-              <div key={color} className="text-center">
-                <LiquidGlass
-                  mode="pill"
-                  colorTint={color as keyof typeof colorTints}
-                  onClick={() =>
-                    setSelectedColor(color as keyof typeof colorTints)
-                  }
-                  className="mb-3 cursor-pointer hover:scale-105 transition-transform"
-                >
-                  <div className="text-white font-medium text-sm">
-                    {color.charAt(0).toUpperCase() + color.slice(1)}
-                  </div>
-                </LiquidGlass>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Preset Showcase */}
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-white mb-8">
-            Available Presets
-          </h2>
-          <div className="flex flex-wrap justify-center gap-8">
-            {Object.keys(presets).map((preset, index) => {
-              const colors = Object.keys(colorTints);
-              const colorIndex = index % colors.length;
-              return (
-                <div key={preset} className="text-center">
-                  <LiquidGlass
-                    mode={preset as keyof typeof presets}
-                    colorTint={colors[colorIndex] as keyof typeof colorTints}
-                    onClick={() =>
-                      setSelectedMode(preset as keyof typeof presets)
-                    }
-                    className="mb-3 cursor-pointer hover:scale-105 transition-transform"
-                  >
-                    <div className="text-white font-medium text-sm">
-                      {preset.charAt(0).toUpperCase() + preset.slice(1)}
-                    </div>
-                  </LiquidGlass>
-                  <p className="text-gray-400 text-xs">
-                    {presets[preset as keyof typeof presets].width} ×{" "}
-                    {presets[preset as keyof typeof presets].height}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Instructions */}
-        <div className="text-center mt-16">
-          <div className="bg-black/20 backdrop-blur-sm rounded-xl p-6 border border-white/10 max-w-2xl mx-auto">
-            <h3 className="text-xl font-semibold text-white mb-4">
-              How to Use
-            </h3>
-            <div className="text-gray-300 text-sm space-y-2">
-              <p>• Hover to see animated borders and elastic effects</p>
-              <p>• Click and hold to see white overlay expansion</p>
-              <p>• On mobile: Tilt your device to animate borders</p>
-              <p>• Enable draggable mode to move components around</p>
-              <p>• Try different color tints for subtle glass effects</p>
-              <p>• Watch the SVG displacement filters in real-time</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="text-center mt-16 text-gray-400 text-sm">
-          <p>
-            Built with React, TypeScript, SVG displacement mapping, and device
-            orientation API
+      {/* Instructions */}
+      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-center">
+        <div className="bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/10 max-w-md">
+          <p className="text-gray-300 text-sm">
+            Click the circle to spawn a gooey pill with spring animation.
+            Click again to merge it back with a gooey effect!
           </p>
         </div>
       </div>
