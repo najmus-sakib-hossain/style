@@ -83,11 +83,11 @@ pub fn rebuild_styles(
         // toggling the presence of the legacy dev selector.
         if !plan.groups.is_empty() {
             for info in &plan.groups {
-                println!(
-                    "[dx-style] auto group {} -> {}",
-                    info.alias,
-                    info.classes.join(" ")
-                );
+                // println!(
+                //     "[dx-style] auto group {} -> {}",
+                //     info.alias,
+                //     info.classes.join(" ")
+                // );
                 // Only insert dev selector if the group in HTML was emitted with '@'
                 // (rewrite_duplicate_classes will record '@' in the replacement string
                 // for the first occurrence). Detect this by searching plan.html for
@@ -295,7 +295,7 @@ pub fn rebuild_styles(
                     if *extend {
                         message.push_str(" (extend)");
                     }
-                    println!("{}", message);
+                    // println!("{}", message);
                 }
                 state_guard.group_log_hash = new_hash;
             }

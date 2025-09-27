@@ -39,10 +39,10 @@ impl GroupRegistry {
         // (e.g. the auto-group rewrite) to control whether legacy `@alias(...)` dev
         // selectors are present. Do not auto-insert defaults here to support toggling.
         if !selectors.is_empty() {
-            println!(
-                "[dx-style] set_dev_selectors -> {}",
-                selectors.keys().cloned().collect::<Vec<_>>().join(",")
-            );
+            // println!(
+            //     "[dx-style] set_dev_selectors -> {}",
+            //     selectors.keys().cloned().collect::<Vec<_>>().join(",")
+            // );
         }
         self.dev_selectors = selectors;
         if !self.cached_css.is_empty() {
@@ -339,11 +339,11 @@ impl GroupRegistry {
 
         if accumulated.trim().is_empty() {
             if !missing_utils.is_empty() {
-                println!(
-                    "[dx-style] group '{}' skipped: missing utils -> {}",
-                    class,
-                    missing_utils.join(" ")
-                );
+                // println!(
+                //     "[dx-style] group '{}' skipped: missing utils -> {}",
+                //     class,
+                //     missing_utils.join(" ")
+                // );
             }
             return None;
         }
