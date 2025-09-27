@@ -1,9 +1,14 @@
 use cssparser::serialize_identifier;
 
-use crate::core::{AppState, properties_layer_present, set_properties_layer_present};
+use crate::core::{
+    group::GroupRegistry,
+    AppState,
+    properties_layer_present,
+    set_properties_layer_present,
+};
 
 #[allow(dead_code)]
-pub fn generate_css_into<'a, I>(buf: &mut Vec<u8>, classes: I)
+pub fn generate_css_into<'a, I>(buf: &mut Vec<u8>, classes: I, groups: &mut GroupRegistry)
 where
     I: IntoIterator<Item = &'a String>,
 {
@@ -27,6 +32,16 @@ where
             }
         }
         for class in collected {
+            if groups.is_internal_token(class) {
+                continue;
+            }
+            if let Some(alias_css) = groups.generate_css_for(class, engine) {
+                buf.extend_from_slice(alias_css.as_bytes());
+                if !alias_css.ends_with('\n') {
+                    buf.push(b'\n');
+                }
+                continue;
+            }
             if let Some(css) = engine.css_for_class(class) {
                 buf.extend_from_slice(css.as_bytes());
                 if !css.ends_with('\n') {
@@ -42,6 +57,9 @@ where
         }
     } else {
         for class in classes {
+            if groups.is_internal_token(class) {
+                continue;
+            }
             buf.push(b'.');
             escaped.clear();
             serialize_identifier(class, &mut escaped).unwrap();
@@ -51,7 +69,11 @@ where
     }
 }
 
-pub fn generate_class_rules_only<'a, I>(buf: &mut Vec<u8>, classes: I)
+pub fn generate_class_rules_only<'a, I>(
+    buf: &mut Vec<u8>,
+    classes: I,
+    groups: &mut GroupRegistry,
+)
 where
     I: IntoIterator<Item = &'a String>,
 {
@@ -60,6 +82,16 @@ where
     let engine_opt = std::panic::catch_unwind(|| AppState::engine()).ok();
     if let Some(engine) = engine_opt {
         for class in classes {
+            if groups.is_internal_token(class) {
+                continue;
+            }
+            if let Some(alias_css) = groups.generate_css_for(class, engine) {
+                buf.extend_from_slice(alias_css.as_bytes());
+                if !alias_css.ends_with('\n') {
+                    buf.push(b'\n');
+                }
+                continue;
+            }
             if let Some(css) = engine.css_for_class(class) {
                 buf.extend_from_slice(css.as_bytes());
                 if !css.ends_with('\n') {
@@ -75,6 +107,9 @@ where
         }
     } else {
         for class in classes {
+            if groups.is_internal_token(class) {
+                continue;
+            }
             buf.push(b'.');
             escaped.clear();
             serialize_identifier(class, &mut escaped).unwrap();

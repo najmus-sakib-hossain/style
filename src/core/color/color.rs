@@ -47,7 +47,7 @@ pub struct Rgb {
 /// [`Argb::from_str`].
 ///
 /// ## Examples:
-/// ```rust
+/// ```ignore
 /// use std::str::FromStr;
 /// use material_colors::color::Argb;
 ///

@@ -1,12 +1,17 @@
 use crate::{
-    cache, datasource, generator, parser::extract_classes_fast, telemetry::format_duration,
+    cache,
+    datasource,
+    generator,
+    parser::extract_classes_fast,
+    telemetry::format_duration,
 };
 mod animation;
 mod engine;
 mod formatter;
-mod group;
+pub mod group;
 use ahash::{AHashSet, AHasher};
 use colored::Colorize;
+use std::borrow::Cow;
 use std::hash::Hasher;
 pub mod color;
 pub mod output;
@@ -51,6 +56,8 @@ pub struct AppState {
     pub class_list_checksum: u64,
     pub css_index: ahash::AHashMap<String, RuleMeta>,
     pub utilities_offset: usize,
+    pub group_registry: group::GroupRegistry,
+    pub group_log_hash: u64,
 }
 
 impl AppState {
@@ -91,8 +98,15 @@ pub fn rebuild_styles(
 
     let parse_timer = Instant::now();
     let prev_len_hint = { state.lock().unwrap().class_cache.len() };
-    let all_classes = extract_classes_fast(&html_bytes, prev_len_hint.next_power_of_two());
+    let extracted = extract_classes_fast(&html_bytes, prev_len_hint.next_power_of_two());
     let parse_extract_duration = parse_timer.elapsed();
+
+    let mut all_classes = extracted.classes;
+    let group_registry = group::GroupRegistry::analyze(
+        &extracted.group_events,
+        &mut all_classes,
+        Some(AppState::engine()),
+    );
 
     let diff_timer = Instant::now();
     let (added, removed) = {
@@ -132,6 +146,40 @@ pub fn rebuild_styles(
             h.write(c.as_bytes());
         }
         state_guard.class_list_checksum = h.finish();
+        state_guard.group_registry = group_registry;
+        if state_guard.group_registry.is_empty() {
+            state_guard.group_log_hash = 0;
+        } else {
+            let mut entries: Vec<(String, Vec<String>, bool)> = state_guard
+                .group_registry
+                .definitions()
+                .map(|(name, def)| (name.clone(), def.utilities.clone(), def.allow_extend))
+                .collect();
+            entries.sort_by(|a, b| a.0.cmp(&b.0));
+            let mut log_hasher = AHasher::default();
+            for (name, utils, extend) in &entries {
+                log_hasher.write(name.as_bytes());
+                log_hasher.write(&[*extend as u8]);
+                for util in utils {
+                    log_hasher.write(util.as_bytes());
+                }
+            }
+            let new_hash = log_hasher.finish();
+            if new_hash != state_guard.group_log_hash {
+                for (name, utils, extend) in &entries {
+                    let mut message = format!(
+                        "[dx-style] group {} -> {}",
+                        name,
+                        utils.join(" ")
+                    );
+                    if *extend {
+                        message.push_str(" (extend)");
+                    }
+                    println!("{}", message);
+                }
+                state_guard.group_log_hash = new_hash;
+            }
+        }
     }
     let cache_update_duration = cache_update_timer.elapsed();
 
@@ -266,7 +314,11 @@ pub fn rebuild_styles(
             }
 
             let mut util_buf = Vec::new();
-            generator::generate_class_rules_only(&mut util_buf, class_vec.iter());
+            generator::generate_class_rules_only(
+                &mut util_buf,
+                class_vec.iter(),
+                &mut state_guard.group_registry,
+            );
             let gen_layers_utils = phase_start.elapsed();
             let util_phase_start = Instant::now();
             let mut util_body = String::new();
@@ -496,17 +548,29 @@ pub fn rebuild_styles(
             let mut cursor_in_block = 1usize; // account for leading '\n'
             let mut escaped = String::with_capacity(64);
             for class in &added {
-                let css = engine.css_for_class(class).unwrap_or_else(|| {
+                if state_guard.group_registry.is_internal_token(class) {
+                    continue;
+                }
+                let css_cow: Cow<'_, str> = if let Some(alias_css) =
+                    state_guard
+                        .group_registry
+                        .generate_css_for(class, engine)
+                {
+                    Cow::Borrowed(alias_css)
+                } else if let Some(css) = engine.css_for_class(class) {
+                    Cow::Owned(css)
+                } else {
                     escaped.clear();
                     serialize_identifier(class, &mut escaped).unwrap();
-                    format!(".{} {{}}\n", escaped)
-                });
-                // Ensure trailing newline
-                let css = if css.ends_with('\n') {
-                    css
-                } else {
-                    format!("{}\n", css)
+                    Cow::Owned(format!(".{} {{}}\n", escaped))
                 };
+                let mut css = css_cow.as_ref().to_string();
+                if css.trim().is_empty() {
+                    continue;
+                }
+                if !css.ends_with('\n') {
+                    css.push('\n');
+                }
                 // Record start of rule at '.' (skip the two-space indent)
                 let rule_start_block = cursor_in_block + 2;
                 // Write indented lines
@@ -522,6 +586,7 @@ pub fn rebuild_styles(
                 let rule_len = cursor_in_block.saturating_sub(rule_start_block);
                 offsets.push((class.clone(), rule_start_block, rule_len));
             }
+            let classes_written = offsets.len();
             let gen_time = gen_start.elapsed();
             let build_time = std::time::Duration::from_micros(0);
             let flush_start = Instant::now();
@@ -542,7 +607,7 @@ pub fn rebuild_styles(
                 css_write_timer.elapsed(),
                 WriteStats {
                     mode: "add",
-                    classes_written: added.len(),
+                    classes_written,
                     bytes_written: block.len(),
                     sub1_label: "gen",
                     sub1: gen_time,
@@ -554,11 +619,16 @@ pub fn rebuild_styles(
             )
         } else if !removed.is_empty() && added.is_empty() {
             let mut removed_bytes = 0usize;
+            let mut removed_count = 0usize;
             for r in &removed {
+                if state_guard.group_registry.is_internal_token(r) {
+                    continue;
+                }
                 if let Some(meta) = state_guard.css_index.remove(r) {
                     let rel = state_guard.utilities_offset + meta.off;
                     let _ = state_guard.css_out.blank_range(rel, meta.len);
                     removed_bytes += meta.len;
+                    removed_count += 1;
                 }
             }
             let flush_start = Instant::now();
@@ -568,7 +638,7 @@ pub fn rebuild_styles(
                 css_write_timer.elapsed(),
                 WriteStats {
                     mode: "remove",
-                    classes_written: removed.len(),
+                    classes_written: removed_count,
                     bytes_written: removed_bytes,
                     sub1_label: "blank",
                     sub1: flush_time,

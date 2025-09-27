@@ -12,7 +12,7 @@ pub use states::apply_wrappers_and_states;
 #[allow(dead_code)]
 pub fn init() {}
 
-use memmap2::Mmap;
+use memmap2::{Mmap, MmapOptions};
 use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
@@ -218,6 +218,13 @@ impl StyleEngine {
             .open(default_path)
             .ok();
         let mmap = file.and_then(|f| unsafe { Mmap::map(&f).ok() });
+        fn anon_read_only_mmap() -> Mmap {
+            let anon = MmapOptions::new()
+                .len(1)
+                .map_anon()
+                .expect("failed to map anon page");
+            anon.make_read_only().expect("failed to freeze anon map")
+        }
         StyleEngine {
             precompiled: HashMap::new(),
             _mmap: Arc::new(mmap.unwrap_or_else(|| {
@@ -226,8 +233,12 @@ impl StyleEngine {
                     .write(false)
                     .create(true)
                     .open(default_path)
-                    .unwrap();
-                unsafe { Mmap::map(&file).unwrap_or_else(|_| Mmap::map(&file).unwrap()) }
+                    .ok();
+                if let Some(file) = file {
+                    unsafe { Mmap::map(&file).unwrap_or_else(|_| anon_read_only_mmap()) }
+                } else {
+                    anon_read_only_mmap()
+                }
             })),
             screens: HashMap::new(),
             states: HashMap::new(),

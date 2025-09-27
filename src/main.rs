@@ -243,6 +243,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         class_list_checksum,
         css_index,
         utilities_offset: 0,
+        group_registry: crate::core::group::GroupRegistry::new(),
+        group_log_hash: 0,
     }));
 
     if std::env::var("DX_DUMP_STATE_ON_START").is_ok() {

@@ -1,5 +1,43 @@
 use ahash::AHashSet;
 use memchr::{memchr, memmem::Finder};
+use smallvec::SmallVec;
+
+#[derive(Debug, Clone)]
+pub struct GroupEvent {
+    pub stack: Vec<String>,
+    pub token: String,
+    pub had_plus: bool,
+    pub full_class: String,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct GroupCollector {
+    events: Vec<GroupEvent>,
+}
+
+impl GroupCollector {
+    #[inline]
+    fn record(&mut self, stack: &[String], token: &str, had_plus: bool, full_class: &str) {
+        if stack.is_empty() {
+            return;
+        }
+        self.events.push(GroupEvent {
+            stack: stack.iter().cloned().collect(),
+            token: token.to_string(),
+            had_plus,
+            full_class: full_class.to_string(),
+        });
+    }
+
+    pub fn into_events(self) -> Vec<GroupEvent> {
+        self.events
+    }
+}
+
+pub struct ExtractedClasses {
+    pub classes: AHashSet<String>,
+    pub group_events: Vec<GroupEvent>,
+}
 
 #[inline]
 fn fast_split_whitespace_insert(s: &str, out: &mut AHashSet<String>) {
@@ -14,7 +52,7 @@ fn fast_split_whitespace_insert(s: &str, out: &mut AHashSet<String>) {
 // Supports nesting: lg(md(bg-red-500)) -> lg:md:bg-red-500
 // Ignores inline comments starting with '#' and trailing '+' suffixes on tokens.
 #[inline]
-fn expand_grouping_into(s: &str, out: &mut AHashSet<String>) {
+fn expand_grouping_into(s: &str, out: &mut AHashSet<String>, collector: &mut GroupCollector) {
     // Cut off inline comment starting with '#'
     let s = match s.as_bytes().iter().position(|&b| b == b'#') {
         Some(i) => &s[..i],
@@ -30,49 +68,23 @@ fn expand_grouping_into(s: &str, out: &mut AHashSet<String>) {
         return;
     }
 
-    use smallvec::SmallVec;
     let bytes = s.as_bytes();
     let n = bytes.len();
     let mut i = 0usize;
-    let mut stack: SmallVec<[&str; 4]> = SmallVec::new();
+    let mut stack: SmallVec<[String; 4]> = SmallVec::new();
     let mut tok_start: Option<usize> = None;
 
     #[inline]
-    fn trim_plus(s: &str) -> &str {
+    fn trim_plus(s: &str) -> (&str, bool) {
         let mut end = s.len();
         let b = s.as_bytes();
+        let mut had_plus = false;
         while end > 0 && b[end - 1] == b'+' {
             end -= 1;
+            had_plus = true;
         }
-        &s[..end]
+        (&s[..end], had_plus)
     }
-
-    let finalize_token =
-        |start: usize, end: usize, out: &mut AHashSet<String>, stack: &SmallVec<[&str; 4]>| {
-            if end <= start {
-                return;
-            }
-            let mut token = &s[start..end];
-            token = trim_plus(token);
-            if token.is_empty() {
-                return;
-            }
-            if stack.is_empty() {
-                out.insert(token.to_string());
-            } else {
-                let total_len = stack.iter().map(|p| p.len() + 1).sum::<usize>() + token.len();
-                let mut combined = String::with_capacity(total_len);
-                for (idx, p) in stack.iter().enumerate() {
-                    if idx > 0 {
-                        combined.push(':');
-                    }
-                    combined.push_str(p);
-                }
-                combined.push(':');
-                combined.push_str(token);
-                out.insert(combined);
-            }
-        };
 
     while i < n {
         // Skip whitespace
@@ -86,7 +98,30 @@ fn expand_grouping_into(s: &str, out: &mut AHashSet<String>) {
         // Handle closing parens possibly repeated
         while i < n && bytes[i] == b')' {
             if let Some(ts) = tok_start.take() {
-                finalize_token(ts, i, out, &stack);
+                if ts < i {
+                    let raw = &s[ts..i];
+                    let (trimmed, had_plus) = trim_plus(raw);
+                    if !trimmed.is_empty() {
+                        let combined = if stack.is_empty() {
+                            trimmed.to_string()
+                        } else {
+                            let total_len =
+                                stack.iter().map(|p| p.len() + 1).sum::<usize>() + trimmed.len();
+                            let mut combined = String::with_capacity(total_len);
+                            for (idx, p) in stack.iter().enumerate() {
+                                if idx > 0 {
+                                    combined.push(':');
+                                }
+                                combined.push_str(p);
+                            }
+                            combined.push(':');
+                            combined.push_str(trimmed);
+                            combined
+                        };
+                        out.insert(combined.clone());
+                        collector.record(stack.as_slice(), trimmed, had_plus, &combined);
+                    }
+                }
             }
             if !stack.is_empty() {
                 stack.pop();
@@ -114,10 +149,12 @@ fn expand_grouping_into(s: &str, out: &mut AHashSet<String>) {
         // If next is '(', treat previous token as a prefix and push
         if i < n && bytes[i] == b'(' {
             if let Some(ts) = tok_start.take() {
-                let mut prefix = &s[ts..i];
-                prefix = trim_plus(prefix);
-                if !prefix.is_empty() {
-                    stack.push(prefix);
+                if ts < i {
+                    let raw = &s[ts..i];
+                    let (trimmed, _) = trim_plus(raw);
+                    if !trimmed.is_empty() {
+                        stack.push(trimmed.to_string());
+                    }
                 }
             }
             i += 1; // consume '('
@@ -126,19 +163,66 @@ fn expand_grouping_into(s: &str, out: &mut AHashSet<String>) {
 
         // Otherwise, finalize a normal token
         if let Some(ts) = tok_start.take() {
-            finalize_token(ts, i, out, &stack);
+            if ts < i {
+                let raw = &s[ts..i];
+                let (trimmed, had_plus) = trim_plus(raw);
+                if !trimmed.is_empty() {
+                    let combined = if stack.is_empty() {
+                        trimmed.to_string()
+                    } else {
+                        let total_len =
+                            stack.iter().map(|p| p.len() + 1).sum::<usize>() + trimmed.len();
+                        let mut combined = String::with_capacity(total_len);
+                        for (idx, p) in stack.iter().enumerate() {
+                            if idx > 0 {
+                                combined.push(':');
+                            }
+                            combined.push_str(p);
+                        }
+                        combined.push(':');
+                        combined.push_str(trimmed);
+                        combined
+                    };
+                    out.insert(combined.clone());
+                    collector.record(stack.as_slice(), trimmed, had_plus, &combined);
+                }
+            }
         }
         // If current char is ')', the top of loop will pop it
     }
 
     // Final token at end-of-string
     if let Some(ts) = tok_start.take() {
-        finalize_token(ts, n, out, &stack);
+        if ts < n {
+            let raw = &s[ts..n];
+            let (trimmed, had_plus) = trim_plus(raw);
+            if !trimmed.is_empty() {
+                let combined = if stack.is_empty() {
+                    trimmed.to_string()
+                } else {
+                    let total_len =
+                        stack.iter().map(|p| p.len() + 1).sum::<usize>() + trimmed.len();
+                    let mut combined = String::with_capacity(total_len);
+                    for (idx, p) in stack.iter().enumerate() {
+                        if idx > 0 {
+                            combined.push(':');
+                        }
+                        combined.push_str(p);
+                    }
+                    combined.push(':');
+                    combined.push_str(trimmed);
+                    combined
+                };
+                out.insert(combined.clone());
+                collector.record(stack.as_slice(), trimmed, had_plus, &combined);
+            }
+        }
     }
 }
 
-pub fn extract_classes_fast(html_bytes: &[u8], capacity_hint: usize) -> AHashSet<String> {
+pub fn extract_classes_fast(html_bytes: &[u8], capacity_hint: usize) -> ExtractedClasses {
     let mut set = AHashSet::with_capacity(capacity_hint.max(64));
+    let mut collector = GroupCollector::default();
     let mut pos = 0usize;
     let n = html_bytes.len();
 
@@ -175,7 +259,7 @@ pub fn extract_classes_fast(html_bytes: &[u8], capacity_hint: usize) -> AHashSet
         };
         if let Ok(value_str) = std::str::from_utf8(&html_bytes[value_start..value_end]) {
             // Use grouping-aware extractor for both, but it fast-paths when absent
-            expand_grouping_into(value_str, &mut set);
+            expand_grouping_into(value_str, &mut set, &mut collector);
         }
         pos = value_end + 1;
     }
@@ -223,10 +307,69 @@ pub fn extract_classes_fast(html_bytes: &[u8], capacity_hint: usize) -> AHashSet
             None => break,
         };
         if let Ok(value_str) = std::str::from_utf8(&html_bytes[value_start..value_end]) {
-            expand_grouping_into(value_str, &mut set);
+            expand_grouping_into(value_str, &mut set, &mut collector);
         }
         pos = value_end + 1;
     }
 
-    set
+    ExtractedClasses {
+        classes: set,
+        group_events: collector.into_events(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn grouping_extracts_alias_and_utilities() {
+        let html = br#"<div dx-text="card(bg-red-500 h-50 text-yellow-500+)"></div>"#;
+        let extracted = extract_classes_fast(html, 0);
+        assert!(
+            !extracted.classes.contains("bg-red-500"),
+            "base utility should be restored during analysis"
+        );
+        assert!(
+            !extracted.classes.contains("h-50"),
+            "base utility should be restored during analysis"
+        );
+        assert!(
+            !extracted.classes.contains("text-yellow-500"),
+            "base utility should be restored during analysis"
+        );
+        assert!(
+            !extracted.classes.contains("card"),
+            "alias should be added during analysis, not raw extraction"
+        );
+        assert!(extracted.classes.contains("card:bg-red-500"));
+        let alias_event = extracted
+            .group_events
+            .iter()
+            .find(|evt| evt.stack == vec!["card".to_string()] && evt.token == "text-yellow-500");
+        assert!(alias_event.is_some(), "expected event for card group");
+        assert!(
+            alias_event.unwrap().had_plus,
+            "plus suffix should be recorded"
+        );
+
+        let mut classes = extracted.classes.clone();
+        let registry =
+            crate::core::group::GroupRegistry::analyze(&extracted.group_events, &mut classes, None);
+        assert!(
+            classes.contains("card"),
+            "alias should be registered after analysis"
+        );
+        assert!(classes.contains("bg-red-500"));
+        assert!(classes.contains("h-50"));
+        assert!(classes.contains("text-yellow-500"));
+        assert!(
+            !classes.contains("card:bg-red-500"),
+            "internal grouped tokens should be dropped after analysis"
+        );
+        assert!(
+            registry.definitions().any(|(name, _)| name == "card"),
+            "registry should capture alias definition"
+        );
+    }
 }
