@@ -177,6 +177,56 @@ pub fn rebuild_styles(
         group_registry.set_dev_selectors(devs);
     }
 
+    // Expand bare `@alias` occurrences in the HTML into `@alias(token1 token2)`
+    // using the group's recorded dev_tokens or utilities. This ensures that
+    // writing `class="@bg"` expands into the grouped form the generator
+    // expects and yields the concrete utility tokens for CSS generation.
+    {
+        let mut html_string = String::from_utf8_lossy(&html_bytes).to_string();
+        let mut modified = false;
+        for (name, def) in group_registry.definitions() {
+            let needle = format!("@{}", name);
+            let mut start_idx = 0usize;
+            while let Some(pos_rel) = html_string[start_idx..].find(&needle) {
+                let pos = start_idx + pos_rel;
+                let after = pos + needle.len();
+                // If already followed by '(' then skip
+                if html_string.as_bytes().get(after).map(|b| *b as char) == Some('(') {
+                    start_idx = after;
+                    continue;
+                }
+                let inner = if !def.dev_tokens.is_empty() {
+                    def.dev_tokens.join(" ")
+                } else {
+                    def.utilities.join(" ")
+                };
+                if inner.is_empty() {
+                    start_idx = after;
+                    continue;
+                }
+                html_string.insert_str(after, &format!("({})", inner));
+                modified = true;
+                start_idx = after + inner.len() + 2;
+            }
+        }
+        if modified {
+            std::fs::write(index_path, &html_string)?;
+            html_bytes = html_string.into_bytes();
+            // Re-extract and re-analyze with expanded HTML
+            let extracted2 = extract_classes_fast(&html_bytes, prev_len_hint.next_power_of_two());
+            let mut all_classes2 = extracted2.classes;
+            group_registry = group::GroupRegistry::analyze(&extracted2.group_events, &mut all_classes2, Some(AppState::engine()));
+            // preserve previous registry entries if needed
+            let prev_registry = { state.lock().unwrap().group_registry.clone() };
+            if prev_registry.is_empty() == false && group_registry.is_empty() {
+                group_registry.merge_preserve(&prev_registry);
+            }
+            // Remove utility members now that we've re-analyzed
+            group_registry.remove_utility_members_from(&mut all_classes2);
+            all_classes = all_classes2;
+        }
+    }
+
     // Remove concrete utility members from the master class set so they are
     // neither persisted in the cache nor emitted as independent rules. The
     // grouped alias will provide the combined selector and bodies instead.
