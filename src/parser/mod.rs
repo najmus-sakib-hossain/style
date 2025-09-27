@@ -1,6 +1,7 @@
-use ahash::{AHashMap, AHashSet};
+use ahash::{AHashMap, AHashSet, AHasher};
 use memchr::{memchr, memmem::Finder};
 use smallvec::SmallVec;
+use std::hash::Hasher;
 use std::ops::Range;
 
 #[derive(Debug, Clone)]
@@ -383,12 +384,17 @@ pub fn extract_classes_fast(html_bytes: &[u8], capacity_hint: usize) -> Extracte
 #[derive(Debug)]
 struct ClassOccurrence {
     attr_range: Range<usize>,
-    tokens: Vec<String>,
-    canonical: String,
+    value_range: Range<usize>,
+    token_ranges: SmallVec<[Range<usize>; 8]>,
+    canonical_hash: u64,
     dx_group_cleanup: Option<(Range<usize>, String)>,
 }
 
 pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> {
+    fn is_space(byte: u8) -> bool {
+        matches!(byte, b' ' | b'\n' | b'\r' | b'\t')
+    }
+
     let mut occurrences: Vec<ClassOccurrence> = Vec::new();
     let mut existing_names: AHashSet<String> = AHashSet::default();
 
@@ -405,7 +411,7 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
             }
         }
         let mut cursor = attr_start + 5;
-        while cursor < n && matches!(html_bytes[cursor], b' ' | b'\n' | b'\r' | b'\t') {
+        while cursor < n && is_space(html_bytes[cursor]) {
             cursor += 1;
         }
         if cursor >= n || html_bytes[cursor] != b'=' {
@@ -413,7 +419,7 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
             continue;
         }
         cursor += 1;
-        while cursor < n && matches!(html_bytes[cursor], b' ' | b'\n' | b'\r' | b'\t') {
+        while cursor < n && is_space(html_bytes[cursor]) {
             cursor += 1;
         }
         if cursor >= n {
@@ -433,64 +439,87 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
         };
         let attr_end = value_end + 1;
         if let Ok(value_str) = std::str::from_utf8(&html_bytes[value_start..value_end]) {
-            let raw_tokens: Vec<&str> = value_str
-                .split_whitespace()
-                .filter(|t| !t.is_empty())
-                .collect();
-            for tok in &raw_tokens {
-                existing_names.insert((*tok).to_string());
+            let value_bytes = value_str.as_bytes();
+            let mut token_ranges: SmallVec<[Range<usize>; 8]> = SmallVec::new();
+            let mut cursor_local = 0usize;
+            let mut has_disqualifying_char = false;
+            while cursor_local < value_bytes.len() {
+                while cursor_local < value_bytes.len() && is_space(value_bytes[cursor_local]) {
+                    cursor_local += 1;
+                }
+                if cursor_local >= value_bytes.len() {
+                    break;
+                }
+                let token_start = cursor_local;
+                while cursor_local < value_bytes.len() && !is_space(value_bytes[cursor_local]) {
+                    let b = value_bytes[cursor_local];
+                    if matches!(
+                        b,
+                        b'(' | b')' | b'{' | b'}' | b':' | b'@' | b'#' | b'[' | b']'
+                    ) {
+                        has_disqualifying_char = true;
+                    }
+                    cursor_local += 1;
+                }
+                let token_end = cursor_local;
+                if token_end > token_start {
+                    token_ranges.push(token_start..token_end);
+                }
             }
-            if raw_tokens.len() < 2 {
+
+            for range in &token_ranges {
+                let token = &value_str[range.clone()];
+                if !existing_names.contains(token) {
+                    existing_names.insert(token.to_string());
+                }
+            }
+
+            if token_ranges.len() < 2 {
                 pos = attr_end;
                 continue;
             }
-            if value_str.as_bytes().iter().any(|b| {
-                matches!(
-                    *b,
-                    b'(' | b')' | b'{' | b'}' | b':' | b'@' | b'#' | b'[' | b']'
-                )
-            }) {
-                pos = attr_end;
-                continue;
-            }
-            let mut seen: AHashSet<&str> = AHashSet::with_capacity(raw_tokens.len());
-            let mut simple = true;
-            for &tok in &raw_tokens {
-                if tok.contains('+') || tok.starts_with("dxg-") {
+
+            let mut canonical_hasher = AHasher::default();
+            let mut simple = !has_disqualifying_char;
+            for (idx_token, range) in token_ranges.iter().enumerate() {
+                let token = &value_str[range.clone()];
+                let token_bytes = token.as_bytes();
+                if token_bytes.contains(&b'+') || token_bytes.starts_with(b"dxg-") {
                     simple = false;
+                }
+                for prev_range in &token_ranges[..idx_token] {
+                    let prev_token = &value_bytes[prev_range.clone()];
+                    if prev_token.len() == token_bytes.len() && prev_token == token_bytes {
+                        simple = false;
+                        break;
+                    }
+                }
+                canonical_hasher.write(token_bytes);
+                canonical_hasher.write_u8(0);
+                if !simple {
                     break;
                 }
-                if !seen.insert(tok) {
-                    simple = false;
-                    break;
-                }
             }
+
             if !simple {
                 pos = attr_end;
                 continue;
             }
-            let tokens: Vec<String> = raw_tokens.iter().map(|t| (*t).to_string()).collect();
-            let canonical = tokens.join("\u{0}");
 
             let whitespace_start = attr_end;
             let mut attr_ws_end = whitespace_start;
-            while attr_ws_end < n && matches!(html_bytes[attr_ws_end], b' ' | b'\n' | b'\r' | b'\t')
-            {
+            while attr_ws_end < n && is_space(html_bytes[attr_ws_end]) {
                 attr_ws_end += 1;
             }
             let mut dx_group_cleanup: Option<(Range<usize>, String)> = None;
             if attr_ws_end + 8 <= n && &html_bytes[attr_ws_end..attr_ws_end + 8] == b"dx-group" {
                 let mut cursor_after_name = attr_ws_end + 8;
-                while cursor_after_name < n
-                    && matches!(html_bytes[cursor_after_name], b' ' | b'\n' | b'\r' | b'\t')
-                {
+                while cursor_after_name < n && is_space(html_bytes[cursor_after_name]) {
                     cursor_after_name += 1;
                 }
                 if cursor_after_name < n && html_bytes[cursor_after_name] == b'=' {
                     cursor_after_name += 1;
-                    while cursor_after_name < n
-                        && matches!(html_bytes[cursor_after_name], b' ' | b'\n' | b'\r' | b'\t')
-                    {
+                    while cursor_after_name < n && is_space(html_bytes[cursor_after_name]) {
                         cursor_after_name += 1;
                     }
                     if cursor_after_name < n {
@@ -502,9 +531,7 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
                                 let value_end = value_start + off;
                                 cursor_after_name = value_end + 1;
                                 let mut trailing = cursor_after_name;
-                                while trailing < n
-                                    && matches!(html_bytes[trailing], b' ' | b'\n' | b'\r' | b'\t')
-                                {
+                                while trailing < n && is_space(html_bytes[trailing]) {
                                     trailing += 1;
                                 }
                                 let has_following_attr =
@@ -527,10 +554,12 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
                     }
                 }
             }
+
             occurrences.push(ClassOccurrence {
                 attr_range: attr_start..attr_end,
-                tokens,
-                canonical,
+                value_range: value_start..value_end,
+                token_ranges,
+                canonical_hash: canonical_hasher.finish(),
                 dx_group_cleanup,
             });
         }
@@ -541,9 +570,9 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
         return None;
     }
 
-    let mut grouped: AHashMap<String, Vec<usize>> = AHashMap::default();
+    let mut grouped: AHashMap<u64, Vec<usize>> = AHashMap::default();
     for (idx, occ) in occurrences.iter().enumerate() {
-        grouped.entry(occ.canonical.clone()).or_default().push(idx);
+        grouped.entry(occ.canonical_hash).or_default().push(idx);
     }
 
     let mut replacements: Vec<(Range<usize>, String)> = Vec::new();
@@ -554,42 +583,74 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
         if indices.len() < 2 {
             continue;
         }
-        let first_idx = indices[0];
-        let tokens = occurrences[first_idx].tokens.clone();
-        let base_alias = base_alias_from_tokens(&tokens);
-        let mut suffix = alias_counts.get(&base_alias).copied().unwrap_or(0);
-        let mut candidate = if suffix == 0 {
-            base_alias.clone()
-        } else {
-            format!("{}{}", base_alias, suffix)
-        };
-        while existing_names.contains(&candidate) {
-            suffix += 1;
-            candidate = format!("{}{}", base_alias, suffix);
-        }
-        alias_counts.insert(base_alias.clone(), suffix + 1);
-        existing_names.insert(candidate.clone());
-        let alias = candidate;
-        let tokens_join = tokens.join(" ");
-        let first_range = occurrences[first_idx].attr_range.clone();
-        replacements.push((
-            first_range,
-            format!("class=\"{} @{}({})\"", alias, alias, tokens_join),
-        ));
-        if let Some((range, replacement)) = occurrences[first_idx].dx_group_cleanup.clone() {
-            replacements.push((range, replacement));
-        }
-        for &idx in &indices[1..] {
-            let range = occurrences[idx].attr_range.clone();
-            replacements.push((range, format!("class=\"{}\"", alias)));
-            if let Some((range, replacement)) = occurrences[idx].dx_group_cleanup.clone() {
+        let mut remaining = indices.clone();
+        while !remaining.is_empty() {
+            let current_idx = remaining.swap_remove(0);
+            let mut matches = vec![current_idx];
+            let mut j = 0;
+            while j < remaining.len() {
+                let candidate_idx = remaining[j];
+                if classes_match(
+                    &occurrences[current_idx],
+                    &occurrences[candidate_idx],
+                    html_bytes,
+                ) {
+                    matches.push(candidate_idx);
+                    remaining.swap_remove(j);
+                } else {
+                    j += 1;
+                }
+            }
+
+            if matches.len() < 2 {
+                continue;
+            }
+
+            matches.sort_by_key(|&idx| occurrences[idx].attr_range.start);
+            let first_idx = matches[0];
+            let first_occ = &occurrences[first_idx];
+            let value_slice = &html_bytes[first_occ.value_range.clone()];
+            let value_str = std::str::from_utf8(value_slice).ok()?;
+            let mut tokens: Vec<String> = Vec::with_capacity(first_occ.token_ranges.len());
+            for range in &first_occ.token_ranges {
+                tokens.push(value_str[range.clone()].to_string());
+            }
+
+            let base_alias = base_alias_from_tokens(&tokens);
+            let mut suffix = alias_counts.get(&base_alias).copied().unwrap_or(0);
+            let mut candidate = if suffix == 0 {
+                base_alias.clone()
+            } else {
+                format!("{}{}", base_alias, suffix)
+            };
+            while existing_names.contains(candidate.as_str()) {
+                suffix += 1;
+                candidate = format!("{}{}", base_alias, suffix);
+            }
+            alias_counts.insert(base_alias.clone(), suffix + 1);
+            existing_names.insert(candidate.clone());
+            let alias = candidate;
+            let tokens_join = tokens.join(" ");
+            let first_range = first_occ.attr_range.clone();
+            replacements.push((
+                first_range,
+                format!("class=\"{} @{}({})\"", alias, alias, tokens_join),
+            ));
+            if let Some((range, replacement)) = first_occ.dx_group_cleanup.clone() {
                 replacements.push((range, replacement));
             }
+            for &idx in &matches[1..] {
+                let occ = &occurrences[idx];
+                replacements.push((occ.attr_range.clone(), format!("class=\"{}\"", alias)));
+                if let Some((range, replacement)) = occ.dx_group_cleanup.clone() {
+                    replacements.push((range, replacement));
+                }
+            }
+            infos.push(AutoGroupInfo {
+                alias,
+                classes: tokens,
+            });
         }
-        infos.push(AutoGroupInfo {
-            alias,
-            classes: tokens,
-        });
     }
 
     if replacements.is_empty() {
@@ -606,6 +667,23 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
         html: html_string.into_bytes(),
         groups: infos,
     })
+}
+
+fn classes_match(a: &ClassOccurrence, b: &ClassOccurrence, html_bytes: &[u8]) -> bool {
+    if a.token_ranges.len() != b.token_ranges.len() {
+        return false;
+    }
+    let a_slice = &html_bytes[a.value_range.clone()];
+    let b_slice = &html_bytes[b.value_range.clone()];
+    for (range_a, range_b) in a.token_ranges.iter().zip(&b.token_ranges) {
+        if range_a.len() != range_b.len() {
+            return false;
+        }
+        if &a_slice[range_a.clone()] != &b_slice[range_b.clone()] {
+            return false;
+        }
+    }
+    true
 }
 
 #[cfg(test)]

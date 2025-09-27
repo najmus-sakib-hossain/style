@@ -351,35 +351,32 @@ pub fn rebuild_styles(
                 state_guard.css_buffer.push(b'\n');
             }
             state_guard.css_buffer.extend_from_slice(b"}\n");
-            // Optional formatting only on initial full build or when forced
-            let apply_format = is_initial_run || force_format;
-            if apply_format {
-                if let Ok(as_string) = String::from_utf8(state_guard.css_buffer.clone()) {
-                    if let Some(formatted) = formatter::format_css_pretty(&as_string) {
-                        state_guard.css_buffer.clear();
-                        state_guard
-                            .css_buffer
-                            .extend_from_slice(formatted.as_bytes());
-                        // Recompute utilities_offset since formatting may have changed positions
-                        if let Some(layer_pos) =
-                            twoway::find_bytes(&state_guard.css_buffer, b"@layer utilities")
+            // Always format CSS output to maintain pretty-printed styling for downstream tools.
+            if let Ok(as_string) = String::from_utf8(state_guard.css_buffer.clone()) {
+                if let Some(formatted) = formatter::format_css_pretty(&as_string) {
+                    state_guard.css_buffer.clear();
+                    state_guard
+                        .css_buffer
+                        .extend_from_slice(formatted.as_bytes());
+                    // Recompute utilities_offset since formatting may have changed positions
+                    if let Some(layer_pos) =
+                        twoway::find_bytes(&state_guard.css_buffer, b"@layer utilities")
+                    {
+                        // Find first '{' after the marker
+                        if let Some(rel_brace) = state_guard.css_buffer[layer_pos..]
+                            .iter()
+                            .position(|b| *b == b'{')
                         {
-                            // Find first '{' after the marker
-                            if let Some(rel_brace) = state_guard.css_buffer[layer_pos..]
+                            let after_brace = layer_pos + rel_brace + 1; // position right after '{'
+                            // Advance to next newline (start of body lines)
+                            if let Some(nl) = state_guard.css_buffer[after_brace..]
                                 .iter()
-                                .position(|b| *b == b'{')
+                                .position(|b| *b == b'\n')
                             {
-                                let after_brace = layer_pos + rel_brace + 1; // position right after '{'
-                                // Advance to next newline (start of body lines)
-                                if let Some(nl) = state_guard.css_buffer[after_brace..]
-                                    .iter()
-                                    .position(|b| *b == b'\n')
-                                {
-                                    state_guard.utilities_offset = after_brace + nl + 1;
-                                } else {
-                                    // No newline -> body empty so offset at end
-                                    state_guard.utilities_offset = state_guard.css_buffer.len();
-                                }
+                                state_guard.utilities_offset = after_brace + nl + 1;
+                            } else {
+                                // No newline -> body empty so offset at end
+                                state_guard.utilities_offset = state_guard.css_buffer.len();
                             }
                         }
                     }
