@@ -146,7 +146,36 @@ pub fn rebuild_styles(
             group_registry.merge_preserve(&prev_registry);
         }
     }
-    group_registry.set_dev_selectors(dev_group_selectors);
+    // If the HTML contains an explicit '@alias' token (even without
+    // parentheses) treat that as a developer request to emit the legacy
+    // dev selector. Use the group's recorded dev_tokens to synthesize a
+    // `@alias(a b c)` string. This handles cases where the user writes
+    // `class="@alias"` to request the dev selector be present.
+    {
+        let mut devs = dev_group_selectors;
+        // Inspect the HTML bytes for '@alias' occurrences. We purposely use
+        // a simple substring search here to prefer a small, local change;
+        // it's sufficient for typical usages like `@bg` or `@card`.
+        let html_text = String::from_utf8_lossy(&html_bytes).to_string();
+        for (name, def) in group_registry.definitions() {
+            if devs.contains_key(name) {
+                continue;
+            }
+            let search = format!("@{}", name);
+            if html_text.contains(&search) {
+                // Use dev_tokens when available, otherwise fall back to utilities
+                let inner = if !def.dev_tokens.is_empty() {
+                    def.dev_tokens.join(" ")
+                } else {
+                    def.utilities.join(" ")
+                };
+                if !inner.is_empty() {
+                    devs.insert(name.clone(), format!("@{}({})", name, inner));
+                }
+            }
+        }
+        group_registry.set_dev_selectors(devs);
+    }
 
     // Remove concrete utility members from the master class set so they are
     // neither persisted in the cache nor emitted as independent rules. The

@@ -75,22 +75,31 @@ where
     let engine_opt = std::panic::catch_unwind(|| AppState::engine()).ok();
     if let Some(engine) = engine_opt {
         for class in classes {
+            println!("[dx-style] generate_class for '{}'", class);
             if groups.is_internal_token(class) {
+                println!("[dx-style]  - internal token, skip");
                 continue;
             }
             // If this concrete class is a member of a grouped alias, don't emit
             // the individual utility rule. The grouped alias will produce the
             // combined selector and bodies.
             if groups.is_util_member(class) {
+                println!("[dx-style]  - is utility member of a group, skipping concrete emission");
                 continue;
             }
             if let Some(alias_css) = groups.generate_css_for(class, engine) {
+                println!(
+                    "[dx-style]  - group generated CSS for '{}': starts with -> {}",
+                    class,
+                    &alias_css[..alias_css.find('\n').unwrap_or(alias_css.len())]
+                );
                 buf.extend_from_slice(alias_css.as_bytes());
                 if !alias_css.ends_with('\n') {
                     buf.push(b'\n');
                 }
                 continue;
             }
+            println!("[dx-style]  - no group CSS for '{}'", class);
             if let Some(css) = engine.css_for_class(class) {
                 buf.extend_from_slice(css.as_bytes());
                 if !css.ends_with('\n') {

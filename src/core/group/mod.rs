@@ -34,10 +34,16 @@ impl GroupRegistry {
         self.definitions.iter()
     }
 
-    pub fn set_dev_selectors(&mut self, mut selectors: AHashMap<String, String>) {
+    pub fn set_dev_selectors(&mut self, selectors: AHashMap<String, String>) {
         // Set dev selectors exactly as provided by the caller. This allows the caller
         // (e.g. the auto-group rewrite) to control whether legacy `@alias(...)` dev
         // selectors are present. Do not auto-insert defaults here to support toggling.
+        if !selectors.is_empty() {
+            println!(
+                "[dx-style] set_dev_selectors -> {}",
+                selectors.keys().cloned().collect::<Vec<_>>().join(",")
+            );
+        }
         self.dev_selectors = selectors;
         if !self.cached_css.is_empty() {
             self.cached_css.clear();
@@ -247,6 +253,7 @@ impl GroupRegistry {
             .map(|dev| format!("{},{}", alias_selector, dev));
         let mut simple_bodies: Vec<String> = Vec::new();
         let mut extra_css = String::new();
+        let mut missing_utils: Vec<String> = Vec::new();
         for util in flattened {
             if let Some(mut css) = engine.css_for_class(&util) {
                 rewrite_selector(&mut css, &util, &alias_selector);
@@ -275,17 +282,27 @@ impl GroupRegistry {
                         extra_css.push('\n');
                     }
                 }
+            } else {
+                // Record missing utility so we can log why a group might not emit.
+                missing_utils.push(util.clone());
             }
         }
 
         let mut simple_block = String::new();
         if !simple_bodies.is_empty() {
+            // Emit a rule for the alias selector. If a dev selector exists,
+            // also emit an identical rule immediately after for the dev selector
+            // so that developer tools selecting the '@alias(...)' form find the
+            // rule adjacent to the generated alias. This avoids relying on a
+            // combined selector which some tooling may not match correctly.
+            // Emit combined selector when dev selector exists (keeps legacy tooling expectations)
             let selector_output = combined_selector
                 .as_deref()
                 .unwrap_or_else(|| alias_selector.as_str());
+            // Alias/combined rule
             simple_block.push_str(selector_output);
             simple_block.push_str(" {\n");
-            for body in simple_bodies {
+            for body in &simple_bodies {
                 for line in body.lines() {
                     let trimmed_line = line.trim();
                     if trimmed_line.is_empty() {
@@ -300,6 +317,26 @@ impl GroupRegistry {
                 }
             }
             simple_block.push_str("}\n");
+            // Dev selector rule (adjacent), if present: emit identical body
+            if let Some(ref dev_sel) = dev_selector {
+                simple_block.push_str(dev_sel.as_str());
+                simple_block.push_str(" {\n");
+                for body in &simple_bodies {
+                    for line in body.lines() {
+                        let trimmed_line = line.trim();
+                        if trimmed_line.is_empty() {
+                            continue;
+                        }
+                        simple_block.push_str("  ");
+                        simple_block.push_str(trimmed_line);
+                        if !trimmed_line.ends_with(';') && !trimmed_line.ends_with('}') {
+                            simple_block.push(';');
+                        }
+                        simple_block.push('\n');
+                    }
+                }
+                simple_block.push_str("}\n");
+            }
         }
 
         let mut accumulated = String::new();
@@ -310,14 +347,28 @@ impl GroupRegistry {
             if !accumulated.is_empty() && !accumulated.ends_with('\n') {
                 accumulated.push('\n');
             }
-            if let Some(ref combo) = combined_selector {
-                accumulated.push_str(&extra_css.replace(alias_selector.as_str(), combo));
-            } else {
-                accumulated.push_str(&extra_css);
+            // Emit extra (complex) rules for both alias and dev selector when
+            // a dev selector exists. For alias we output the original extra_css
+            // (which references alias_selector). For dev we produce a copy with
+            // alias_selector replaced by the dev selector so the same complex
+            // rules apply to the @... form as well.
+            accumulated.push_str(&extra_css);
+            if let Some(ref dev_sel) = dev_selector {
+                if !extra_css.ends_with('\n') {
+                    accumulated.push('\n');
+                }
+                accumulated.push_str(&extra_css.replace(alias_selector.as_str(), dev_sel));
             }
         }
 
         if accumulated.trim().is_empty() {
+            if !missing_utils.is_empty() {
+                println!(
+                    "[dx-style] group '{}' skipped: missing utils -> {}",
+                    class,
+                    missing_utils.join(" ")
+                );
+            }
             return None;
         }
 
