@@ -291,11 +291,7 @@ impl GroupRegistry {
         let mut simple_block = String::new();
         if !simple_bodies.is_empty() {
             // Emit a rule for the alias selector. If a dev selector exists,
-            // also emit an identical rule immediately after for the dev selector
-            // so that developer tools selecting the '@alias(...)' form find the
-            // rule adjacent to the generated alias. This avoids relying on a
-            // combined selector which some tooling may not match correctly.
-            // Emit combined selector when dev selector exists (keeps legacy tooling expectations)
+            // emit a combined selector to include both the alias and dev forms.
             let selector_output = combined_selector
                 .as_deref()
                 .unwrap_or_else(|| alias_selector.as_str());
@@ -317,26 +313,6 @@ impl GroupRegistry {
                 }
             }
             simple_block.push_str("}\n");
-            // Dev selector rule (adjacent), if present: emit identical body
-            if let Some(ref dev_sel) = dev_selector {
-                simple_block.push_str(dev_sel.as_str());
-                simple_block.push_str(" {\n");
-                for body in &simple_bodies {
-                    for line in body.lines() {
-                        let trimmed_line = line.trim();
-                        if trimmed_line.is_empty() {
-                            continue;
-                        }
-                        simple_block.push_str("  ");
-                        simple_block.push_str(trimmed_line);
-                        if !trimmed_line.ends_with(';') && !trimmed_line.ends_with('}') {
-                            simple_block.push(';');
-                        }
-                        simple_block.push('\n');
-                    }
-                }
-                simple_block.push_str("}\n");
-            }
         }
 
         let mut accumulated = String::new();
