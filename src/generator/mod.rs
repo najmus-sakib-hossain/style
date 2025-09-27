@@ -78,6 +78,12 @@ where
             if groups.is_internal_token(class) {
                 continue;
             }
+            // If this concrete class is a member of a grouped alias, don't emit
+            // the individual utility rule. The grouped alias will produce the
+            // combined selector and bodies.
+            if groups.is_util_member(class) {
+                continue;
+            }
             if let Some(alias_css) = groups.generate_css_for(class, engine) {
                 buf.extend_from_slice(alias_css.as_bytes());
                 if !alias_css.ends_with('\n') {

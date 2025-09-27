@@ -124,7 +124,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let css_out = core::output::CssOutput::open(&config.paths.css_file)?;
 
-    let (preloaded_cache, preloaded_hash, preloaded_checksum) = cache::load_cache();
+    let (preloaded_cache, preloaded_hash, preloaded_checksum, preloaded_groups) =
+        cache::load_cache();
 
     let existing_css_hash = {
         use ahash::AHasher;
@@ -243,7 +244,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         class_list_checksum,
         css_index,
         utilities_offset: 0,
-        group_registry: crate::core::group::GroupRegistry::new(),
+        group_registry: if let Some(dump) = preloaded_groups {
+            crate::core::group::GroupRegistry::from_dump(&dump)
+        } else {
+            crate::core::group::GroupRegistry::new()
+        },
         group_log_hash: 0,
     }));
 

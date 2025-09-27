@@ -148,6 +148,11 @@ pub fn rebuild_styles(
     }
     group_registry.set_dev_selectors(dev_group_selectors);
 
+    // Remove concrete utility members from the master class set so they are
+    // neither persisted in the cache nor emitted as independent rules. The
+    // grouped alias will provide the combined selector and bodies instead.
+    group_registry.remove_utility_members_from(&mut all_classes);
+
     let diff_timer = Instant::now();
     let (added, removed) = {
         let state_guard = state.lock().unwrap();
@@ -219,8 +224,21 @@ pub fn rebuild_styles(
     }
     let cache_update_duration = cache_update_timer.elapsed();
 
-    if let Err(e) = cache::save_cache(&state.lock().unwrap().class_cache, new_html_hash) {
-        eprintln!("{} {}", "Error saving cache:".red(), e);
+    // Persist cache including group dump when available. Lock once to extract
+    // required pieces and then call save_cache with an optional group dump
+    // reference to avoid holding the lock while performing IO.
+    {
+        let guard = state.lock().unwrap();
+        let class_cache_copy = guard.class_cache.clone();
+        let groups_opt = if guard.group_registry.is_empty() {
+            None
+        } else {
+            Some(guard.group_registry.to_dump())
+        };
+        drop(guard);
+        if let Err(e) = cache::save_cache(&class_cache_copy, new_html_hash, groups_opt.as_ref()) {
+            eprintln!("{} {}", "Error saving cache:".red(), e);
+        }
     }
 
     struct WriteStats {

@@ -16,6 +16,7 @@ pub struct GroupDefinition {
 pub struct GroupRegistry {
     definitions: AHashMap<String, GroupDefinition>,
     internal_tokens: AHashSet<String>,
+    utility_members: AHashSet<String>,
     cached_css: AHashMap<String, String>,
     dev_selectors: AHashMap<String, String>,
 }
@@ -53,11 +54,66 @@ impl GroupRegistry {
     /// keep the previously-generated CSS for those aliases in the output.
     pub fn merge_preserve(&mut self, prev: &GroupRegistry) {
         for (name, def) in prev.definitions.iter() {
-            self.definitions.entry(name.clone()).or_insert_with(|| def.clone());
+            self.definitions
+                .entry(name.clone())
+                .or_insert_with(|| def.clone());
         }
         for (k, v) in prev.cached_css.iter() {
-            self.cached_css.entry(k.clone()).or_insert_with(|| v.clone());
+            self.cached_css
+                .entry(k.clone())
+                .or_insert_with(|| v.clone());
         }
+        for tok in prev.utility_members.iter() {
+            self.utility_members.insert(tok.clone());
+        }
+    }
+
+    /// Create a serializable dump of definitions and cached CSS for persistence.
+    pub fn to_dump(&self) -> super::super::cache::GroupDump {
+        use std::collections::BTreeMap;
+        let mut defs = BTreeMap::new();
+        for (k, v) in self.definitions.iter() {
+            defs.insert(
+                k.clone(),
+                super::super::cache::GroupDefDump {
+                    utilities: v.utilities.clone(),
+                    allow_extend: v.allow_extend,
+                    raw_tokens: v.raw_tokens.clone(),
+                    dev_tokens: v.dev_tokens.clone(),
+                },
+            );
+        }
+        let mut css_map = BTreeMap::new();
+        for (k, v) in self.cached_css.iter() {
+            css_map.insert(k.clone(), v.clone());
+        }
+        super::super::cache::GroupDump {
+            definitions: defs,
+            cached_css: css_map,
+        }
+    }
+
+    /// Restore registry state from a dump (used when loading cache).
+    pub fn from_dump(dump: &super::super::cache::GroupDump) -> Self {
+        let mut registry = GroupRegistry::new();
+        for (k, v) in dump.definitions.iter() {
+            registry.definitions.insert(
+                k.clone(),
+                GroupDefinition {
+                    utilities: v.utilities.clone(),
+                    allow_extend: v.allow_extend,
+                    raw_tokens: v.raw_tokens.clone(),
+                    dev_tokens: v.dev_tokens.clone(),
+                },
+            );
+            for util in &v.utilities {
+                registry.utility_members.insert(util.clone());
+            }
+        }
+        for (k, v) in dump.cached_css.iter() {
+            registry.cached_css.insert(k.clone(), v.clone());
+        }
+        registry
     }
 
     pub fn analyze(
@@ -116,6 +172,9 @@ impl GroupRegistry {
             if !entry.utilities.contains(&actual_class) {
                 entry.utilities.push(actual_class.clone());
             }
+            // Record that this concrete utility is a member of some group so
+            // the generator can skip emitting the utility individually.
+            registry.utility_members.insert(actual_class.clone());
             entry.raw_tokens.push(event.full_class.clone());
             if !entry.dev_tokens.contains(&event.token) {
                 entry.dev_tokens.push(event.token.clone());
@@ -133,7 +192,25 @@ impl GroupRegistry {
             classes.remove(token);
         }
 
+        // Note: do NOT remove utility members here. The caller (rebuild_styles)
+        // will decide when to strip concrete utilities from the final class set
+        // before emitting or persisting them. Tests that call analyze directly
+        // expect the classes set to remain intact.
+
         registry
+    }
+
+    /// Remove any concrete utility members from the provided class set. This
+    /// is intended to be called by the rebuild pipeline after analysis so that
+    /// grouped utilities are not emitted or saved as standalone utilities.
+    pub fn remove_utility_members_from(&self, classes: &mut AHashSet<String>) {
+        for util in self.utility_members.iter() {
+            classes.remove(util);
+        }
+    }
+
+    pub fn is_util_member(&self, class: &str) -> bool {
+        self.utility_members.contains(class)
     }
 
     pub fn generate_css_for<'a>(
