@@ -115,11 +115,7 @@ pub fn lighter_unsafe(tone: f64, ratio: f64) -> f64 {
 pub fn darker_unsafe(tone: f64, ratio: f64) -> f64 {
     let darker_safe = darker(tone, ratio);
 
-    if darker_safe < 0.0 {
-        0.0
-    } else {
-        darker_safe
-    }
+    if darker_safe < 0.0 { 0.0 } else { darker_safe }
 }
 
 #[cfg(test)]

@@ -1,6 +1,7 @@
-use ahash::AHashSet;
+use ahash::{AHashMap, AHashSet};
 use memchr::{memchr, memmem::Finder};
 use smallvec::SmallVec;
+use std::ops::Range;
 
 #[derive(Debug, Clone)]
 pub struct GroupEvent {
@@ -37,6 +38,18 @@ impl GroupCollector {
 pub struct ExtractedClasses {
     pub classes: AHashSet<String>,
     pub group_events: Vec<GroupEvent>,
+}
+
+#[derive(Debug, Clone)]
+pub struct AutoGroupInfo {
+    pub alias: String,
+    pub classes: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct AutoGroupRewrite {
+    pub html: Vec<u8>,
+    pub groups: Vec<AutoGroupInfo>,
 }
 
 #[inline]
@@ -318,6 +331,167 @@ pub fn extract_classes_fast(html_bytes: &[u8], capacity_hint: usize) -> Extracte
     }
 }
 
+#[derive(Debug)]
+struct ClassOccurrence {
+    attr_range: Range<usize>,
+    tokens: Vec<String>,
+    canonical: String,
+}
+
+pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> {
+    let mut occurrences: Vec<ClassOccurrence> = Vec::new();
+    let mut existing_names: AHashSet<String> = AHashSet::default();
+
+    let mut pos = 0usize;
+    let n = html_bytes.len();
+    let finder = Finder::new(b"class");
+    while let Some(idx) = finder.find(&html_bytes[pos..]) {
+        let attr_start = pos + idx;
+        if attr_start > 0 {
+            let prev = html_bytes[attr_start - 1];
+            if (prev as char).is_ascii_alphanumeric() || prev == b'-' || prev == b'_' {
+                pos = attr_start + 5;
+                continue;
+            }
+        }
+        let mut cursor = attr_start + 5;
+        while cursor < n && matches!(html_bytes[cursor], b' ' | b'\n' | b'\r' | b'\t') {
+            cursor += 1;
+        }
+        if cursor >= n || html_bytes[cursor] != b'=' {
+            pos = attr_start + 5;
+            continue;
+        }
+        cursor += 1;
+        while cursor < n && matches!(html_bytes[cursor], b' ' | b'\n' | b'\r' | b'\t') {
+            cursor += 1;
+        }
+        if cursor >= n {
+            break;
+        }
+        let quote = html_bytes[cursor];
+        if quote != b'"' && quote != b'\'' {
+            pos = attr_start + 5;
+            continue;
+        }
+        cursor += 1;
+        let value_start = cursor;
+        let rel_end = memchr(quote, &html_bytes[value_start..]);
+        let value_end = match rel_end {
+            Some(off) => value_start + off,
+            None => break,
+        };
+        let attr_end = value_end + 1;
+        if let Ok(value_str) = std::str::from_utf8(&html_bytes[value_start..value_end]) {
+            let raw_tokens: Vec<&str> = value_str
+                .split_whitespace()
+                .filter(|t| !t.is_empty())
+                .collect();
+            for tok in &raw_tokens {
+                existing_names.insert((*tok).to_string());
+            }
+            if raw_tokens.len() < 2 {
+                pos = attr_end;
+                continue;
+            }
+            if value_str.as_bytes().iter().any(|b| {
+                matches!(
+                    *b,
+                    b'(' | b')' | b'{' | b'}' | b':' | b'@' | b'#' | b'[' | b']'
+                )
+            }) {
+                pos = attr_end;
+                continue;
+            }
+            let mut seen: AHashSet<&str> = AHashSet::with_capacity(raw_tokens.len());
+            let mut simple = true;
+            for &tok in &raw_tokens {
+                if tok.contains('+') || tok.starts_with("dxg-") {
+                    simple = false;
+                    break;
+                }
+                if !seen.insert(tok) {
+                    simple = false;
+                    break;
+                }
+            }
+            if !simple {
+                pos = attr_end;
+                continue;
+            }
+            let tokens: Vec<String> = raw_tokens.iter().map(|t| (*t).to_string()).collect();
+            let canonical = tokens.join("\u{0}");
+            occurrences.push(ClassOccurrence {
+                attr_range: attr_start..attr_end,
+                tokens,
+                canonical,
+            });
+        }
+        pos = attr_end;
+    }
+
+    if occurrences.is_empty() {
+        return None;
+    }
+
+    let mut grouped: AHashMap<String, Vec<usize>> = AHashMap::default();
+    for (idx, occ) in occurrences.iter().enumerate() {
+        grouped.entry(occ.canonical.clone()).or_default().push(idx);
+    }
+
+    let mut replacements: Vec<(Range<usize>, String)> = Vec::new();
+    let mut infos: Vec<AutoGroupInfo> = Vec::new();
+    let mut alias_counter: usize = 1;
+
+    for indices in grouped.values() {
+        if indices.len() < 2 {
+            continue;
+        }
+        let first_idx = indices[0];
+        let tokens = occurrences[first_idx].tokens.clone();
+        let alias = loop {
+            let candidate = format!("dxg-{}", alias_counter);
+            alias_counter += 1;
+            if !existing_names.contains(&candidate) {
+                existing_names.insert(candidate.clone());
+                break candidate;
+            }
+        };
+        let tokens_join = tokens.join(" ");
+        let first_range = occurrences[first_idx].attr_range.clone();
+        replacements.push((
+            first_range,
+            format!(
+                "class=\"{}\" dx-group=\"{}({})\"",
+                alias, alias, tokens_join
+            ),
+        ));
+        for &idx in &indices[1..] {
+            let range = occurrences[idx].attr_range.clone();
+            replacements.push((range, format!("class=\"{}\"", alias)));
+        }
+        infos.push(AutoGroupInfo {
+            alias,
+            classes: tokens,
+        });
+    }
+
+    if replacements.is_empty() {
+        return None;
+    }
+
+    replacements.sort_by(|a, b| b.0.start.cmp(&a.0.start));
+    let mut html_string = String::from_utf8(html_bytes.to_vec()).ok()?;
+    for (range, replacement) in replacements {
+        html_string.replace_range(range, &replacement);
+    }
+
+    Some(AutoGroupRewrite {
+        html: html_string.into_bytes(),
+        groups: infos,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -370,6 +544,32 @@ mod tests {
         assert!(
             registry.definitions().any(|(name, _)| name == "card"),
             "registry should capture alias definition"
+        );
+    }
+
+    #[test]
+    fn rewrite_duplicates_into_group_alias() {
+        let html = br#"<h1 class="border flex text-red-500">Hello</h1>
+<h1 class="border flex text-red-500">World</h1>"#;
+        let result = rewrite_duplicate_classes(html).expect("rewrite");
+        let rewritten = String::from_utf8(result.html.clone()).unwrap();
+        assert!(
+            rewritten.contains("class=\"dxg-1\" dx-group=\"dxg-1(border flex text-red-500)\""),
+            "expected alias definition"
+        );
+        assert!(
+            rewritten.contains("class=\"dxg-1\">World"),
+            "expected second occurrence to use alias"
+        );
+        assert_eq!(result.groups.len(), 1);
+        assert_eq!(result.groups[0].alias, "dxg-1");
+        assert_eq!(
+            result.groups[0].classes,
+            vec![
+                "border".to_string(),
+                "flex".to_string(),
+                "text-red-500".to_string()
+            ]
         );
     }
 }

@@ -2,7 +2,7 @@
 #[allow(unused_imports)]
 use crate::core::color::utils::no_std::FloatExt;
 use crate::core::color::{
-    color::{lstar_from_y, Argb},
+    color::{Argb, lstar_from_y},
     utils::FromRef,
 };
 use core::{
@@ -224,7 +224,7 @@ impl FromRef<Hct> for Argb {
 #[cfg(test)]
 mod tests {
     use super::{Cam16, Hct, ViewingConditions};
-    use crate::core::color::color::{y_from_lstar, Argb};
+    use crate::core::color::color::{Argb, y_from_lstar};
     use ahash::AHasher;
     #[cfg(not(feature = "std"))]
     use alloc::format;

@@ -254,11 +254,7 @@ impl DynamicColor {
             }
 
             // Returns `nTone` if this color is `nearer`, otherwise `fTone`.
-            if am_nearer {
-                n_tone
-            } else {
-                f_tone
-            }
+            if am_nearer { n_tone } else { f_tone }
         } else {
             // Case 2: No contrast pair; just solve for itself.
             let mut answer = (self.tone)(scheme);
@@ -433,11 +429,11 @@ impl DynamicColor {
 mod tests {
     use super::{DynamicColor, MaterialDynamicColors};
     use crate::core::color::{
+        Map,
         color::Argb,
         contrast::ratio_of_tones,
         hct::Hct,
         scheme::variant::{SchemeContent, SchemeFidelity, SchemeMonochrome, SchemeTonalSpot},
-        Map,
     };
     use float_cmp::assert_approx_eq;
 
@@ -557,7 +553,9 @@ mod tests {
                         ),
                     ] {
                         #[cfg(feature = "std")]
-                        std::println!("Scheme: {scheme_name}; Seed color: {color}; Contrast level: {contrast_level}; Dark: {is_dark}");
+                        std::println!(
+                            "Scheme: {scheme_name}; Seed color: {color}; Contrast level: {contrast_level}; Dark: {is_dark}"
+                        );
 
                         for (fg_name, bg_name) in [
                             ("onPrimary", "primary"),
@@ -587,8 +585,8 @@ mod tests {
                             let minimum_requirement = if contrast_level >= 0.0 { 4.5 } else { 3.0 };
 
                             assert!(
-                              contrast >= minimum_requirement,
-                              "Contrast {contrast} is too low between foreground ({fg_name}; {foreground_tone}) and ({bg_name}; {background_tone})"
+                                contrast >= minimum_requirement,
+                                "Contrast {contrast} is too low between foreground ({fg_name}; {foreground_tone}) and ({bg_name}; {background_tone})"
                             );
                         }
                     }

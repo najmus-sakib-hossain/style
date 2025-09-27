@@ -1,4 +1,4 @@
-use crate::core::color::{color::Argb, IndexMap};
+use crate::core::color::{IndexMap, color::Argb};
 
 pub trait Quantizer {
     fn quantize(pixels: &[Argb], max_colors: usize) -> QuantizerResult;

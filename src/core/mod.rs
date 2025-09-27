@@ -1,8 +1,6 @@
 use crate::{
-    cache,
-    datasource,
-    generator,
-    parser::extract_classes_fast,
+    cache, datasource, generator,
+    parser::{extract_classes_fast, rewrite_duplicate_classes},
     telemetry::format_duration,
 };
 mod animation;
@@ -75,7 +73,22 @@ pub fn rebuild_styles(
     index_path: &str,
     is_initial_run: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let html_bytes = datasource::read_file(index_path)?;
+    let mut html_bytes = datasource::read_file(index_path)?;
+    if let Some(plan) = rewrite_duplicate_classes(&html_bytes) {
+        if plan.html != html_bytes {
+            std::fs::write(index_path, &plan.html)?;
+            if !plan.groups.is_empty() {
+                for info in &plan.groups {
+                    println!(
+                        "[dx-style] auto group {} -> {}",
+                        info.alias,
+                        info.classes.join(" ")
+                    );
+                }
+            }
+            html_bytes = plan.html;
+        }
+    }
 
     let hash_timer = Instant::now();
     let new_html_hash = {
@@ -167,11 +180,7 @@ pub fn rebuild_styles(
             let new_hash = log_hasher.finish();
             if new_hash != state_guard.group_log_hash {
                 for (name, utils, extend) in &entries {
-                    let mut message = format!(
-                        "[dx-style] group {} -> {}",
-                        name,
-                        utils.join(" ")
-                    );
+                    let mut message = format!("[dx-style] group {} -> {}", name, utils.join(" "));
                     if *extend {
                         message.push_str(" (extend)");
                     }
@@ -552,9 +561,7 @@ pub fn rebuild_styles(
                     continue;
                 }
                 let css_cow: Cow<'_, str> = if let Some(alias_css) =
-                    state_guard
-                        .group_registry
-                        .generate_css_for(class, engine)
+                    state_guard.group_registry.generate_css_for(class, engine)
                 {
                     Cow::Borrowed(alias_css)
                 } else if let Some(css) = engine.css_for_class(class) {

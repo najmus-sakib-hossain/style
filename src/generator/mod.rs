@@ -1,10 +1,7 @@
 use cssparser::serialize_identifier;
 
 use crate::core::{
-    group::GroupRegistry,
-    AppState,
-    properties_layer_present,
-    set_properties_layer_present,
+    AppState, group::GroupRegistry, properties_layer_present, set_properties_layer_present,
 };
 
 #[allow(dead_code)]
@@ -69,11 +66,7 @@ where
     }
 }
 
-pub fn generate_class_rules_only<'a, I>(
-    buf: &mut Vec<u8>,
-    classes: I,
-    groups: &mut GroupRegistry,
-)
+pub fn generate_class_rules_only<'a, I>(buf: &mut Vec<u8>, classes: I, groups: &mut GroupRegistry)
 where
     I: IntoIterator<Item = &'a String>,
 {

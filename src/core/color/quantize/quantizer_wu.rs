@@ -5,8 +5,8 @@ use super::{Quantizer, QuantizerMap, QuantizerResult};
 #[allow(unused_imports)]
 use crate::core::color::utils::no_std::FloatExt;
 use crate::core::color::{
-    color::{Argb, Rgb},
     IndexMap,
+    color::{Argb, Rgb},
 };
 #[cfg(not(feature = "std"))]
 use alloc::{vec, vec::Vec};
