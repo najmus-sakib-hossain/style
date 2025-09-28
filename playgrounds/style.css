@@ -945,6 +945,10 @@ Dx Style v0.0.1 | MIT License | https://dx.com
     display: flex;
   }
 
+  .grid {
+    display: grid;
+  }
+
   .none {
     display: none;
   }
