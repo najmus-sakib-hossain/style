@@ -44,9 +44,29 @@ impl GroupRegistry {
             //     selectors.keys().cloned().collect::<Vec<_>>().join(",")
             // );
         }
-        self.dev_selectors = selectors;
-        if !self.cached_css.is_empty() {
-            self.cached_css.clear();
+        // Replace dev selectors exactly as provided. Previously this cleared
+        // the entire cached_css which forced regeneration / lost historical
+        // alias rules when only dev selectors changed. Instead, only remove
+        // cached entries for aliases that no longer exist in the new
+        // selector map (they might have been intentionally removed).
+        let old_selectors = std::mem::replace(&mut self.dev_selectors, selectors);
+
+        // If there was no previous selector map, keep cache as-is.
+        if old_selectors.is_empty() {
+            return;
+        }
+
+        // Remove cached_css for aliases that were removed from dev selectors
+        // to avoid keeping dev-only derived rules around. Do not clear other
+        // cached entries so manual edits to dev selectors don't force users
+        // to update old class names in HTML/CSS.
+        let removed: Vec<String> = old_selectors
+            .keys()
+            .filter(|k| !self.dev_selectors.contains_key(*k))
+            .cloned()
+            .collect();
+        for alias in removed {
+            self.cached_css.remove(&alias);
         }
     }
 
@@ -59,12 +79,119 @@ impl GroupRegistry {
     /// removes grouped utilities from the HTML (manual toggle) but we want to
     /// keep the previously-generated CSS for those aliases in the output.
     pub fn merge_preserve(&mut self, prev: &GroupRegistry) {
+        // First, copy any missing definitions from previous registry.
         for (name, def) in prev.definitions.iter() {
             self.definitions
                 .entry(name.clone())
                 .or_insert_with(|| def.clone());
         }
+
+        // Build alias name set for normalization to exclude alias tokens
+        // from utility comparisons.
+        let mut current_alias_names: AHashSet<String> = AHashSet::default();
+        for (name, _) in self.definitions.iter() {
+            current_alias_names.insert(name.clone());
+        }
+
+        // Build a vector of (alias, normalized_util_set) for current defs to
+        // support fuzzy matching (Jaccard) when migrating aliases.
+        let mut current_defs_norm: Vec<(String, AHashSet<String>)> = Vec::new();
+        for (name, def) in self.definitions.iter() {
+            let mut set: AHashSet<String> = AHashSet::default();
+            for u in &def.utilities {
+                if u.is_empty() {
+                    continue;
+                }
+                if u.contains('@') {
+                    continue;
+                }
+                if current_alias_names.contains(u) {
+                    // u is itself an alias name; exclude
+                    continue;
+                }
+                set.insert(u.clone());
+            }
+            if !set.is_empty() {
+                current_defs_norm.push((name.clone(), set));
+            }
+        }
+        // Only preserve cached CSS entries when the utilities for the alias
+        // are identical between the previous registry and the current one.
+        // This avoids keeping stale CSS for aliases whose underlying
+        // utilities changed (which would produce incorrect output).
         for (k, v) in prev.cached_css.iter() {
+            // If we already have a definition for this alias, check utilities
+            // equality. If the utilities differ, skip preserving the cached CSS
+            // so it can be regenerated.
+            if let Some(current_def) = self.definitions.get(k) {
+                if let Some(prev_def) = prev.definitions.get(k) {
+                    if current_def.utilities == prev_def.utilities {
+                        self.cached_css
+                            .entry(k.clone())
+                            .or_insert_with(|| v.clone());
+                    } else {
+                        // utilities changed -> do not preserve cached CSS
+                    }
+                    continue;
+                }
+            }
+
+            // If alias key not present in current definitions, attempt to
+            // find a renamed alias with an identical utilities set and
+            // migrate the cached CSS under the new alias name.
+            if let Some(prev_def) = prev.definitions.get(k) {
+                // Normalize prev utilities same as we did for current defs
+                let mut prev_set: AHashSet<String> = AHashSet::default();
+                for u in &prev_def.utilities {
+                    if u.is_empty() {
+                        continue;
+                    }
+                    if u.contains('@') {
+                        continue;
+                    }
+                    // also exclude any current alias names to avoid matching
+                    // nested aliases
+                    if current_alias_names.contains(u) {
+                        continue;
+                    }
+                    prev_set.insert(u.clone());
+                }
+                if !prev_set.is_empty() {
+                    // Find best fuzzy match by Jaccard similarity
+                    let mut best_score = 0f64;
+                    let mut best_alias: Option<String> = None;
+                    for (cand_alias, cand_set) in &current_defs_norm {
+                        // compute intersection/union
+                        let inter = prev_set.iter().filter(|x| cand_set.contains(*x)).count();
+                        let uni = prev_set.len() + cand_set.len() - inter;
+                        if uni == 0 {
+                            continue;
+                        }
+                        let score = (inter as f64) / (uni as f64);
+                        if score > best_score {
+                            best_score = score;
+                            best_alias = Some(cand_alias.clone());
+                        }
+                    }
+                    // Similarity threshold: allow fuzzy match; configurable via env
+                    let threshold: f64 = std::env::var("DX_GROUP_RENAME_SIMILARITY")
+                        .ok()
+                        .and_then(|s| s.parse().ok())
+                        .unwrap_or(0.6);
+                    if let Some(new_alias) = best_alias {
+                        if best_score >= threshold {
+                            // Insert under new alias if missing
+                            self.cached_css
+                                .entry(new_alias.clone())
+                                .or_insert_with(|| v.clone());
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            // Otherwise preserve the cached CSS under the old key so older
+            // aliases remain available if nothing else matches.
             self.cached_css
                 .entry(k.clone())
                 .or_insert_with(|| v.clone());
@@ -348,11 +475,24 @@ impl GroupRegistry {
             return None;
         }
 
-        let entry = self
-            .cached_css
-            .entry(class.to_string())
-            .or_insert_with(|| accumulated);
-        Some(entry.as_str())
+        // If we already have a cached value but the regenerated CSS differs,
+        // replace it so changes to utilities or dev selectors are reflected
+        // in output. Otherwise insert the newly-generated value.
+        // Clone existing cached value (if any) so we don't hold an immutable
+        // borrow while inserting. Compare the clone with the newly-generated
+        // content and return early if unchanged. Otherwise replace the map
+        // entry.
+        let existing_clone = self.cached_css.get(class).map(|s| s.clone());
+        if let Some(ref old) = existing_clone {
+            if old == &accumulated {
+                // Safe to return a reference from the map because we haven't
+                // mutated it.
+                return Some(self.cached_css.get(class).unwrap().as_str());
+            }
+        }
+
+        self.cached_css.insert(class.to_string(), accumulated);
+        Some(self.cached_css.get(class).unwrap().as_str())
     }
 }
 

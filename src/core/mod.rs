@@ -137,6 +137,453 @@ pub fn rebuild_styles(
         &mut all_classes,
         Some(AppState::engine()),
     );
+    // New: scan the current HTML for grouped @alias(...) occurrences that refer
+    // to alias names not present in the current registry (manual rename cases).
+    // For each such occurrence, compute the set of inner utilities and try to
+    // find the best matching current alias by Jaccard similarity; if a match
+    // meets the threshold, rewrite the HTML to use the new alias and re-run
+    // extraction/analysis.
+    {
+        let html_string_in = String::from_utf8_lossy(&html_bytes).to_string();
+        // Regex to find @alias(inner...)
+        let grouped_re = regex::Regex::new(r"@([A-Za-z0-9_\-]+)\s*\(\s*([^\)]*)\s*\)").unwrap();
+        // Build normalized current defs for matching
+        let mut current_alias_names: AHashSet<String> = AHashSet::default();
+        let mut current_defs_norm: Vec<(String, AHashSet<String>)> = Vec::new();
+        // Map of normalized (sorted) utility signature -> alias name for exact-match fallback
+        let mut current_defs_map: AHashMap<String, String> = AHashMap::default();
+        for (name, _def) in group_registry.definitions() {
+            current_alias_names.insert(name.clone());
+        }
+        for (name, def) in group_registry.definitions() {
+            let mut set: AHashSet<String> = AHashSet::default();
+            for u in &def.utilities {
+                if u.is_empty() {
+                    continue;
+                }
+                if u.contains('@') {
+                    continue;
+                }
+                if current_alias_names.contains(u) {
+                    continue;
+                }
+                if group_registry.is_internal_token(u) {
+                    continue;
+                }
+                set.insert(u.clone());
+            }
+            if !set.is_empty() {
+                // build a deterministic signature for exact set matching
+                let mut sig_vec: Vec<&str> = set.iter().map(|s| s.as_str()).collect();
+                sig_vec.sort();
+                let sig = sig_vec.join(" ");
+                current_defs_map.insert(sig.clone(), name.clone());
+                current_defs_norm.push((name.clone(), set));
+            }
+        }
+        if !current_defs_norm.is_empty() {
+            let threshold: f64 = std::env::var("DX_GROUP_RENAME_SIMILARITY")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0.6);
+            let mut html_out = html_string_in.clone();
+            let mut modified = false;
+            for cap in grouped_re.captures_iter(&html_string_in) {
+                let old_name = cap.get(1).map(|m| m.as_str()).unwrap_or("").to_string();
+                let inner = cap.get(2).map(|m| m.as_str()).unwrap_or("");
+                if old_name.is_empty() {
+                    continue;
+                }
+                if current_alias_names.contains(&old_name) {
+                    continue;
+                }
+                // Normalize inner tokens
+                let mut old_set: AHashSet<String> = AHashSet::default();
+                for tok in inner.split_whitespace() {
+                    if tok.is_empty() {
+                        continue;
+                    }
+                    if tok.contains('@') {
+                        continue;
+                    }
+                    if current_alias_names.contains(tok) {
+                        continue;
+                    }
+                    if group_registry.is_internal_token(tok) {
+                        continue;
+                    }
+                    old_set.insert(tok.to_string());
+                }
+                if old_set.is_empty() {
+                    continue;
+                }
+                // Find best (fuzzy) match
+                let mut best_score = 0f64;
+                let mut best_alias: Option<String> = None;
+                for (cand_alias, cand_set) in &current_defs_norm {
+                    let inter = old_set.iter().filter(|x| cand_set.contains(*x)).count();
+                    let uni = old_set.len() + cand_set.len() - inter;
+                    if uni == 0 {
+                        continue;
+                    }
+                    let score = (inter as f64) / (uni as f64);
+                    if score > best_score {
+                        best_score = score;
+                        best_alias = Some(cand_alias.clone());
+                    }
+                }
+                // If fuzzy matching didn't find a confident candidate, try an exact-set
+                // lookup based on the inner utilities (this fixes cases where the
+                // current CSS/group registry already contains an exact alias for
+                // the provided utilities but the fuzzy threshold was not met).
+                if best_alias.is_none() {
+                    let mut sig_vec: Vec<&str> = old_set.iter().map(|s| s.as_str()).collect();
+                    sig_vec.sort();
+                    let sig = sig_vec.join(" ");
+                    if let Some(exact_alias) = current_defs_map.get(&sig) {
+                        best_alias = Some(exact_alias.clone());
+                        best_score = 1.0;
+                        if std::env::var("DX_DEBUG").ok().as_deref() == Some("1") {
+                            eprintln!(
+                                "[dx-style-debug] exact-match fallback for @{} -> {} sig='{}'",
+                                old_name, exact_alias, sig
+                            );
+                        }
+                    }
+                }
+                if let Some(new_alias) = best_alias {
+                    if best_score >= threshold && new_alias != old_name {
+                        // Replace occurrences of @old( with @new(
+                        let old_with_paren = format!("@{}(", old_name);
+                        let new_with_paren = format!("@{}(", new_alias);
+                        if html_out.contains(&old_with_paren) {
+                            html_out = html_out.replace(&old_with_paren, &new_with_paren);
+                            modified = true;
+                        }
+                        // Replace bare @old -> @new
+                        let old_at = format!("@{}", old_name);
+                        let new_at = format!("@{}", new_alias);
+                        if html_out.contains(&old_at) {
+                            html_out = html_out.replace(&old_at, &new_at);
+                            modified = true;
+                        }
+                        // Also replace plain class tokens equal to old_name
+                        let class_attr_re =
+                            regex::Regex::new(r#"class\s*=\s*\"([^\"]*)\""#).unwrap();
+                        let mut tmp_html = html_out.clone();
+                        for cap2 in class_attr_re.captures_iter(&html_out) {
+                            if let Some(m2) = cap2.get(0) {
+                                let full = m2.as_str();
+                                if let Some(group2) = cap2.get(1) {
+                                    let classes_str = group2.as_str();
+                                    let mut items: Vec<String> = classes_str
+                                        .split_whitespace()
+                                        .map(|s| s.to_string())
+                                        .collect();
+                                    let mut replaced_any = false;
+                                    for it in items.iter_mut() {
+                                        if it == &old_name {
+                                            *it = format!("@{}", new_alias);
+                                            replaced_any = true;
+                                        }
+                                    }
+                                    if replaced_any {
+                                        let new_attr = format!("class=\"{}\"", items.join(" "));
+                                        tmp_html = tmp_html.replacen(full, &new_attr, 1);
+                                    }
+                                }
+                            }
+                        }
+                        if tmp_html != html_out {
+                            html_out = tmp_html;
+                            modified = true;
+                        }
+                    }
+                }
+            }
+            if modified {
+                std::fs::write(index_path, &html_out)?;
+                html_bytes = html_out.into_bytes();
+                // Re-extract and re-analyze with rewritten HTML
+                let extracted2 =
+                    extract_classes_fast(&html_bytes, all_classes.len().next_power_of_two());
+                let mut all_classes2 = extracted2.classes;
+                group_registry = group::GroupRegistry::analyze(
+                    &extracted2.group_events,
+                    &mut all_classes2,
+                    Some(AppState::engine()),
+                );
+                // update master class set
+                all_classes = all_classes2;
+            }
+        }
+    }
+    // Detect alias renames using fuzzy Jaccard similarity of utility sets.
+    // Exclude alias/internal tokens and nested aliases from comparisons.
+    {
+        let prev_registry = { state.lock().unwrap().group_registry.clone() };
+        if prev_registry.definitions().next().is_some()
+            && group_registry.definitions().next().is_some()
+        {
+            // Build current alias name set and normalized utility sets
+            let mut current_alias_names: AHashSet<String> = AHashSet::default();
+            for (name, _) in group_registry.definitions() {
+                current_alias_names.insert(name.clone());
+            }
+            let mut current_defs_norm: Vec<(String, AHashSet<String>)> = Vec::new();
+            for (name, def) in group_registry.definitions() {
+                let mut set: AHashSet<String> = AHashSet::default();
+                for u in &def.utilities {
+                    if u.is_empty() {
+                        continue;
+                    }
+                    if u.contains('@') {
+                        continue;
+                    }
+                    if current_alias_names.contains(u) {
+                        continue;
+                    }
+                    if group_registry.is_internal_token(u) {
+                        continue;
+                    }
+                    set.insert(u.clone());
+                }
+                if !set.is_empty() {
+                    current_defs_norm.push((name.clone(), set));
+                }
+            }
+
+            let mut html_string = String::from_utf8_lossy(&html_bytes).to_string();
+            let mut modified = false;
+            for (old_name, old_def) in prev_registry.definitions() {
+                if group_registry
+                    .definitions()
+                    .find(|(n, _)| *n == old_name)
+                    .is_some()
+                {
+                    continue; // still exists with same name
+                }
+                let mut prev_set: AHashSet<String> = AHashSet::default();
+                for u in &old_def.utilities {
+                    if u.is_empty() {
+                        continue;
+                    }
+                    if u.contains('@') {
+                        continue;
+                    }
+                    if current_alias_names.contains(u) {
+                        continue;
+                    }
+                    if group_registry.is_internal_token(u) {
+                        continue;
+                    }
+                    prev_set.insert(u.clone());
+                }
+                if prev_set.is_empty() {
+                    continue;
+                }
+
+                // Find best fuzzy match by Jaccard similarity
+                let mut best_score = 0f64;
+                let mut best_alias: Option<String> = None;
+                for (cand_alias, cand_set) in &current_defs_norm {
+                    let inter = prev_set.iter().filter(|x| cand_set.contains(*x)).count();
+                    let uni = prev_set.len() + cand_set.len() - inter;
+                    if uni == 0 {
+                        continue;
+                    }
+                    let score = (inter as f64) / (uni as f64);
+                    if score > best_score {
+                        best_score = score;
+                        best_alias = Some(cand_alias.clone());
+                    }
+                }
+                let threshold: f64 = std::env::var("DX_GROUP_RENAME_SIMILARITY")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(0.6);
+                let allow_aggressive_env =
+                    std::env::var("DX_GROUP_AGGRESSIVE_REWRITE").ok().as_deref() == Some("1");
+                if let Some(new_name) = best_alias {
+                    if (best_score >= threshold && new_name.as_str() != old_name.as_str())
+                        || allow_aggressive_env
+                    {
+                        if std::env::var("DX_DEBUG").ok().as_deref() == Some("1") {
+                            eprintln!(
+                                "[dx-style-debug] candidate rename: {} -> {} score={} threshold={} allow_aggressive={}",
+                                old_name, new_name, best_score, threshold, allow_aggressive_env
+                            );
+                        }
+                        let old_with_paren = format!("@{}(", old_name);
+                        let new_with_paren = format!("@{}(", new_name);
+                        if html_string.contains(&old_with_paren) {
+                            html_string = html_string.replace(&old_with_paren, &new_with_paren);
+                            modified = true;
+                        }
+                        let old_at = format!("@{}", old_name);
+                        let new_at = format!("@{}", new_name);
+                        if html_string.contains(&old_at) {
+                            html_string = html_string.replace(&old_at, &new_at);
+                            modified = true;
+                        }
+
+                        // Plain-token rename: replace class tokens exactly equal to the
+                        // old alias name with @new_name. This handles `class="bg"`
+                        // and `class="bg flex"` scenarios so they migrate to the
+                        // grouped alias form.
+                        let class_attr_re =
+                            regex::Regex::new(r#"class\s*=\s*\"([^\"]*)\""#).unwrap();
+                        let mut plain_html = html_string.clone();
+                        let mut plain_modified = false;
+                        for cap in class_attr_re.captures_iter(&html_string) {
+                            if let Some(m) = cap.get(0) {
+                                let full = m.as_str();
+                                if let Some(group) = cap.get(1) {
+                                    let classes_str = group.as_str();
+                                    let mut items: Vec<String> = classes_str
+                                        .split_whitespace()
+                                        .map(|s| s.to_string())
+                                        .collect();
+                                    let mut replaced_any = false;
+                                    for it in items.iter_mut() {
+                                        if it == old_name {
+                                            *it = format!("@{}", new_name);
+                                            replaced_any = true;
+                                        }
+                                    }
+                                    if replaced_any {
+                                        let new_attr = format!("class=\"{}\"", items.join(" "));
+                                        plain_html = plain_html.replacen(full, &new_attr, 1);
+                                        plain_modified = true;
+                                    }
+                                }
+                            }
+                        }
+                        if plain_modified {
+                            html_string = plain_html;
+                            modified = true;
+                        }
+
+                        // Aggressive rewrite: replace plain utility tokens with the
+                        // alias when the class attribute appears to contain several
+                        // utilities from the previous alias. This uses a simple
+                        // class-attribute-aware replacement with a configurable
+                        // overlap threshold to avoid false positives.
+                        let overlap_threshold: f64 =
+                            std::env::var("DX_GROUP_REWRITE_UTILITY_OVERLAP")
+                                .ok()
+                                .and_then(|s| s.parse().ok())
+                                .unwrap_or(0.5);
+                        // Build prev_set (normalized) for quick checks
+                        let mut prev_set: AHashSet<String> = AHashSet::default();
+                        if let Some(prev_def) =
+                            prev_registry.definitions().find(|(n, _)| *n == old_name)
+                        {
+                            for u in &prev_def.1.utilities {
+                                if u.is_empty() {
+                                    continue;
+                                }
+                                if u.contains('@') {
+                                    continue;
+                                }
+                                if group_registry.is_internal_token(u) {
+                                    continue;
+                                }
+                                prev_set.insert(u.clone());
+                            }
+                        }
+                        if !prev_set.is_empty() {
+                            if std::env::var("DX_DEBUG").ok().as_deref() == Some("1") {
+                                eprintln!(
+                                    "[dx-style-debug] prev_set for '{}' = {:?}",
+                                    old_name, prev_set
+                                );
+                            }
+                            // Regex to find class="..." attributes
+                            let class_attr_re =
+                                regex::Regex::new(r#"class\s*=\s*\"([^\"]*)\""#).unwrap();
+                            let mut new_html = html_string.clone();
+                            for cap in class_attr_re.captures_iter(&html_string) {
+                                if let Some(m) = cap.get(0) {
+                                    let full = m.as_str();
+                                    if let Some(group) = cap.get(1) {
+                                        let classes_str = group.as_str();
+                                        let items: Vec<&str> =
+                                            classes_str.split_whitespace().collect();
+                                        let total = items.len();
+                                        if total == 0 {
+                                            continue;
+                                        }
+                                        let mut match_count = 0usize;
+                                        for it in &items {
+                                            if prev_set.contains(&it.to_string()) {
+                                                match_count += 1;
+                                            }
+                                        }
+                                        let overlap = (match_count as f64) / (total as f64);
+                                        if overlap >= overlap_threshold && match_count > 0 {
+                                            if std::env::var("DX_DEBUG").ok().as_deref()
+                                                == Some("1")
+                                            {
+                                                eprintln!(
+                                                    "[dx-style-debug] class attr '{}' total={} match_count={} overlap={} -> will replace",
+                                                    classes_str, total, match_count, overlap
+                                                );
+                                            }
+                                            // Replace only the matching tokens with the new alias
+                                            let mut replaced = false;
+                                            let mut out_items: Vec<String> = Vec::new();
+                                            for it in items {
+                                                if prev_set.contains(&it.to_string()) {
+                                                    // Use alias token (without @)
+                                                    let alias_token = format!("@{}", new_name);
+                                                    if !out_items.contains(&alias_token) {
+                                                        out_items.push(alias_token.clone());
+                                                        replaced = true;
+                                                    }
+                                                } else {
+                                                    out_items.push(it.to_string());
+                                                }
+                                            }
+                                            if replaced {
+                                                let new_classes = out_items.join(" ");
+                                                let new_attr = format!("class=\"{}\"", new_classes);
+                                                new_html = new_html.replacen(full, &new_attr, 1);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if new_html != html_string {
+                                html_string = new_html;
+                                modified = true;
+                            }
+                        }
+                    }
+                }
+            }
+            if modified {
+                std::fs::write(index_path, &html_string)?;
+                html_bytes = html_string.into_bytes();
+                // Re-extract and re-analyze with rewritten HTML
+                let extracted2 =
+                    extract_classes_fast(&html_bytes, prev_len_hint.next_power_of_two());
+                let mut all_classes2 = extracted2.classes;
+                group_registry = group::GroupRegistry::analyze(
+                    &extracted2.group_events,
+                    &mut all_classes2,
+                    Some(AppState::engine()),
+                );
+                // If rewrite removed grouped alias metadata (manual toggle off), preserve previous entries
+                let prev_registry2 = { state.lock().unwrap().group_registry.clone() };
+                if prev_registry2.is_empty() == false && group_registry.is_empty() {
+                    group_registry.merge_preserve(&prev_registry2);
+                }
+                // update master class set
+                all_classes = all_classes2;
+            }
+        }
+    }
     // If the rewrite removed grouped alias metadata (manual toggle off), but
     // our previous state had group definitions, merge those so we preserve
     // the cached CSS and definitions for developer convenience.
@@ -152,6 +599,67 @@ pub fn rebuild_styles(
     // `@alias(a b c)` string. This handles cases where the user writes
     // `class="@alias"` to request the dev selector be present.
     {
+        // Optional pass: treat plain alias-name tokens (e.g. class="bg")
+        // as a request to use the grouped alias by converting them to
+        // `@alias`. This is gated behind DX_GROUP_REWRITE_PLAIN_ALIAS=1
+        // so it won't run unless explicitly enabled.
+        if std::env::var("DX_GROUP_REWRITE_PLAIN_ALIAS")
+            .ok()
+            .as_deref()
+            == Some("1")
+        {
+            let class_attr_re = regex::Regex::new(r#"class\s*=\s*\"([^\"]*)\""#).unwrap();
+            let html_string = String::from_utf8_lossy(&html_bytes).to_string();
+            let mut new_html = html_string.clone();
+            let mut any_mod = false;
+            for (name, _def) in group_registry.definitions() {
+                for cap in class_attr_re.captures_iter(&html_string) {
+                    if let Some(m) = cap.get(0) {
+                        let full = m.as_str();
+                        if let Some(group) = cap.get(1) {
+                            let classes_str = group.as_str();
+                            let mut items: Vec<String> = classes_str
+                                .split_whitespace()
+                                .map(|s| s.to_string())
+                                .collect();
+                            let mut replaced = false;
+                            for it in items.iter_mut() {
+                                if it == name {
+                                    *it = format!("@{}", name);
+                                    replaced = true;
+                                }
+                            }
+                            if replaced {
+                                let new_attr = format!("class=\"{}\"", items.join(" "));
+                                new_html = new_html.replacen(full, &new_attr, 1);
+                                any_mod = true;
+                            }
+                        }
+                    }
+                }
+            }
+            if any_mod {
+                std::fs::write(index_path, &new_html)?;
+                html_bytes = new_html.into_bytes();
+                // Re-extract and re-analyze with rewritten HTML
+                let extracted2 =
+                    extract_classes_fast(&html_bytes, all_classes.len().next_power_of_two());
+                let mut all_classes2 = extracted2.classes;
+                group_registry = group::GroupRegistry::analyze(
+                    &extracted2.group_events,
+                    &mut all_classes2,
+                    Some(AppState::engine()),
+                );
+                // preserve previous registry entries if needed
+                let prev_registry = { state.lock().unwrap().group_registry.clone() };
+                if prev_registry.is_empty() == false && group_registry.is_empty() {
+                    group_registry.merge_preserve(&prev_registry);
+                }
+                // update master class set
+                all_classes = all_classes2;
+            }
+        }
+
         let mut devs = dev_group_selectors;
         // Inspect the HTML bytes for '@alias' occurrences. We purposely use
         // a simple substring search here to prefer a small, local change;
@@ -215,7 +723,11 @@ pub fn rebuild_styles(
             // Re-extract and re-analyze with expanded HTML
             let extracted2 = extract_classes_fast(&html_bytes, prev_len_hint.next_power_of_two());
             let mut all_classes2 = extracted2.classes;
-            group_registry = group::GroupRegistry::analyze(&extracted2.group_events, &mut all_classes2, Some(AppState::engine()));
+            group_registry = group::GroupRegistry::analyze(
+                &extracted2.group_events,
+                &mut all_classes2,
+                Some(AppState::engine()),
+            );
             // preserve previous registry entries if needed
             let prev_registry = { state.lock().unwrap().group_registry.clone() };
             if prev_registry.is_empty() == false && group_registry.is_empty() {
@@ -224,6 +736,136 @@ pub fn rebuild_styles(
             // Remove utility members now that we've re-analyzed
             group_registry.remove_utility_members_from(&mut all_classes2);
             all_classes = all_classes2;
+        }
+    }
+
+    // Optional aggressive rewrite pass (env opt-in): examine class attributes
+    // and replace plain utility tokens with the best matching @alias when the
+    // overlap threshold is met. This is independent of previous registry state
+    // and useful when migrating existing HTML to use grouped aliases.
+    {
+        let aggressive_env =
+            std::env::var("DX_GROUP_AGGRESSIVE_REWRITE").ok().as_deref() == Some("1");
+        if aggressive_env {
+            // Build normalized utility sets for current groups
+            let mut group_sets: Vec<(String, AHashSet<String>)> = Vec::new();
+            let mut alias_names: AHashSet<String> = AHashSet::default();
+            for (name, def) in group_registry.definitions() {
+                alias_names.insert(name.clone());
+                let mut set: AHashSet<String> = AHashSet::default();
+                for u in &def.utilities {
+                    if u.is_empty() {
+                        continue;
+                    }
+                    if u.contains('@') {
+                        continue;
+                    }
+                    if alias_names.contains(u) {
+                        continue;
+                    }
+                    if group_registry.is_internal_token(u) {
+                        continue;
+                    }
+                    set.insert(u.clone());
+                }
+                if !set.is_empty() {
+                    group_sets.push((name.clone(), set));
+                }
+            }
+
+            if !group_sets.is_empty() {
+                let overlap_threshold: f64 = std::env::var("DX_GROUP_REWRITE_UTILITY_OVERLAP")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(0.5);
+                let class_attr_re = regex::Regex::new(r#"class\s*=\s*\"([^\"]*)\""#).unwrap();
+                let html_string = String::from_utf8_lossy(&html_bytes).to_string();
+                let mut new_html = html_string.clone();
+                let mut any_mod = false;
+                for cap in class_attr_re.captures_iter(&html_string) {
+                    if let Some(m) = cap.get(0) {
+                        let full = m.as_str();
+                        if let Some(group) = cap.get(1) {
+                            let classes_str = group.as_str();
+                            let items: Vec<&str> = classes_str.split_whitespace().collect();
+                            let total = items.len();
+                            if total == 0 {
+                                continue;
+                            }
+                            // Find best group by overlap
+                            let mut best_score = 0f64;
+                            let mut best_alias: Option<String> = None;
+                            let mut best_match_count = 0usize;
+                            for (alias, set) in &group_sets {
+                                let match_count = items
+                                    .iter()
+                                    .filter(|it| set.contains(&it.to_string()))
+                                    .count();
+                                let score = (match_count as f64) / (total as f64);
+                                if score > best_score {
+                                    best_score = score;
+                                    best_alias = Some(alias.clone());
+                                    best_match_count = match_count;
+                                }
+                            }
+                            if let Some(alias) = best_alias {
+                                if best_score >= overlap_threshold && best_match_count > 0 {
+                                    // Replace matching tokens with @alias
+                                    let mut out_items: Vec<String> = Vec::new();
+                                    let alias_token = format!("@{}", alias);
+                                    let mut replaced = false;
+                                    for it in items {
+                                        if group_sets
+                                            .iter()
+                                            .any(|(_, s)| s.contains(&it.to_string()))
+                                        {
+                                            // only include alias once
+                                            if !out_items.contains(&alias_token) {
+                                                out_items.push(alias_token.clone());
+                                                replaced = true;
+                                            }
+                                        } else {
+                                            out_items.push(it.to_string());
+                                        }
+                                    }
+                                    if replaced {
+                                        let new_attr = format!("class=\"{}\"", out_items.join(" "));
+                                        new_html = new_html.replacen(full, &new_attr, 1);
+                                        any_mod = true;
+                                        if std::env::var("DX_DEBUG").ok().as_deref() == Some("1") {
+                                            eprintln!(
+                                                "[dx-style-debug] aggressive replaced '{}' -> {}",
+                                                full, new_attr
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if any_mod {
+                    std::fs::write(index_path, &new_html)?;
+                    html_bytes = new_html.into_bytes();
+                    // Re-extract and re-analyze with rewritten HTML
+                    let extracted2 =
+                        extract_classes_fast(&html_bytes, all_classes.len().next_power_of_two());
+                    let mut all_classes2 = extracted2.classes;
+                    group_registry = group::GroupRegistry::analyze(
+                        &extracted2.group_events,
+                        &mut all_classes2,
+                        Some(AppState::engine()),
+                    );
+                    // preserve previous registry entries if needed
+                    let prev_registry = { state.lock().unwrap().group_registry.clone() };
+                    if prev_registry.is_empty() == false && group_registry.is_empty() {
+                        group_registry.merge_preserve(&prev_registry);
+                    }
+                    // Remove utility members now that we've re-analyzed
+                    group_registry.remove_utility_members_from(&mut all_classes2);
+                    all_classes = all_classes2;
+                }
+            }
         }
     }
 
