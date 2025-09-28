@@ -893,6 +893,94 @@ pub fn rebuild_styles(
     // Remove concrete utility members from the master class set so they are
     // neither persisted in the cache nor emitted as independent rules. The
     // grouped alias will provide the combined selector and bodies instead.
+    // Before removing utility members, ensure we keep at most one grouped
+    // controller per alias in the HTML. If multiple elements contain the
+    // grouped form `@alias(...)`, convert all but one to the plain alias
+    // token (e.g. `class="alias"` or `class="alias other"`). Prefer to
+    // keep the grouped form on an element that already has extra tokens
+    // (e.g. `@alias(...) flex`) so that the controller remains where the
+    // element has additional behavior.
+    {
+        let mut html_string = String::from_utf8_lossy(&html_bytes).to_string();
+        let class_attr_re = regex::Regex::new(r#"class\s*=\s*\"([^\"]*)\""#).unwrap();
+        let mut modified = false;
+        // Collect alias names
+        let alias_names: Vec<String> = group_registry
+            .definitions()
+            .map(|(n, _)| n.clone())
+            .collect();
+        for alias in alias_names {
+            // Find all class attributes that contain @alias(...)
+            let grouped_re =
+                regex::Regex::new(&format!(r"@{}\s*\(\s*([^\)]*)\s*\)", regex::escape(&alias)))
+                    .unwrap();
+            let mut occurrences: Vec<(String, String)> = Vec::new(); // (full_attr, classes_str)
+            for cap in class_attr_re.captures_iter(&html_string) {
+                if let Some(m) = cap.get(0) {
+                    let full = m.as_str().to_string();
+                    if let Some(group) = cap.get(1) {
+                        let classes_str = group.as_str().to_string();
+                        if grouped_re.is_match(&classes_str) {
+                            occurrences.push((full, classes_str));
+                        }
+                    }
+                }
+            }
+            if occurrences.len() <= 1 {
+                continue;
+            }
+            // Choose keeper: prefer attribute that has other tokens besides the grouped token
+            let mut keeper_idx: Option<usize> = None;
+            for (i, (_full, classes_str)) in occurrences.iter().enumerate() {
+                // count tokens that are not the grouped token
+                let tokens: Vec<&str> = classes_str.split_whitespace().collect();
+                let mut other_count = 0usize;
+                for tk in &tokens {
+                    if grouped_re.is_match(tk) {
+                        continue;
+                    }
+                    other_count += 1;
+                }
+                if other_count > 0 {
+                    keeper_idx = Some(i);
+                    break;
+                }
+            }
+            if keeper_idx.is_none() {
+                keeper_idx = Some(0);
+            }
+            // Convert other occurrences to plain alias tokens inside the class attribute
+            let mut new_html = html_string.clone();
+            for (i, (full, classes_str)) in occurrences.iter().enumerate() {
+                if Some(i) == keeper_idx {
+                    continue;
+                }
+                // Replace only the grouped token(s) for this alias inside classes_str with the plain alias
+                let new_classes = grouped_re.replace_all(classes_str, alias.as_str());
+                let new_attr = format!("class=\"{}\"", new_classes);
+                new_html = new_html.replacen(full, &new_attr, 1);
+                modified = true;
+            }
+            if modified {
+                html_string = new_html;
+                // update occurrences for next alias (and persist changes)
+            }
+        }
+        if modified {
+            std::fs::write(index_path, &html_string)?;
+            html_bytes = html_string.into_bytes();
+            // Re-extract and re-analyze with rewritten HTML
+            let extracted2 =
+                extract_classes_fast(&html_bytes, all_classes.len().next_power_of_two());
+            let mut all_classes2 = extracted2.classes;
+            group_registry = group::GroupRegistry::analyze(
+                &extracted2.group_events,
+                &mut all_classes2,
+                Some(AppState::engine()),
+            );
+            all_classes = all_classes2;
+        }
+    }
     group_registry.remove_utility_members_from(&mut all_classes);
 
     let diff_timer = Instant::now();
