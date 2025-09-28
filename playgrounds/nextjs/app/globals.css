@@ -49,14 +49,17 @@
         transform: translateX(200px) scale(0.3);
         opacity: 0;
     }
+
     50% {
         transform: translateX(-10px) scale(1.05);
         opacity: 0.8;
     }
+
     70% {
         transform: translateX(5px) scale(0.98);
         opacity: 1;
     }
+
     100% {
         transform: translateX(0) scale(1);
         opacity: 1;
@@ -68,10 +71,12 @@
         transform: translateX(0) scale(1);
         opacity: 1;
     }
+
     30% {
         transform: translateX(-5px) scale(1.02);
         opacity: 0.9;
     }
+
     100% {
         transform: translateX(-200px) scale(0.3);
         opacity: 0;
@@ -79,13 +84,11 @@
 }
 
 .animate-bounce-in-right {
-    animation: bounce-in-right 1s cubic-bezier(0.68, -0.55, 0.265, 1.55)
-        forwards;
+    animation: bounce-in-right 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
 }
 
 .animate-bounce-out-left {
-    animation: bounce-out-left 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55)
-        forwards;
+    animation: bounce-out-left 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
 }
 
 :root {
@@ -336,7 +339,8 @@
 
 @layer base {
     * {
-        @apply border-border outline-ring/50;
+        border-color: var(--border);
+        outline-color: var(--ring) / 0.5;
     }
 
     body {
@@ -344,6 +348,7 @@
         background-size: cover;
         background-repeat: no-repeat;
         background-position: center;
-        color: var(--foreground);
+        height: 100vh;
+        overflow: hidden;
     }
 }
