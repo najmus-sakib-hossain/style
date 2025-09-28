@@ -31,7 +31,6 @@ pub struct GroupDefDump {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GroupDump {
-    // Use BTreeMap for stable ordering when serializing
     pub definitions: BTreeMap<String, GroupDefDump>,
     pub cached_css: BTreeMap<String, String>,
 }
