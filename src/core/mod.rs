@@ -1197,6 +1197,27 @@ pub fn rebuild_styles(
                 set_properties_layer_present();
             }
 
+            // Ensure dev selectors are seeded from the final HTML. This guarantees
+            // that if there is a grouped controller like `@alias(...)` left in the
+            // HTML, we will emit the corresponding escaped dev selector in CSS.
+            {
+                let mut devs: AHashMap<String, String> = AHashMap::default();
+                let html_string = String::from_utf8_lossy(&html_bytes).to_string();
+                for (name, _def) in state_guard.group_registry.definitions() {
+                    // find the first occurrence of @name(...)
+                    let re_text = format!(r"@{}\s*\(\s*([^\)]*)\s*\)", regex::escape(name));
+                    if let Ok(re) = regex::Regex::new(&re_text) {
+                        if let Some(mat) = re.find(&html_string) {
+                            let raw = mat.as_str().to_string();
+                            devs.insert(name.clone(), raw);
+                        }
+                    }
+                }
+                if !devs.is_empty() {
+                    state_guard.group_registry.set_dev_selectors(devs);
+                }
+            }
+
             let mut util_buf = Vec::new();
             generator::generate_class_rules_only(
                 &mut util_buf,
