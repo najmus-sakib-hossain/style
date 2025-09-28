@@ -283,7 +283,8 @@ pub fn rebuild_styles(
                                     let mut replaced_any = false;
                                     for it in items.iter_mut() {
                                         if it == &old_name {
-                                            *it = format!("@{}", new_alias);
+                                            // Migrate plain token to plain alias (no leading '@')
+                                            *it = new_alias.clone();
                                             replaced_any = true;
                                         }
                                     }
@@ -447,7 +448,8 @@ pub fn rebuild_styles(
                                     let mut replaced_any = false;
                                     for it in items.iter_mut() {
                                         if it == old_name {
-                                            *it = format!("@{}", new_name);
+                                            // Migrate plain token to plain alias (no leading '@')
+                                            *it = new_name.clone();
                                             replaced_any = true;
                                         }
                                     }
@@ -535,8 +537,8 @@ pub fn rebuild_styles(
                                             let mut out_items: Vec<String> = Vec::new();
                                             for it in items {
                                                 if prev_set.contains(&it.to_string()) {
-                                                    // Use alias token (without @)
-                                                    let alias_token = format!("@{}", new_name);
+                                                    // Use plain alias token (no leading '@')
+                                                    let alias_token = new_name.clone();
                                                     if !out_items.contains(&alias_token) {
                                                         out_items.push(alias_token.clone());
                                                         replaced = true;
@@ -780,11 +782,30 @@ pub fn rebuild_styles(
                     .unwrap_or(0.5);
                 let class_attr_re = regex::Regex::new(r#"class\s*=\s*\"([^\"]*)\""#).unwrap();
                 let html_string = String::from_utf8_lossy(&html_bytes).to_string();
+                // Snapshot of the HTML we started with (before aggressive pass)
+                let original_html_string = String::from_utf8_lossy(&html_bytes).to_string();
                 let mut new_html = html_string.clone();
                 let mut any_mod = false;
                 for cap in class_attr_re.captures_iter(&html_string) {
                     if let Some(m) = cap.get(0) {
                         let full = m.as_str();
+                        // If the original HTML attribute already contained an explicit
+                        // grouped alias (an '@'), don't touch it. This prevents the
+                        // aggressive pass from stomping existing @alias usage.
+                        if original_html_string.contains(full) {
+                            if original_html_string
+                                .find(full)
+                                .and_then(|i| {
+                                    original_html_string
+                                        .get(i..i + full.len())
+                                        .map(|s| s.contains('@'))
+                                })
+                                .unwrap_or(false)
+                            {
+                                // skip this attribute; it already had an '@' in source
+                                continue;
+                            }
+                        }
                         if let Some(group) = cap.get(1) {
                             let classes_str = group.as_str();
                             let items: Vec<&str> = classes_str.split_whitespace().collect();
@@ -819,7 +840,7 @@ pub fn rebuild_styles(
                                             .iter()
                                             .any(|(_, s)| s.contains(&it.to_string()))
                                         {
-                                            // only include alias once
+                                            // only include alias once (plain alias)
                                             if !out_items.contains(&alias_token) {
                                                 out_items.push(alias_token.clone());
                                                 replaced = true;
