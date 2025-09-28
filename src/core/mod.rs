@@ -19,6 +19,166 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
+fn iter_class_attributes(html: &str) -> Vec<(String, String)> {
+    // returns (full_attr, classes_str) where full_attr is the exact substring like `class="a b"`
+    let mut out = Vec::new();
+    let bytes = html.as_bytes();
+    let mut i = 0usize;
+    while i < bytes.len() {
+        // find 'class' (case-insensitive)
+        if i + 5 <= bytes.len() && bytes[i..i + 5].eq_ignore_ascii_case(b"class") {
+            let mut j = i + 5;
+            // skip whitespace
+            while j < bytes.len() && bytes[j].is_ascii_whitespace() {
+                j += 1;
+            }
+            if j < bytes.len() && bytes[j] == b'=' {
+                j += 1;
+                // skip whitespace
+                while j < bytes.len() && bytes[j].is_ascii_whitespace() {
+                    j += 1;
+                }
+                // handle double-quoted values
+                if j < bytes.len() && bytes[j] == b'"' {
+                    let val_start = j + 1;
+                    let mut val_end = val_start;
+                    while val_end < bytes.len() && bytes[val_end] != b'"' {
+                        val_end += 1;
+                    }
+                    if val_end < bytes.len() {
+                        let full = String::from_utf8_lossy(&bytes[i..=val_end]).to_string();
+                        let classes =
+                            String::from_utf8_lossy(&bytes[val_start..val_end]).to_string();
+                        out.push((full, classes));
+                        i = val_end + 1;
+                        continue;
+                    }
+                }
+            }
+        }
+        i += 1;
+    }
+    out
+}
+
+fn find_grouped_calls_in_text(html: &str) -> Vec<(String, String)> {
+    // finds @name(...) anywhere and returns vec of (name, inner)
+    let mut out = Vec::new();
+    let bytes = html.as_bytes();
+    let mut i = 0usize;
+    while i < bytes.len() {
+        if bytes[i] == b'@' {
+            // parse name [A-Za-z0-9_-]+
+            let mut j = i + 1;
+            while j < bytes.len() {
+                let c = bytes[j];
+                if (c >= b'A' && c <= b'Z')
+                    || (c >= b'a' && c <= b'z')
+                    || (c >= b'0' && c <= b'9')
+                    || c == b'_'
+                    || c == b'-'
+                {
+                    j += 1;
+                    continue;
+                }
+                break;
+            }
+            if j > i + 1 {
+                // skip whitespace
+                let mut k = j;
+                while k < bytes.len() && bytes[k].is_ascii_whitespace() {
+                    k += 1;
+                }
+                if k < bytes.len() && bytes[k] == b'(' {
+                    // find closing ')'
+                    let mut depth = 0usize;
+                    let mut m = k;
+                    while m < bytes.len() {
+                        if bytes[m] == b'(' {
+                            depth += 1;
+                        } else if bytes[m] == b')' {
+                            depth = depth.saturating_sub(1);
+                            if depth == 0 {
+                                break;
+                            }
+                        }
+                        m += 1;
+                    }
+                    if m < bytes.len() && bytes[m] == b')' {
+                        let name = String::from_utf8_lossy(&bytes[i + 1..j]).to_string();
+                        let inner = String::from_utf8_lossy(&bytes[k + 1..m]).to_string();
+                        out.push((name, inner));
+                        i = m + 1;
+                        continue;
+                    }
+                }
+            }
+        }
+        i += 1;
+    }
+    out
+}
+
+fn replace_grouped_tokens_in_classes(classes_str: &str, alias: &str) -> String {
+    // replace occurrences of @alias(...) inside a classes string with plain alias
+    let mut out = String::new();
+    let mut i = 0usize;
+    let s = classes_str.as_bytes();
+    while i < s.len() {
+        if s[i] == b'@' {
+            let mut j = i + 1;
+            while j < s.len()
+                && ((s[j] >= b'A' && s[j] <= b'Z')
+                    || (s[j] >= b'a' && s[j] <= b'z')
+                    || (s[j] >= b'0' && s[j] <= b'9')
+                    || s[j] == b'_'
+                    || s[j] == b'-')
+            {
+                j += 1;
+            }
+            let name = String::from_utf8_lossy(&s[i + 1..j]).to_string();
+            if name == alias {
+                // skip whitespace
+                let mut k = j;
+                while k < s.len() && s[k].is_ascii_whitespace() {
+                    k += 1;
+                }
+                if k < s.len() && s[k] == b'(' {
+                    // find closing ')'
+                    let mut depth = 0usize;
+                    let mut m = k;
+                    while m < s.len() {
+                        if s[m] == b'(' {
+                            depth += 1;
+                        } else if s[m] == b')' {
+                            depth = depth.saturating_sub(1);
+                            if depth == 0 {
+                                break;
+                            }
+                        }
+                        m += 1;
+                    }
+                    if m < s.len() && s[m] == b')' {
+                        if !out.is_empty() && !out.ends_with(' ') {
+                            out.push(' ');
+                        }
+                        out.push_str(alias);
+                        i = m + 1;
+                        while i < s.len() && s[i].is_ascii_whitespace() {
+                            i += 1;
+                        }
+                        continue;
+                    }
+                }
+            }
+        }
+        out.push(s[i] as char);
+        i += 1;
+    }
+    out
+}
+// ---------- end helpers ----------
+
 static BASE_LAYER_PRESENT: AtomicBool = AtomicBool::new(false);
 pub fn set_base_layer_present() {
     BASE_LAYER_PRESENT.store(true, Ordering::Relaxed);
@@ -145,8 +305,7 @@ pub fn rebuild_styles(
     // extraction/analysis.
     {
         let html_string_in = String::from_utf8_lossy(&html_bytes).to_string();
-        // Regex to find @alias(inner...)
-        let grouped_re = regex::Regex::new(r"@([A-Za-z0-9_\-]+)\s*\(\s*([^\)]*)\s*\)").unwrap();
+        // Scan for @alias(inner...) occurrences
         // Build normalized current defs for matching
         let mut current_alias_names: AHashSet<String> = AHashSet::default();
         let mut current_defs_norm: Vec<(String, AHashSet<String>)> = Vec::new();
@@ -188,13 +347,12 @@ pub fn rebuild_styles(
                 .unwrap_or(0.6);
             let mut html_out = html_string_in.clone();
             let mut modified = false;
-            for cap in grouped_re.captures_iter(&html_string_in) {
-                let old_name = cap.get(1).map(|m| m.as_str()).unwrap_or("").to_string();
-                let inner = cap.get(2).map(|m| m.as_str()).unwrap_or("");
+            let grouped_calls = find_grouped_calls_in_text(&html_string_in);
+            for (old_name, inner) in grouped_calls.iter() {
                 if old_name.is_empty() {
                     continue;
                 }
-                if current_alias_names.contains(&old_name) {
+                if current_alias_names.contains(old_name.as_str()) {
                     continue;
                 }
                 // Normalize inner tokens
@@ -252,7 +410,7 @@ pub fn rebuild_styles(
                     }
                 }
                 if let Some(new_alias) = best_alias {
-                    if best_score >= threshold && new_alias != old_name {
+                    if best_score >= threshold && new_alias.as_str() != old_name.as_str() {
                         // Replace occurrences of @old( with @new(
                         let old_with_paren = format!("@{}(", old_name);
                         let new_with_paren = format!("@{}(", new_alias);
@@ -267,32 +425,23 @@ pub fn rebuild_styles(
                             html_out = html_out.replace(&old_at, &new_at);
                             modified = true;
                         }
-                        // Also replace plain class tokens equal to old_name
-                        let class_attr_re =
-                            regex::Regex::new(r#"class\s*=\s*\"([^\"]*)\""#).unwrap();
+                        // Also replace plain class tokens equal to old_name by scanning class attributes
                         let mut tmp_html = html_out.clone();
-                        for cap2 in class_attr_re.captures_iter(&html_out) {
-                            if let Some(m2) = cap2.get(0) {
-                                let full = m2.as_str();
-                                if let Some(group2) = cap2.get(1) {
-                                    let classes_str = group2.as_str();
-                                    let mut items: Vec<String> = classes_str
-                                        .split_whitespace()
-                                        .map(|s| s.to_string())
-                                        .collect();
-                                    let mut replaced_any = false;
-                                    for it in items.iter_mut() {
-                                        if it == &old_name {
-                                            // Migrate plain token to plain alias (no leading '@')
-                                            *it = new_alias.clone();
-                                            replaced_any = true;
-                                        }
-                                    }
-                                    if replaced_any {
-                                        let new_attr = format!("class=\"{}\"", items.join(" "));
-                                        tmp_html = tmp_html.replacen(full, &new_attr, 1);
-                                    }
+                        for (full, classes_str) in iter_class_attributes(&html_out) {
+                            let mut items: Vec<String> = classes_str
+                                .split_whitespace()
+                                .map(|s| s.to_string())
+                                .collect();
+                            let mut replaced_any = false;
+                            for it in items.iter_mut() {
+                                if it == old_name {
+                                    *it = new_alias.clone();
+                                    replaced_any = true;
                                 }
+                            }
+                            if replaced_any {
+                                let new_attr = format!("class=\"{}\"", items.join(" "));
+                                tmp_html = tmp_html.replacen(&full, &new_attr, 1);
                             }
                         }
                         if tmp_html != html_out {
@@ -432,33 +581,24 @@ pub fn rebuild_styles(
                         // old alias name with @new_name. This handles `class="bg"`
                         // and `class="bg flex"` scenarios so they migrate to the
                         // grouped alias form.
-                        let class_attr_re =
-                            regex::Regex::new(r#"class\s*=\s*\"([^\"]*)\""#).unwrap();
                         let mut plain_html = html_string.clone();
                         let mut plain_modified = false;
-                        for cap in class_attr_re.captures_iter(&html_string) {
-                            if let Some(m) = cap.get(0) {
-                                let full = m.as_str();
-                                if let Some(group) = cap.get(1) {
-                                    let classes_str = group.as_str();
-                                    let mut items: Vec<String> = classes_str
-                                        .split_whitespace()
-                                        .map(|s| s.to_string())
-                                        .collect();
-                                    let mut replaced_any = false;
-                                    for it in items.iter_mut() {
-                                        if it == old_name {
-                                            // Migrate plain token to plain alias (no leading '@')
-                                            *it = new_name.clone();
-                                            replaced_any = true;
-                                        }
-                                    }
-                                    if replaced_any {
-                                        let new_attr = format!("class=\"{}\"", items.join(" "));
-                                        plain_html = plain_html.replacen(full, &new_attr, 1);
-                                        plain_modified = true;
-                                    }
+                        for (full, classes_str) in iter_class_attributes(&html_string) {
+                            let mut items: Vec<String> = classes_str
+                                .split_whitespace()
+                                .map(|s| s.to_string())
+                                .collect();
+                            let mut replaced_any = false;
+                            for it in items.iter_mut() {
+                                if it == old_name {
+                                    *it = new_name.clone();
+                                    replaced_any = true;
                                 }
+                            }
+                            if replaced_any {
+                                let new_attr = format!("class=\"{}\"", items.join(" "));
+                                plain_html = plain_html.replacen(&full, &new_attr, 1);
+                                plain_modified = true;
                             }
                         }
                         if plain_modified {
@@ -501,58 +641,47 @@ pub fn rebuild_styles(
                                     old_name, prev_set
                                 );
                             }
-                            // Regex to find class="..." attributes
-                            let class_attr_re =
-                                regex::Regex::new(r#"class\s*=\s*\"([^\"]*)\""#).unwrap();
+                            // Use the HTML scanner to find class="..." attributes
                             let mut new_html = html_string.clone();
-                            for cap in class_attr_re.captures_iter(&html_string) {
-                                if let Some(m) = cap.get(0) {
-                                    let full = m.as_str();
-                                    if let Some(group) = cap.get(1) {
-                                        let classes_str = group.as_str();
-                                        let items: Vec<&str> =
-                                            classes_str.split_whitespace().collect();
-                                        let total = items.len();
-                                        if total == 0 {
-                                            continue;
+                            for (full, classes_str) in iter_class_attributes(&html_string) {
+                                let items: Vec<&str> = classes_str.split_whitespace().collect();
+                                let total = items.len();
+                                if total == 0 {
+                                    continue;
+                                }
+                                let mut match_count = 0usize;
+                                for it in &items {
+                                    if prev_set.contains(&it.to_string()) {
+                                        match_count += 1;
+                                    }
+                                }
+                                let overlap = (match_count as f64) / (total as f64);
+                                if overlap >= overlap_threshold && match_count > 0 {
+                                    if std::env::var("DX_DEBUG").ok().as_deref() == Some("1") {
+                                        eprintln!(
+                                            "[dx-style-debug] class attr '{}' total={} match_count={} overlap={} -> will replace",
+                                            classes_str, total, match_count, overlap
+                                        );
+                                    }
+                                    // Replace only the matching tokens with the new alias
+                                    let mut replaced = false;
+                                    let mut out_items: Vec<String> = Vec::new();
+                                    for it in items {
+                                        if prev_set.contains(&it.to_string()) {
+                                            // Use plain alias token (no leading '@')
+                                            let alias_token = new_name.clone();
+                                            if !out_items.contains(&alias_token) {
+                                                out_items.push(alias_token.clone());
+                                                replaced = true;
+                                            }
+                                        } else {
+                                            out_items.push(it.to_string());
                                         }
-                                        let mut match_count = 0usize;
-                                        for it in &items {
-                                            if prev_set.contains(&it.to_string()) {
-                                                match_count += 1;
-                                            }
-                                        }
-                                        let overlap = (match_count as f64) / (total as f64);
-                                        if overlap >= overlap_threshold && match_count > 0 {
-                                            if std::env::var("DX_DEBUG").ok().as_deref()
-                                                == Some("1")
-                                            {
-                                                eprintln!(
-                                                    "[dx-style-debug] class attr '{}' total={} match_count={} overlap={} -> will replace",
-                                                    classes_str, total, match_count, overlap
-                                                );
-                                            }
-                                            // Replace only the matching tokens with the new alias
-                                            let mut replaced = false;
-                                            let mut out_items: Vec<String> = Vec::new();
-                                            for it in items {
-                                                if prev_set.contains(&it.to_string()) {
-                                                    // Use plain alias token (no leading '@')
-                                                    let alias_token = new_name.clone();
-                                                    if !out_items.contains(&alias_token) {
-                                                        out_items.push(alias_token.clone());
-                                                        replaced = true;
-                                                    }
-                                                } else {
-                                                    out_items.push(it.to_string());
-                                                }
-                                            }
-                                            if replaced {
-                                                let new_classes = out_items.join(" ");
-                                                let new_attr = format!("class=\"{}\"", new_classes);
-                                                new_html = new_html.replacen(full, &new_attr, 1);
-                                            }
-                                        }
+                                    }
+                                    if replaced {
+                                        let new_classes = out_items.join(" ");
+                                        let new_attr = format!("class=\"{}\"", new_classes);
+                                        new_html = new_html.replacen(&full, &new_attr, 1);
                                     }
                                 }
                             }
@@ -610,33 +739,26 @@ pub fn rebuild_styles(
             .as_deref()
             == Some("1")
         {
-            let class_attr_re = regex::Regex::new(r#"class\s*=\s*\"([^\"]*)\""#).unwrap();
             let html_string = String::from_utf8_lossy(&html_bytes).to_string();
             let mut new_html = html_string.clone();
             let mut any_mod = false;
             for (name, _def) in group_registry.definitions() {
-                for cap in class_attr_re.captures_iter(&html_string) {
-                    if let Some(m) = cap.get(0) {
-                        let full = m.as_str();
-                        if let Some(group) = cap.get(1) {
-                            let classes_str = group.as_str();
-                            let mut items: Vec<String> = classes_str
-                                .split_whitespace()
-                                .map(|s| s.to_string())
-                                .collect();
-                            let mut replaced = false;
-                            for it in items.iter_mut() {
-                                if it == name {
-                                    *it = format!("@{}", name);
-                                    replaced = true;
-                                }
-                            }
-                            if replaced {
-                                let new_attr = format!("class=\"{}\"", items.join(" "));
-                                new_html = new_html.replacen(full, &new_attr, 1);
-                                any_mod = true;
-                            }
+                for (full, classes_str) in iter_class_attributes(&html_string) {
+                    let mut items: Vec<String> = classes_str
+                        .split_whitespace()
+                        .map(|s| s.to_string())
+                        .collect();
+                    let mut replaced = false;
+                    for it in items.iter_mut() {
+                        if it == name {
+                            *it = format!("@{}", name);
+                            replaced = true;
                         }
+                    }
+                    if replaced {
+                        let new_attr = format!("class=\"{}\"", items.join(" "));
+                        new_html = new_html.replacen(&full, &new_attr, 1);
+                        any_mod = true;
                     }
                 }
             }
@@ -780,86 +902,75 @@ pub fn rebuild_styles(
                     .ok()
                     .and_then(|s| s.parse().ok())
                     .unwrap_or(0.5);
-                let class_attr_re = regex::Regex::new(r#"class\s*=\s*\"([^\"]*)\""#).unwrap();
                 let html_string = String::from_utf8_lossy(&html_bytes).to_string();
                 // Snapshot of the HTML we started with (before aggressive pass)
-                let original_html_string = String::from_utf8_lossy(&html_bytes).to_string();
+                let original_html_string = html_string.clone();
                 let mut new_html = html_string.clone();
                 let mut any_mod = false;
-                for cap in class_attr_re.captures_iter(&html_string) {
-                    if let Some(m) = cap.get(0) {
-                        let full = m.as_str();
-                        // If the original HTML attribute already contained an explicit
-                        // grouped alias (an '@'), don't touch it. This prevents the
-                        // aggressive pass from stomping existing @alias usage.
-                        if original_html_string.contains(full) {
-                            if original_html_string
-                                .find(full)
-                                .and_then(|i| {
-                                    original_html_string
-                                        .get(i..i + full.len())
-                                        .map(|s| s.contains('@'))
-                                })
-                                .unwrap_or(false)
-                            {
-                                // skip this attribute; it already had an '@' in source
-                                continue;
-                            }
+                for (full, classes_str) in iter_class_attributes(&html_string) {
+                    // If the original HTML attribute already contained an explicit
+                    // grouped alias (an '@'), don't touch it. This prevents the
+                    // aggressive pass from stomping existing @alias usage.
+                    if original_html_string.contains(&full) {
+                        if original_html_string
+                            .find(&full)
+                            .and_then(|i| {
+                                original_html_string
+                                    .get(i..i + full.len())
+                                    .map(|s| s.contains('@'))
+                            })
+                            .unwrap_or(false)
+                        {
+                            continue;
                         }
-                        if let Some(group) = cap.get(1) {
-                            let classes_str = group.as_str();
-                            let items: Vec<&str> = classes_str.split_whitespace().collect();
-                            let total = items.len();
-                            if total == 0 {
-                                continue;
-                            }
-                            // Find best group by overlap
-                            let mut best_score = 0f64;
-                            let mut best_alias: Option<String> = None;
-                            let mut best_match_count = 0usize;
-                            for (alias, set) in &group_sets {
-                                let match_count = items
-                                    .iter()
-                                    .filter(|it| set.contains(&it.to_string()))
-                                    .count();
-                                let score = (match_count as f64) / (total as f64);
-                                if score > best_score {
-                                    best_score = score;
-                                    best_alias = Some(alias.clone());
-                                    best_match_count = match_count;
+                    }
+                    let items: Vec<&str> = classes_str.split_whitespace().collect();
+                    let total = items.len();
+                    if total == 0 {
+                        continue;
+                    }
+                    // Find best group by overlap
+                    let mut best_score = 0f64;
+                    let mut best_alias: Option<String> = None;
+                    let mut best_match_count = 0usize;
+                    for (alias, set) in &group_sets {
+                        let match_count = items
+                            .iter()
+                            .filter(|it| set.contains(&it.to_string()))
+                            .count();
+                        let score = (match_count as f64) / (total as f64);
+                        if score > best_score {
+                            best_score = score;
+                            best_alias = Some(alias.clone());
+                            best_match_count = match_count;
+                        }
+                    }
+                    if let Some(alias) = best_alias {
+                        if best_score >= overlap_threshold && best_match_count > 0 {
+                            // Replace matching tokens with @alias
+                            let mut out_items: Vec<String> = Vec::new();
+                            let alias_token = format!("@{}", alias);
+                            let mut replaced = false;
+                            for it in items {
+                                if group_sets.iter().any(|(_, s)| s.contains(&it.to_string())) {
+                                    // only include alias once (plain alias)
+                                    if !out_items.contains(&alias_token) {
+                                        out_items.push(alias_token.clone());
+                                        replaced = true;
+                                    }
+                                } else {
+                                    out_items.push(it.to_string());
                                 }
                             }
-                            if let Some(alias) = best_alias {
-                                if best_score >= overlap_threshold && best_match_count > 0 {
-                                    // Replace matching tokens with @alias
-                                    let mut out_items: Vec<String> = Vec::new();
-                                    let alias_token = format!("@{}", alias);
-                                    let mut replaced = false;
-                                    for it in items {
-                                        if group_sets
-                                            .iter()
-                                            .any(|(_, s)| s.contains(&it.to_string()))
-                                        {
-                                            // only include alias once (plain alias)
-                                            if !out_items.contains(&alias_token) {
-                                                out_items.push(alias_token.clone());
-                                                replaced = true;
-                                            }
-                                        } else {
-                                            out_items.push(it.to_string());
-                                        }
-                                    }
-                                    if replaced {
-                                        let new_attr = format!("class=\"{}\"", out_items.join(" "));
-                                        new_html = new_html.replacen(full, &new_attr, 1);
-                                        any_mod = true;
-                                        if std::env::var("DX_DEBUG").ok().as_deref() == Some("1") {
-                                            eprintln!(
-                                                "[dx-style-debug] aggressive replaced '{}' -> {}",
-                                                full, new_attr
-                                            );
-                                        }
-                                    }
+                            if replaced {
+                                let new_attr = format!("class=\"{}\"", out_items.join(" "));
+                                new_html = new_html.replacen(&full, &new_attr, 1);
+                                any_mod = true;
+                                if std::env::var("DX_DEBUG").ok().as_deref() == Some("1") {
+                                    eprintln!(
+                                        "[dx-style-debug] aggressive replaced '{}' -> {}",
+                                        full, new_attr
+                                    );
                                 }
                             }
                         }
@@ -902,7 +1013,6 @@ pub fn rebuild_styles(
     // element has additional behavior.
     {
         let mut html_string = String::from_utf8_lossy(&html_bytes).to_string();
-        let class_attr_re = regex::Regex::new(r#"class\s*=\s*\"([^\"]*)\""#).unwrap();
         let mut modified = false;
         // Collect alias names
         let alias_names: Vec<String> = group_registry
@@ -911,19 +1021,12 @@ pub fn rebuild_styles(
             .collect();
         for alias in alias_names {
             // Find all class attributes that contain @alias(...)
-            let grouped_re =
-                regex::Regex::new(&format!(r"@{}\s*\(\s*([^\)]*)\s*\)", regex::escape(&alias)))
-                    .unwrap();
             let mut occurrences: Vec<(String, String)> = Vec::new(); // (full_attr, classes_str)
-            for cap in class_attr_re.captures_iter(&html_string) {
-                if let Some(m) = cap.get(0) {
-                    let full = m.as_str().to_string();
-                    if let Some(group) = cap.get(1) {
-                        let classes_str = group.as_str().to_string();
-                        if grouped_re.is_match(&classes_str) {
-                            occurrences.push((full, classes_str));
-                        }
-                    }
+            for (full, classes_str) in iter_class_attributes(&html_string) {
+                // check if classes_str contains a grouped call for this alias
+                let grouped_token = format!("@{}(", alias);
+                if classes_str.contains(&grouped_token) {
+                    occurrences.push((full, classes_str));
                 }
             }
             if occurrences.len() <= 1 {
@@ -936,7 +1039,7 @@ pub fn rebuild_styles(
                 let tokens: Vec<&str> = classes_str.split_whitespace().collect();
                 let mut other_count = 0usize;
                 for tk in &tokens {
-                    if grouped_re.is_match(tk) {
+                    if tk.contains('@') && tk.starts_with(&format!("@{}", alias)) {
                         continue;
                     }
                     other_count += 1;
@@ -956,7 +1059,9 @@ pub fn rebuild_styles(
                     continue;
                 }
                 // Replace only the grouped token(s) for this alias inside classes_str with the plain alias
-                let new_classes = grouped_re.replace_all(classes_str, alias.as_str());
+                let mut new_classes = classes_str.clone();
+                // replace occurrences like @alias(...) inside the classes_str
+                new_classes = replace_grouped_tokens_in_classes(&new_classes, &alias);
                 let new_attr = format!("class=\"{}\"", new_classes);
                 new_html = new_html.replacen(full, &new_attr, 1);
                 modified = true;
@@ -1204,13 +1309,11 @@ pub fn rebuild_styles(
                 let mut devs: AHashMap<String, String> = AHashMap::default();
                 let html_string = String::from_utf8_lossy(&html_bytes).to_string();
                 for (name, _def) in state_guard.group_registry.definitions() {
-                    // find the first occurrence of @name(...)
-                    let re_text = format!(r"@{}\s*\(\s*([^\)]*)\s*\)", regex::escape(name));
-                    if let Ok(re) = regex::Regex::new(&re_text) {
-                        if let Some(mat) = re.find(&html_string) {
-                            let raw = mat.as_str().to_string();
-                            devs.insert(name.clone(), raw);
-                        }
+                    // find the first occurrence of @name(...) using the scanner
+                    let grouped_calls = find_grouped_calls_in_text(&html_string);
+                    if let Some((_, inner)) = grouped_calls.into_iter().find(|(n, _)| n == name) {
+                        let raw = format!("@{}({})", name, inner);
+                        devs.insert(name.clone(), raw);
                     }
                 }
                 if !devs.is_empty() {

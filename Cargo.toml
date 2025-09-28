@@ -30,7 +30,6 @@ seahash = "4.1.0"
 twoway = "0.2"
 winapi = { version = "0.3", features = ["wincon","consoleapi","minwindef","processenv","winbase"] }
 lightningcss = "1.0.0-alpha.67"
-regex = "1.11.3"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

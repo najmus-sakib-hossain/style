@@ -2641,7 +2641,6 @@ dependencies = [
  "notify",
  "notify-debouncer-full",
  "rayon",
- "regex",
  "reqwest",
  "seahash",
  "serde",
