@@ -106,18 +106,12 @@ fn sanitize_group_token(raw: &str) -> &str {
     }
     raw
 }
-
-// Expand grouping syntax like: lg(bg-red-500 text-yellow-500) -> lg:bg-red-500, lg:text-yellow-500
-// Supports nesting: lg(md(bg-red-500)) -> lg:md:bg-red-500
-// Ignores inline comments starting with '#' and trailing '+' suffixes on tokens.
 #[inline]
 fn expand_grouping_into(s: &str, out: &mut AHashSet<String>, collector: &mut GroupCollector) {
-    // Cut off inline comment starting with '#'
     let s = match s.as_bytes().iter().position(|&b| b == b'#') {
         Some(i) => &s[..i],
         None => s,
     };
-    // Fast path: no grouping/comment/plus symbols -> simple split
     if !s
         .as_bytes()
         .iter()
@@ -146,7 +140,6 @@ fn expand_grouping_into(s: &str, out: &mut AHashSet<String>, collector: &mut Gro
     }
 
     while i < n {
-        // Skip whitespace
         while i < n && matches!(bytes[i], b' ' | b'\n' | b'\r' | b'\t') {
             i += 1;
         }
@@ -154,7 +147,6 @@ fn expand_grouping_into(s: &str, out: &mut AHashSet<String>, collector: &mut Gro
             break;
         }
 
-        // Handle closing parens possibly repeated
         while i < n && bytes[i] == b')' {
             if let Some(ts) = tok_start.take() {
                 if ts < i {
@@ -187,7 +179,6 @@ fn expand_grouping_into(s: &str, out: &mut AHashSet<String>, collector: &mut Gro
                 stack.pop();
             }
             i += 1;
-            // skip whitespace after )
             while i < n && matches!(bytes[i], b' ' | b'\n' | b'\r' | b'\t') {
                 i += 1;
             }
@@ -196,17 +187,14 @@ fn expand_grouping_into(s: &str, out: &mut AHashSet<String>, collector: &mut Gro
             break;
         }
 
-        // Start a token if not in one
         if tok_start.is_none() {
             tok_start = Some(i);
         }
 
-        // Advance until whitespace or paren
         while i < n && !matches!(bytes[i], b' ' | b'\n' | b'\r' | b'\t' | b'(' | b')') {
             i += 1;
         }
 
-        // If next is '(', treat previous token as a prefix and push
         if i < n && bytes[i] == b'(' {
             if let Some(ts) = tok_start.take() {
                 if ts < i {
@@ -222,7 +210,6 @@ fn expand_grouping_into(s: &str, out: &mut AHashSet<String>, collector: &mut Gro
             continue;
         }
 
-        // Otherwise, finalize a normal token
         if let Some(ts) = tok_start.take() {
             if ts < i {
                 let raw = &s[ts..i];
@@ -250,10 +237,8 @@ fn expand_grouping_into(s: &str, out: &mut AHashSet<String>, collector: &mut Gro
                 }
             }
         }
-        // If current char is ')', the top of loop will pop it
     }
 
-    // Final token at end-of-string
     if let Some(ts) = tok_start.take() {
         if ts < n {
             let raw = &s[ts..n];
@@ -289,10 +274,9 @@ pub fn extract_classes_fast(html_bytes: &[u8], capacity_hint: usize) -> Extracte
     let mut pos = 0usize;
     let n = html_bytes.len();
 
-    // Pass 1: standard class="..."
     let class_finder = Finder::new(b"class");
     while let Some(idx) = class_finder.find(&html_bytes[pos..]) {
-        let start = pos + idx + 5; // after 'class'
+        let start = pos + idx + 5;
         let mut i = start;
         while i < n && matches!(html_bytes[i], b' ' | b'\n' | b'\r' | b'\t') {
             i += 1;
@@ -321,19 +305,16 @@ pub fn extract_classes_fast(html_bytes: &[u8], capacity_hint: usize) -> Extracte
             None => break,
         };
         if let Ok(value_str) = std::str::from_utf8(&html_bytes[value_start..value_end]) {
-            // Use grouping-aware extractor for both, but it fast-paths when absent
             expand_grouping_into(value_str, &mut set, &mut collector);
         }
         pos = value_end + 1;
     }
 
-    // Pass 2: dx-*="..." attributes
     pos = 0;
     let dx_finder = Finder::new(b"dx-");
     while let Some(idx) = dx_finder.find(&html_bytes[pos..]) {
-        let mut i = pos + idx; // at 'd' in 'dx-'
-        // read attribute name [a-zA-Z0-9_-]+
-        i += 3; // skip 'dx-'
+        let mut i = pos + idx;
+        i += 3;
         while i < n {
             let b = html_bytes[i];
             if (b as char).is_ascii_alphanumeric() || b == b'-' || b == b'_' {
@@ -342,7 +323,6 @@ pub fn extract_classes_fast(html_bytes: &[u8], capacity_hint: usize) -> Extracte
                 break;
             }
         }
-        // skip whitespace
         while i < n && matches!(html_bytes[i], b' ' | b'\n' | b'\r' | b'\t') {
             i += 1;
         }
@@ -566,14 +546,6 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
         pos = attr_end;
     }
 
-    // If we didn't find duplicates, still scan for manual alias definitions that
-    // appear as single-token class attributes like `nbft(none border ...)` (no
-    // leading '@'). This allows users to toggle the '@' form on/off and have
-    // the generator expand/remove grouped utilities accordingly.
-    // First, regardless of duplicate detection, strip any parentheses groups
-    // from tokens that are written without a leading '@'. This implements the
-    // user's expectation that removing the '@' should remove all grouped
-    // utilities from the source HTML; e.g. `nbft(none border)` -> `nbft`.
     {
         let mut replacements: Vec<(Range<usize>, String)> = Vec::new();
         let mut pos_scan = 0usize;
@@ -625,7 +597,6 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
                             continue;
                         }
                         if let Some(open_idx) = tk.find('(') {
-                            // found an opening; collapse the entire parentheses sequence
                             let name = &tk[..open_idx];
                             let mut found_close = tk.ends_with(')');
                             let mut j = ti + 1;
@@ -645,7 +616,6 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
                                 ti = j;
                                 continue;
                             } else {
-                                // malformed (no closing)), just keep token as-is
                                 out_tokens.push(tk.to_string());
                                 ti += 1;
                                 continue;
@@ -683,13 +653,7 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
     }
 
     if occurrences.is_empty() {
-        // No auto-group occurrences found — detect manual alias usage like
-        // `name(inner1 inner2)` anywhere in the document (without a leading '@')
-        // and expand it inline so the source HTML contains the explicit
-        // utility tokens. This is the 'toggle off' behavior when the user
-        // removes the leading '@'.
         let mut manual_aliases: AHashMap<String, Vec<String>> = AHashMap::default();
-        // First pass: collect alias definitions appearing inside class values
         let mut pos_scan = 0usize;
         let n_all = html_bytes.len();
         let finder = Finder::new(b"class");
@@ -727,7 +691,6 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
             if let Some(rel_end) = memchr(quote, &html_bytes[value_start..]) {
                 let value_end = value_start + rel_end;
                 if let Ok(value_str) = std::str::from_utf8(&html_bytes[value_start..value_end]) {
-                    // Build token list and support parentheses that span tokens
                     let tokens: Vec<&str> = value_str.split_whitespace().collect();
                     let mut ti = 0usize;
                     while ti < tokens.len() {
@@ -782,8 +745,6 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
             return None;
         }
 
-        // Second pass: rewrite class attributes, expanding any manual alias
-        // occurrences into their explicit token lists.
         let mut replacements: Vec<(Range<usize>, String)> = Vec::new();
         let mut pos2 = 0usize;
         let n = html_bytes.len();
@@ -822,45 +783,32 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
             if let Some(rel_end) = memchr(quote, &html_bytes[value_start..]) {
                 let value_end = value_start + rel_end;
                 if let Ok(value_str) = std::str::from_utf8(&html_bytes[value_start..value_end]) {
-                    // For manual aliases without a leading '@' we remove the grouped
-                    // utility tokens from the class attribute. This implements the
-                    // "toggle off" behavior: when user writes `name(...)` (no @)
-                    // the grouped utilities should be removed from the source HTML.
                     let mut out_tokens: Vec<String> = Vec::new();
                     let mut changed = false;
                     for tok in value_str.split_whitespace() {
-                        // Preserve explicit dev alias forms (starting with '@') unchanged
                         if tok.starts_with('@') {
                             out_tokens.push(tok.to_string());
                             continue;
                         }
-                        // If token is a grouped alias form like name(inner...) or a plain
-                        // alias name that we detected earlier, skip it (remove it).
                         let mut skipped = false;
                         if let Some(open_idx) = tok.find('(') {
                             if tok.ends_with(')') {
                                 let name = &tok[..open_idx];
                                 if manual_aliases.contains_key(name) {
-                                    // drop this token
-                                    changed = true;
                                     skipped = true;
                                 }
                             }
                         }
-                        if skipped {
-                            continue;
-                        }
                         if manual_aliases.contains_key(tok) {
-                            // drop plain alias token
+                            skipped = true;
+                        }
+                        if skipped {
                             changed = true;
                             continue;
                         }
                         out_tokens.push(tok.to_string());
                     }
                     if changed {
-                        // If nothing remains, remove the class attribute entirely by
-                        // replacing the region with an empty string; otherwise write
-                        // back the reduced class attribute.
                         let replacement = if out_tokens.is_empty() {
                             String::new()
                         } else {
@@ -876,136 +824,6 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
             }
         }
 
-        if replacements.is_empty() {
-            return None;
-        }
-        replacements.sort_by(|a, b| b.0.start.cmp(&a.0.start));
-        let mut html_string = String::from_utf8(html_bytes.to_vec()).ok()?;
-        for (range, replacement) in replacements {
-            html_string.replace_range(range, &replacement);
-        }
-        return Some(AutoGroupRewrite {
-            html: html_string.into_bytes(),
-            groups: Vec::new(),
-        });
-    }
-
-    // Manual alias expansion: if user wrote `alias(token1 token2)` (without leading '@')
-    // treat it as a request to expand the alias back into the explicit utility tokens.
-    // Collect any manual alias definitions found in the occurrences. Handle both
-    // single-token forms like `nbft(none)` and multi-token forms where the
-    // parentheses span multiple whitespace-separated tokens: `nbft(none border)`.
-    let mut manual_aliases: AHashMap<String, Vec<String>> = AHashMap::default();
-    for occ in &occurrences {
-        let value_slice = &html_bytes[occ.value_range.clone()];
-        if let Ok(value_str) = std::str::from_utf8(value_slice) {
-            let tokens: Vec<&str> = occ
-                .token_ranges
-                .iter()
-                .map(|r| &value_str[r.clone()])
-                .collect();
-            let mut i = 0usize;
-            while i < tokens.len() {
-                let token = tokens[i];
-                // skip tokens that start with '@'
-                if token.starts_with('@') {
-                    i += 1;
-                    continue;
-                }
-                if let Some(open_idx) = token.find('(') {
-                    // We have an opening; find the matching token that contains ')'
-                    let name = &token[..open_idx];
-                    let mut inner_tokens: Vec<String> = Vec::new();
-                    // remainder after '(' in the first token
-                    let first_rem = &token[open_idx + 1..];
-                    if !first_rem.is_empty() {
-                        // this may include a trailing ')' — we'll trim later
-                        inner_tokens.push(first_rem.trim_end_matches(')').to_string());
-                    }
-                    let mut j = i + 1;
-                    let mut found_close = token.ends_with(')');
-                    while j < tokens.len() && !found_close {
-                        let tk = tokens[j];
-                        if tk.ends_with(')') {
-                            inner_tokens.push(tk.trim_end_matches(')').to_string());
-                            found_close = true;
-                            j += 1;
-                            break;
-                        } else {
-                            inner_tokens.push(tk.to_string());
-                        }
-                        j += 1;
-                    }
-                    if !found_close {
-                        // malformed, skip
-                        i += 1;
-                        continue;
-                    }
-                    // Clean empty tokens
-                    inner_tokens.retain(|s| !s.is_empty());
-                    if !name.is_empty() && !inner_tokens.is_empty() {
-                        manual_aliases.insert(name.to_string(), inner_tokens);
-                    }
-                    i = j;
-                    continue;
-                }
-                i += 1;
-            }
-        }
-    }
-
-    if !manual_aliases.is_empty() {
-        // Build replacements that expand manual aliases across all occurrences
-        let mut replacements: Vec<(Range<usize>, String)> = Vec::new();
-        for occ in &occurrences {
-            let value_slice = &html_bytes[occ.value_range.clone()];
-            if let Ok(value_str) = std::str::from_utf8(value_slice) {
-                // For manual aliases without '@' we remove grouped tokens from
-                // occurrence attributes. Preserve explicit dev aliases (starting
-                // with '@'). If the resulting class list is empty we remove the
-                // whole attribute.
-                let mut out_tokens: Vec<String> = Vec::new();
-                let mut changed = false;
-                for range in &occ.token_ranges {
-                    let token = &value_str[range.clone()];
-                    if token.starts_with('@') {
-                        out_tokens.push(token.to_string());
-                        continue;
-                    }
-                    let mut skip = false;
-                    if let Some(open_idx) = token.find('(') {
-                        if token.ends_with(')') {
-                            let name = &token[..open_idx];
-                            if manual_aliases.contains_key(name) {
-                                skip = true;
-                            }
-                        }
-                    }
-                    if manual_aliases.contains_key(token) {
-                        skip = true;
-                    }
-                    if skip {
-                        changed = true;
-                        continue;
-                    }
-                    out_tokens.push(token.to_string());
-                }
-                if changed {
-                    if out_tokens.is_empty() {
-                        replacements.push((occ.attr_range.clone(), String::new()));
-                    } else {
-                        let new_value = out_tokens.join(" ");
-                        replacements
-                            .push((occ.attr_range.clone(), format!("class=\"{}\"", new_value)));
-                    }
-                }
-                if let Some((range, replacement)) = occ.dx_group_cleanup.clone() {
-                    replacements.push((range, replacement));
-                }
-            }
-        }
-        // Also scan for single-token class attributes that match any alias name and
-        // expand them to the utility list. We must detect full-token equality.
         let mut pos2 = 0usize;
         let n = html_bytes.len();
         let finder = Finder::new(b"class");
@@ -1042,12 +860,8 @@ pub fn rewrite_duplicate_classes(html_bytes: &[u8]) -> Option<AutoGroupRewrite> 
             let value_start = cursor;
             if let Some(rel_end) = memchr(quote, &html_bytes[value_start..]) {
                 let value_end = value_start + rel_end;
-                // Extract value string
                 if let Ok(value_str) = std::str::from_utf8(&html_bytes[value_start..value_end]) {
-                    // Single-token attribute?
                     if !value_str.contains(char::is_whitespace) {
-                        // If the single-token matches a manual alias or is a name(inner)
-                        // form, remove the class attribute (delete behavior).
                         if manual_aliases.contains_key(value_str) {
                             replacements.push((attr_start..(value_end + 2), String::new()));
                         } else {

@@ -20,25 +20,20 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 fn iter_class_attributes(html: &str) -> Vec<(String, String)> {
-    // returns (full_attr, classes_str) where full_attr is the exact substring like `class="a b"`
     let mut out = Vec::new();
     let bytes = html.as_bytes();
     let mut i = 0usize;
     while i < bytes.len() {
-        // find 'class' (case-insensitive)
         if i + 5 <= bytes.len() && bytes[i..i + 5].eq_ignore_ascii_case(b"class") {
             let mut j = i + 5;
-            // skip whitespace
             while j < bytes.len() && bytes[j].is_ascii_whitespace() {
                 j += 1;
             }
             if j < bytes.len() && bytes[j] == b'=' {
                 j += 1;
-                // skip whitespace
                 while j < bytes.len() && bytes[j].is_ascii_whitespace() {
                     j += 1;
                 }
-                // handle double-quoted values
                 if j < bytes.len() && bytes[j] == b'"' {
                     let val_start = j + 1;
                     let mut val_end = val_start;
@@ -62,13 +57,11 @@ fn iter_class_attributes(html: &str) -> Vec<(String, String)> {
 }
 
 fn find_grouped_calls_in_text(html: &str) -> Vec<(String, String)> {
-    // finds @name(...) anywhere and returns vec of (name, inner)
     let mut out = Vec::new();
     let bytes = html.as_bytes();
     let mut i = 0usize;
     while i < bytes.len() {
         if bytes[i] == b'@' {
-            // parse name [A-Za-z0-9_-]+
             let mut j = i + 1;
             while j < bytes.len() {
                 let c = bytes[j];
@@ -84,13 +77,11 @@ fn find_grouped_calls_in_text(html: &str) -> Vec<(String, String)> {
                 break;
             }
             if j > i + 1 {
-                // skip whitespace
                 let mut k = j;
                 while k < bytes.len() && bytes[k].is_ascii_whitespace() {
                     k += 1;
                 }
                 if k < bytes.len() && bytes[k] == b'(' {
-                    // find closing ')'
                     let mut depth = 0usize;
                     let mut m = k;
                     while m < bytes.len() {
@@ -120,7 +111,6 @@ fn find_grouped_calls_in_text(html: &str) -> Vec<(String, String)> {
 }
 
 fn replace_grouped_tokens_in_classes(classes_str: &str, alias: &str) -> String {
-    // replace occurrences of @alias(...) inside a classes string with plain alias
     let mut out = String::new();
     let mut i = 0usize;
     let s = classes_str.as_bytes();
@@ -138,13 +128,11 @@ fn replace_grouped_tokens_in_classes(classes_str: &str, alias: &str) -> String {
             }
             let name = String::from_utf8_lossy(&s[i + 1..j]).to_string();
             if name == alias {
-                // skip whitespace
                 let mut k = j;
                 while k < s.len() && s[k].is_ascii_whitespace() {
                     k += 1;
                 }
                 if k < s.len() && s[k] == b'(' {
-                    // find closing ')'
                     let mut depth = 0usize;
                     let mut m = k;
                     while m < s.len() {
@@ -177,8 +165,6 @@ fn replace_grouped_tokens_in_classes(classes_str: &str, alias: &str) -> String {
     }
     out
 }
-// ---------- end helpers ----------
-
 static BASE_LAYER_PRESENT: AtomicBool = AtomicBool::new(false);
 pub fn set_base_layer_present() {
     BASE_LAYER_PRESENT.store(true, Ordering::Relaxed);
@@ -201,8 +187,8 @@ static FIRST_LOG_DONE: AtomicBool = AtomicBool::new(false);
 
 #[derive(Clone, Copy, Debug)]
 pub struct RuleMeta {
-    pub off: usize, // offset relative to utilities body start
-    pub len: usize, // full rule span including all lines and trailing newline
+    pub off: usize,
+    pub len: usize,
 }
 
 pub struct AppState {
@@ -236,22 +222,8 @@ pub fn rebuild_styles(
     let mut html_bytes = datasource::read_file(index_path)?;
     let mut dev_group_selectors: AHashMap<String, String> = AHashMap::default();
     if let Some(plan) = rewrite_duplicate_classes(&html_bytes) {
-        // Only create dev selectors for groups that were written with an explicit
-        // leading '@' (i.e. class="@alias(...)"). The rewrite function returns
-        // group metadata for auto-generated alias writes; however some rewrites
-        // (manual-expansion toggles) return groups empty. Respect that to allow
-        // toggling the presence of the legacy dev selector.
         if !plan.groups.is_empty() {
             for info in &plan.groups {
-                // println!(
-                //     "[dx-style] auto group {} -> {}",
-                //     info.alias,
-                //     info.classes.join(" ")
-                // );
-                // Only insert dev selector if the group in HTML was emitted with '@'
-                // (rewrite_duplicate_classes will record '@' in the replacement string
-                // for the first occurrence). Detect this by searching plan.html for
-                // the explicit @alias(...) substring.
                 let search = format!("@{}(", info.alias);
                 if String::from_utf8_lossy(&plan.html).contains(&search) {
                     dev_group_selectors.insert(
@@ -297,19 +269,10 @@ pub fn rebuild_styles(
         &mut all_classes,
         Some(AppState::engine()),
     );
-    // New: scan the current HTML for grouped @alias(...) occurrences that refer
-    // to alias names not present in the current registry (manual rename cases).
-    // For each such occurrence, compute the set of inner utilities and try to
-    // find the best matching current alias by Jaccard similarity; if a match
-    // meets the threshold, rewrite the HTML to use the new alias and re-run
-    // extraction/analysis.
     {
         let html_string_in = String::from_utf8_lossy(&html_bytes).to_string();
-        // Scan for @alias(inner...) occurrences
-        // Build normalized current defs for matching
         let mut current_alias_names: AHashSet<String> = AHashSet::default();
         let mut current_defs_norm: Vec<(String, AHashSet<String>)> = Vec::new();
-        // Map of normalized (sorted) utility signature -> alias name for exact-match fallback
         let mut current_defs_map: AHashMap<String, String> = AHashMap::default();
         for (name, _def) in group_registry.definitions() {
             current_alias_names.insert(name.clone());
@@ -332,7 +295,6 @@ pub fn rebuild_styles(
                 set.insert(u.clone());
             }
             if !set.is_empty() {
-                // build a deterministic signature for exact set matching
                 let mut sig_vec: Vec<&str> = set.iter().map(|s| s.as_str()).collect();
                 sig_vec.sort();
                 let sig = sig_vec.join(" ");
@@ -355,7 +317,6 @@ pub fn rebuild_styles(
                 if current_alias_names.contains(old_name.as_str()) {
                     continue;
                 }
-                // Normalize inner tokens
                 let mut old_set: AHashSet<String> = AHashSet::default();
                 for tok in inner.split_whitespace() {
                     if tok.is_empty() {
@@ -375,7 +336,6 @@ pub fn rebuild_styles(
                 if old_set.is_empty() {
                     continue;
                 }
-                // Find best (fuzzy) match
                 let mut best_score = 0f64;
                 let mut best_alias: Option<String> = None;
                 for (cand_alias, cand_set) in &current_defs_norm {
@@ -390,10 +350,6 @@ pub fn rebuild_styles(
                         best_alias = Some(cand_alias.clone());
                     }
                 }
-                // If fuzzy matching didn't find a confident candidate, try an exact-set
-                // lookup based on the inner utilities (this fixes cases where the
-                // current CSS/group registry already contains an exact alias for
-                // the provided utilities but the fuzzy threshold was not met).
                 if best_alias.is_none() {
                     let mut sig_vec: Vec<&str> = old_set.iter().map(|s| s.as_str()).collect();
                     sig_vec.sort();
@@ -411,21 +367,18 @@ pub fn rebuild_styles(
                 }
                 if let Some(new_alias) = best_alias {
                     if best_score >= threshold && new_alias.as_str() != old_name.as_str() {
-                        // Replace occurrences of @old( with @new(
                         let old_with_paren = format!("@{}(", old_name);
                         let new_with_paren = format!("@{}(", new_alias);
                         if html_out.contains(&old_with_paren) {
                             html_out = html_out.replace(&old_with_paren, &new_with_paren);
                             modified = true;
                         }
-                        // Replace bare @old -> @new
                         let old_at = format!("@{}", old_name);
                         let new_at = format!("@{}", new_alias);
                         if html_out.contains(&old_at) {
                             html_out = html_out.replace(&old_at, &new_at);
                             modified = true;
                         }
-                        // Also replace plain class tokens equal to old_name by scanning class attributes
                         let mut tmp_html = html_out.clone();
                         for (full, classes_str) in iter_class_attributes(&html_out) {
                             let mut items: Vec<String> = classes_str
@@ -454,7 +407,6 @@ pub fn rebuild_styles(
             if modified {
                 std::fs::write(index_path, &html_out)?;
                 html_bytes = html_out.into_bytes();
-                // Re-extract and re-analyze with rewritten HTML
                 let extracted2 =
                     extract_classes_fast(&html_bytes, all_classes.len().next_power_of_two());
                 let mut all_classes2 = extracted2.classes;
@@ -463,19 +415,15 @@ pub fn rebuild_styles(
                     &mut all_classes2,
                     Some(AppState::engine()),
                 );
-                // update master class set
                 all_classes = all_classes2;
             }
         }
     }
-    // Detect alias renames using fuzzy Jaccard similarity of utility sets.
-    // Exclude alias/internal tokens and nested aliases from comparisons.
     {
         let prev_registry = { state.lock().unwrap().group_registry.clone() };
         if prev_registry.definitions().next().is_some()
             && group_registry.definitions().next().is_some()
         {
-            // Build current alias name set and normalized utility sets
             let mut current_alias_names: AHashSet<String> = AHashSet::default();
             for (name, _) in group_registry.definitions() {
                 current_alias_names.insert(name.clone());
@@ -511,7 +459,7 @@ pub fn rebuild_styles(
                     .find(|(n, _)| *n == old_name)
                     .is_some()
                 {
-                    continue; // still exists with same name
+                    continue;
                 }
                 let mut prev_set: AHashSet<String> = AHashSet::default();
                 for u in &old_def.utilities {
@@ -533,7 +481,6 @@ pub fn rebuild_styles(
                     continue;
                 }
 
-                // Find best fuzzy match by Jaccard similarity
                 let mut best_score = 0f64;
                 let mut best_alias: Option<String> = None;
                 for (cand_alias, cand_set) in &current_defs_norm {
@@ -577,10 +524,6 @@ pub fn rebuild_styles(
                             modified = true;
                         }
 
-                        // Plain-token rename: replace class tokens exactly equal to the
-                        // old alias name with @new_name. This handles `class="bg"`
-                        // and `class="bg flex"` scenarios so they migrate to the
-                        // grouped alias form.
                         let mut plain_html = html_string.clone();
                         let mut plain_modified = false;
                         for (full, classes_str) in iter_class_attributes(&html_string) {
@@ -606,17 +549,11 @@ pub fn rebuild_styles(
                             modified = true;
                         }
 
-                        // Aggressive rewrite: replace plain utility tokens with the
-                        // alias when the class attribute appears to contain several
-                        // utilities from the previous alias. This uses a simple
-                        // class-attribute-aware replacement with a configurable
-                        // overlap threshold to avoid false positives.
                         let overlap_threshold: f64 =
                             std::env::var("DX_GROUP_REWRITE_UTILITY_OVERLAP")
                                 .ok()
                                 .and_then(|s| s.parse().ok())
                                 .unwrap_or(0.5);
-                        // Build prev_set (normalized) for quick checks
                         let mut prev_set: AHashSet<String> = AHashSet::default();
                         if let Some(prev_def) =
                             prev_registry.definitions().find(|(n, _)| *n == old_name)
@@ -641,7 +578,6 @@ pub fn rebuild_styles(
                                     old_name, prev_set
                                 );
                             }
-                            // Use the HTML scanner to find class="..." attributes
                             let mut new_html = html_string.clone();
                             for (full, classes_str) in iter_class_attributes(&html_string) {
                                 let items: Vec<&str> = classes_str.split_whitespace().collect();
@@ -663,12 +599,10 @@ pub fn rebuild_styles(
                                             classes_str, total, match_count, overlap
                                         );
                                     }
-                                    // Replace only the matching tokens with the new alias
                                     let mut replaced = false;
                                     let mut out_items: Vec<String> = Vec::new();
                                     for it in items {
                                         if prev_set.contains(&it.to_string()) {
-                                            // Use plain alias token (no leading '@')
                                             let alias_token = new_name.clone();
                                             if !out_items.contains(&alias_token) {
                                                 out_items.push(alias_token.clone());
@@ -696,7 +630,6 @@ pub fn rebuild_styles(
             if modified {
                 std::fs::write(index_path, &html_string)?;
                 html_bytes = html_string.into_bytes();
-                // Re-extract and re-analyze with rewritten HTML
                 let extracted2 =
                     extract_classes_fast(&html_bytes, prev_len_hint.next_power_of_two());
                 let mut all_classes2 = extracted2.classes;
@@ -705,35 +638,21 @@ pub fn rebuild_styles(
                     &mut all_classes2,
                     Some(AppState::engine()),
                 );
-                // If rewrite removed grouped alias metadata (manual toggle off), preserve previous entries
                 let prev_registry2 = { state.lock().unwrap().group_registry.clone() };
                 if prev_registry2.is_empty() == false && group_registry.is_empty() {
                     group_registry.merge_preserve(&prev_registry2);
                 }
-                // update master class set
                 all_classes = all_classes2;
             }
         }
     }
-    // If the rewrite removed grouped alias metadata (manual toggle off), but
-    // our previous state had group definitions, merge those so we preserve
-    // the cached CSS and definitions for developer convenience.
     {
         let prev_registry = { state.lock().unwrap().group_registry.clone() };
         if prev_registry.is_empty() == false && group_registry.is_empty() {
             group_registry.merge_preserve(&prev_registry);
         }
     }
-    // If the HTML contains an explicit '@alias' token (even without
-    // parentheses) treat that as a developer request to emit the legacy
-    // dev selector. Use the group's recorded dev_tokens to synthesize a
-    // `@alias(a b c)` string. This handles cases where the user writes
-    // `class="@alias"` to request the dev selector be present.
     {
-        // Optional pass: treat plain alias-name tokens (e.g. class="bg")
-        // as a request to use the grouped alias by converting them to
-        // `@alias`. This is gated behind DX_GROUP_REWRITE_PLAIN_ALIAS=1
-        // so it won't run unless explicitly enabled.
         if std::env::var("DX_GROUP_REWRITE_PLAIN_ALIAS")
             .ok()
             .as_deref()
@@ -765,7 +684,6 @@ pub fn rebuild_styles(
             if any_mod {
                 std::fs::write(index_path, &new_html)?;
                 html_bytes = new_html.into_bytes();
-                // Re-extract and re-analyze with rewritten HTML
                 let extracted2 =
                     extract_classes_fast(&html_bytes, all_classes.len().next_power_of_two());
                 let mut all_classes2 = extracted2.classes;
@@ -774,20 +692,15 @@ pub fn rebuild_styles(
                     &mut all_classes2,
                     Some(AppState::engine()),
                 );
-                // preserve previous registry entries if needed
                 let prev_registry = { state.lock().unwrap().group_registry.clone() };
                 if prev_registry.is_empty() == false && group_registry.is_empty() {
                     group_registry.merge_preserve(&prev_registry);
                 }
-                // update master class set
                 all_classes = all_classes2;
             }
         }
 
         let mut devs = dev_group_selectors;
-        // Inspect the HTML bytes for '@alias' occurrences. We purposely use
-        // a simple substring search here to prefer a small, local change;
-        // it's sufficient for typical usages like `@bg` or `@card`.
         let html_text = String::from_utf8_lossy(&html_bytes).to_string();
         for (name, def) in group_registry.definitions() {
             if devs.contains_key(name) {
@@ -795,7 +708,6 @@ pub fn rebuild_styles(
             }
             let search = format!("@{}", name);
             if html_text.contains(&search) {
-                // Use dev_tokens when available, otherwise fall back to utilities
                 let inner = if !def.dev_tokens.is_empty() {
                     def.dev_tokens.join(" ")
                 } else {
@@ -809,10 +721,6 @@ pub fn rebuild_styles(
         group_registry.set_dev_selectors(devs);
     }
 
-    // Expand bare `@alias` occurrences in the HTML into `@alias(token1 token2)`
-    // using the group's recorded dev_tokens or utilities. This ensures that
-    // writing `class="@bg"` expands into the grouped form the generator
-    // expects and yields the concrete utility tokens for CSS generation.
     {
         let mut html_string = String::from_utf8_lossy(&html_bytes).to_string();
         let mut modified = false;
@@ -822,7 +730,6 @@ pub fn rebuild_styles(
             while let Some(pos_rel) = html_string[start_idx..].find(&needle) {
                 let pos = start_idx + pos_rel;
                 let after = pos + needle.len();
-                // If already followed by '(' then skip
                 if html_string.as_bytes().get(after).map(|b| *b as char) == Some('(') {
                     start_idx = after;
                     continue;
@@ -844,7 +751,6 @@ pub fn rebuild_styles(
         if modified {
             std::fs::write(index_path, &html_string)?;
             html_bytes = html_string.into_bytes();
-            // Re-extract and re-analyze with expanded HTML
             let extracted2 = extract_classes_fast(&html_bytes, prev_len_hint.next_power_of_two());
             let mut all_classes2 = extracted2.classes;
             group_registry = group::GroupRegistry::analyze(
@@ -852,26 +758,19 @@ pub fn rebuild_styles(
                 &mut all_classes2,
                 Some(AppState::engine()),
             );
-            // preserve previous registry entries if needed
             let prev_registry = { state.lock().unwrap().group_registry.clone() };
             if prev_registry.is_empty() == false && group_registry.is_empty() {
                 group_registry.merge_preserve(&prev_registry);
             }
-            // Remove utility members now that we've re-analyzed
             group_registry.remove_utility_members_from(&mut all_classes2);
             all_classes = all_classes2;
         }
     }
 
-    // Optional aggressive rewrite pass (env opt-in): examine class attributes
-    // and replace plain utility tokens with the best matching @alias when the
-    // overlap threshold is met. This is independent of previous registry state
-    // and useful when migrating existing HTML to use grouped aliases.
     {
         let aggressive_env =
             std::env::var("DX_GROUP_AGGRESSIVE_REWRITE").ok().as_deref() == Some("1");
         if aggressive_env {
-            // Build normalized utility sets for current groups
             let mut group_sets: Vec<(String, AHashSet<String>)> = Vec::new();
             let mut alias_names: AHashSet<String> = AHashSet::default();
             for (name, def) in group_registry.definitions() {
@@ -903,14 +802,10 @@ pub fn rebuild_styles(
                     .and_then(|s| s.parse().ok())
                     .unwrap_or(0.5);
                 let html_string = String::from_utf8_lossy(&html_bytes).to_string();
-                // Snapshot of the HTML we started with (before aggressive pass)
                 let original_html_string = html_string.clone();
                 let mut new_html = html_string.clone();
                 let mut any_mod = false;
                 for (full, classes_str) in iter_class_attributes(&html_string) {
-                    // If the original HTML attribute already contained an explicit
-                    // grouped alias (an '@'), don't touch it. This prevents the
-                    // aggressive pass from stomping existing @alias usage.
                     if original_html_string.contains(&full) {
                         if original_html_string
                             .find(&full)
@@ -929,7 +824,6 @@ pub fn rebuild_styles(
                     if total == 0 {
                         continue;
                     }
-                    // Find best group by overlap
                     let mut best_score = 0f64;
                     let mut best_alias: Option<String> = None;
                     let mut best_match_count = 0usize;
@@ -947,13 +841,11 @@ pub fn rebuild_styles(
                     }
                     if let Some(alias) = best_alias {
                         if best_score >= overlap_threshold && best_match_count > 0 {
-                            // Replace matching tokens with @alias
                             let mut out_items: Vec<String> = Vec::new();
                             let alias_token = format!("@{}", alias);
                             let mut replaced = false;
                             for it in items {
                                 if group_sets.iter().any(|(_, s)| s.contains(&it.to_string())) {
-                                    // only include alias once (plain alias)
                                     if !out_items.contains(&alias_token) {
                                         out_items.push(alias_token.clone());
                                         replaced = true;
@@ -979,7 +871,6 @@ pub fn rebuild_styles(
                 if any_mod {
                     std::fs::write(index_path, &new_html)?;
                     html_bytes = new_html.into_bytes();
-                    // Re-extract and re-analyze with rewritten HTML
                     let extracted2 =
                         extract_classes_fast(&html_bytes, all_classes.len().next_power_of_two());
                     let mut all_classes2 = extracted2.classes;
@@ -988,12 +879,10 @@ pub fn rebuild_styles(
                         &mut all_classes2,
                         Some(AppState::engine()),
                     );
-                    // preserve previous registry entries if needed
                     let prev_registry = { state.lock().unwrap().group_registry.clone() };
                     if prev_registry.is_empty() == false && group_registry.is_empty() {
                         group_registry.merge_preserve(&prev_registry);
                     }
-                    // Remove utility members now that we've re-analyzed
                     group_registry.remove_utility_members_from(&mut all_classes2);
                     all_classes = all_classes2;
                 }
@@ -1001,29 +890,16 @@ pub fn rebuild_styles(
         }
     }
 
-    // Remove concrete utility members from the master class set so they are
-    // neither persisted in the cache nor emitted as independent rules. The
-    // grouped alias will provide the combined selector and bodies instead.
-    // Before removing utility members, ensure we keep at most one grouped
-    // controller per alias in the HTML. If multiple elements contain the
-    // grouped form `@alias(...)`, convert all but one to the plain alias
-    // token (e.g. `class="alias"` or `class="alias other"`). Prefer to
-    // keep the grouped form on an element that already has extra tokens
-    // (e.g. `@alias(...) flex`) so that the controller remains where the
-    // element has additional behavior.
     {
         let mut html_string = String::from_utf8_lossy(&html_bytes).to_string();
         let mut modified = false;
-        // Collect alias names
         let alias_names: Vec<String> = group_registry
             .definitions()
             .map(|(n, _)| n.clone())
             .collect();
         for alias in alias_names {
-            // Find all class attributes that contain @alias(...)
-            let mut occurrences: Vec<(String, String)> = Vec::new(); // (full_attr, classes_str)
+            let mut occurrences: Vec<(String, String)> = Vec::new();
             for (full, classes_str) in iter_class_attributes(&html_string) {
-                // check if classes_str contains a grouped call for this alias
                 let grouped_token = format!("@{}(", alias);
                 if classes_str.contains(&grouped_token) {
                     occurrences.push((full, classes_str));
@@ -1032,10 +908,8 @@ pub fn rebuild_styles(
             if occurrences.len() <= 1 {
                 continue;
             }
-            // Choose keeper: prefer attribute that has other tokens besides the grouped token
             let mut keeper_idx: Option<usize> = None;
             for (i, (_full, classes_str)) in occurrences.iter().enumerate() {
-                // count tokens that are not the grouped token
                 let tokens: Vec<&str> = classes_str.split_whitespace().collect();
                 let mut other_count = 0usize;
                 for tk in &tokens {
@@ -1052,15 +926,12 @@ pub fn rebuild_styles(
             if keeper_idx.is_none() {
                 keeper_idx = Some(0);
             }
-            // Convert other occurrences to plain alias tokens inside the class attribute
             let mut new_html = html_string.clone();
             for (i, (full, classes_str)) in occurrences.iter().enumerate() {
                 if Some(i) == keeper_idx {
                     continue;
                 }
-                // Replace only the grouped token(s) for this alias inside classes_str with the plain alias
                 let mut new_classes = classes_str.clone();
-                // replace occurrences like @alias(...) inside the classes_str
                 new_classes = replace_grouped_tokens_in_classes(&new_classes, &alias);
                 let new_attr = format!("class=\"{}\"", new_classes);
                 new_html = new_html.replacen(full, &new_attr, 1);
@@ -1068,13 +939,11 @@ pub fn rebuild_styles(
             }
             if modified {
                 html_string = new_html;
-                // update occurrences for next alias (and persist changes)
             }
         }
         if modified {
             std::fs::write(index_path, &html_string)?;
             html_bytes = html_string.into_bytes();
-            // Re-extract and re-analyze with rewritten HTML
             let extracted2 =
                 extract_classes_fast(&html_bytes, all_classes.len().next_power_of_two());
             let mut all_classes2 = extracted2.classes;
@@ -1102,8 +971,6 @@ pub fn rebuild_styles(
         let s = state.lock().unwrap();
         s.css_index.len() != s.class_cache.len()
     };
-    // When forced formatting is requested (auto-format pass), we must not early-return
-    // even if there are no class additions/removals, so that the pretty formatter runs.
     let force_format = std::env::var("DX_FORCE_FORMAT").ok().as_deref() == Some("1");
     if !force_format && added.is_empty() && removed.is_empty() && !css_incomplete {
         let mut state_guard = state.lock().unwrap();
@@ -1151,7 +1018,6 @@ pub fn rebuild_styles(
                     if *extend {
                         message.push_str(" (extend)");
                     }
-                    // println!("{}", message);
                 }
                 state_guard.group_log_hash = new_hash;
             }
@@ -1159,9 +1025,6 @@ pub fn rebuild_styles(
     }
     let cache_update_duration = cache_update_timer.elapsed();
 
-    // Persist cache including group dump when available. Lock once to extract
-    // required pieces and then call save_cache with an optional group dump
-    // reference to avoid holding the lock while performing IO.
     {
         let guard = state.lock().unwrap();
         let class_cache_copy = guard.class_cache.clone();
@@ -1272,7 +1135,6 @@ pub fn rebuild_styles(
             set_base_layer_present();
             {
                 let engine = AppState::engine();
-                // Prefer explicit property layer raw content if provided.
                 let mut prop_body = if let Some(prop_raw) = engine.property_layer_raw.as_ref() {
                     if prop_raw.trim().is_empty() {
                         String::new()
@@ -1290,7 +1152,6 @@ pub fn rebuild_styles(
                 } else {
                     String::new()
                 };
-                // Fallback: if still empty, synthesize from registered @property at-rules.
                 if prop_body.is_empty() {
                     let at_rules = engine.property_at_rules();
                     if !at_rules.trim().is_empty() {
@@ -1302,14 +1163,10 @@ pub fn rebuild_styles(
                 set_properties_layer_present();
             }
 
-            // Ensure dev selectors are seeded from the final HTML. This guarantees
-            // that if there is a grouped controller like `@alias(...)` left in the
-            // HTML, we will emit the corresponding escaped dev selector in CSS.
             {
                 let mut devs: AHashMap<String, String> = AHashMap::default();
                 let html_string = String::from_utf8_lossy(&html_bytes).to_string();
                 for (name, _def) in state_guard.group_registry.definitions() {
-                    // find the first occurrence of @name(...) using the scanner
                     let grouped_calls = find_grouped_calls_in_text(&html_string);
                     if let Some((_, inner)) = grouped_calls.into_iter().find(|(n, _)| n == name) {
                         let raw = format!("@{}({})", name, inner);
@@ -1350,31 +1207,26 @@ pub fn rebuild_styles(
                 state_guard.css_buffer.push(b'\n');
             }
             state_guard.css_buffer.extend_from_slice(b"}\n");
-            // Always format CSS output to maintain pretty-printed styling for downstream tools.
             if let Ok(as_string) = String::from_utf8(state_guard.css_buffer.clone()) {
                 if let Some(formatted) = formatter::format_css_pretty(&as_string) {
                     state_guard.css_buffer.clear();
                     state_guard
                         .css_buffer
                         .extend_from_slice(formatted.as_bytes());
-                    // Recompute utilities_offset since formatting may have changed positions
                     if let Some(layer_pos) =
                         twoway::find_bytes(&state_guard.css_buffer, b"@layer utilities")
                     {
-                        // Find first '{' after the marker
                         if let Some(rel_brace) = state_guard.css_buffer[layer_pos..]
                             .iter()
                             .position(|b| *b == b'{')
                         {
-                            let after_brace = layer_pos + rel_brace + 1; // position right after '{'
-                            // Advance to next newline (start of body lines)
+                            let after_brace = layer_pos + rel_brace + 1;
                             if let Some(nl) = state_guard.css_buffer[after_brace..]
                                 .iter()
                                 .position(|b| *b == b'\n')
                             {
                                 state_guard.utilities_offset = after_brace + nl + 1;
                             } else {
-                                // No newline -> body empty so offset at end
                                 state_guard.utilities_offset = state_guard.css_buffer.len();
                             }
                         }
@@ -1392,14 +1244,12 @@ pub fn rebuild_styles(
             let utilities_offset = state_guard.utilities_offset;
             let mut wrote = false;
             if state_guard.last_css_hash != frag_hash {
-                // Content changed after formatting -> always write.
                 state_guard.css_out.replace(&fragment_vec)?;
                 state_guard.last_css_hash = frag_hash;
                 wrote = true;
             } else if std::env::var("DX_FORCE_FULL").ok().as_deref() == Some("1") {
-                // force_write explicitly requested via config (full rewrite every pass)
                 state_guard.css_out.replace(&fragment_vec)?;
-                state_guard.last_css_hash = frag_hash; // unchanged but re-written
+                state_guard.last_css_hash = frag_hash;
                 wrote = true;
             }
             if force_format {
@@ -1412,12 +1262,10 @@ pub fn rebuild_styles(
                 }
             }
             state_guard.css_index.clear();
-            // Utilities body without the final closing "}\n" (2 bytes) of the layer.
             if utilities_offset >= fragment_len
                 || fragment_len < 2
                 || utilities_offset + 2 > fragment_len
             {
-                // Nothing indexable; avoid panic
                 state_guard.css_out.flush_now()?;
                 let flush_time = flush_start.elapsed();
                 (
@@ -1434,8 +1282,6 @@ pub fn rebuild_styles(
                         sub3: Some(flush_time),
                     },
                 );
-                // Early continue of outer block by using a label is complicated; we just fall through with empty index
-                // Return from closure style requires restructure; keeping simple no indexing.
             }
             let body_slice: &[u8] = if utilities_offset + 2 <= fragment_len {
                 &fragment_vec[utilities_offset..fragment_len - 2]
@@ -1444,7 +1290,6 @@ pub fn rebuild_styles(
             };
             let mut cursor = 0usize;
             while cursor < body_slice.len() {
-                // Skip leading whitespace/newlines
                 while cursor < body_slice.len()
                     && (body_slice[cursor] == b'\n'
                         || body_slice[cursor] == b' '
@@ -1455,9 +1300,8 @@ pub fn rebuild_styles(
                 if cursor >= body_slice.len() {
                     break;
                 }
-                let rule_start = cursor; // potential start
+                let rule_start = cursor;
                 if body_slice[cursor] == b'.' {
-                    // Read selector until '{'
                     let mut sel_end = cursor + 1;
                     while sel_end < body_slice.len()
                         && body_slice[sel_end] != b'{'
@@ -1466,7 +1310,6 @@ pub fn rebuild_styles(
                         sel_end += 1;
                     }
                     if sel_end < body_slice.len() && body_slice[sel_end] == b'{' {
-                        // Extract class name between '.' and first '{'
                         let raw = &body_slice[cursor + 1..sel_end];
                         let mut end_trim = raw.len();
                         while end_trim > 0
@@ -1477,7 +1320,6 @@ pub fn rebuild_styles(
                         if end_trim > 0 {
                             let name = String::from_utf8_lossy(&raw[..end_trim]).to_string();
                             if !name.is_empty() {
-                                // Balance braces to find end of rule
                                 let mut depth: isize = 0;
                                 let mut j = sel_end;
                                 let mut rule_end = sel_end;
@@ -1490,7 +1332,6 @@ pub fn rebuild_styles(
                                         depth -= 1;
                                     }
                                     if depth == 0 && b == b'}' {
-                                        // consume to end-of-line
                                         let mut k = j;
                                         while k < body_slice.len() && body_slice[k] != b'\n' {
                                             k += 1;
@@ -1518,7 +1359,6 @@ pub fn rebuild_styles(
                         }
                     }
                 }
-                // Fallback: advance to next newline if not a rule
                 while cursor < body_slice.len() && body_slice[cursor] != b'\n' {
                     cursor += 1;
                 }
@@ -1543,14 +1383,12 @@ pub fn rebuild_styles(
                 },
             )
         } else if only_additions {
-            // Fast incremental add: build block and index without rescanning bytes
             let gen_start = Instant::now();
             let engine = AppState::engine();
             let mut block: Vec<u8> = Vec::new();
             block.push(b'\n');
-            // Store temporary offsets relative to start of block
             let mut offsets: Vec<(String, usize, usize)> = Vec::with_capacity(added.len());
-            let mut cursor_in_block = 1usize; // account for leading '\n'
+            let mut cursor_in_block = 1usize;
             let mut escaped = String::with_capacity(64);
             for class in &added {
                 if state_guard.group_registry.is_internal_token(class) {
@@ -1574,9 +1412,7 @@ pub fn rebuild_styles(
                 if !css.ends_with('\n') {
                     css.push('\n');
                 }
-                // Record start of rule at '.' (skip the two-space indent)
                 let rule_start_block = cursor_in_block + 2;
-                // Write indented lines
                 for line in css.lines() {
                     if line.is_empty() {
                         continue;
@@ -1584,7 +1420,7 @@ pub fn rebuild_styles(
                     block.extend_from_slice(b"  ");
                     block.extend_from_slice(line.as_bytes());
                     block.push(b'\n');
-                    cursor_in_block += 2 + line.len() + 1; // indent + line + newline
+                    cursor_in_block += 2 + line.len() + 1;
                 }
                 let rule_len = cursor_in_block.saturating_sub(rule_start_block);
                 offsets.push((class.clone(), rule_start_block, rule_len));
@@ -1678,7 +1514,6 @@ pub fn rebuild_styles(
 
     let silent_format = std::env::var("DX_SILENT_FORMAT").ok().as_deref() == Some("1");
     if !silent_format && !FIRST_LOG_DONE.load(Ordering::Relaxed) {
-        // For the very first run, also show full timing details like subsequent runs.
         let mut write_detail = format!(
             "mode={} classes={} bytes={} {}={:?}",
             write_stats.mode,
@@ -1707,7 +1542,6 @@ pub fn rebuild_styles(
         );
         FIRST_LOG_DONE.store(true, Ordering::Relaxed);
     } else if !silent_format {
-        // Build write detail string
         let mut write_detail = format!(
             "mode={} classes={} bytes={} {}={:?}",
             write_stats.mode,

@@ -37,7 +37,6 @@ fn start_delayed_formatter(
         let mut last_classes_checksum: u64 = 0;
         let mut last_run = Instant::now() - Duration::from_millis(interval_ms);
         loop {
-            // Debounce: only proceed if enough time since last class change
             let (current_checksum, time_ok) = {
                 if let Ok(g) = state.lock() {
                     (
@@ -48,16 +47,13 @@ fn start_delayed_formatter(
                     (0, false)
                 }
             };
-            // If no new classes and debounce interval hasn't elapsed much, still allow periodic validation every interval
             if current_checksum == last_classes_checksum && !time_ok {
                 std::thread::sleep(Duration::from_millis(50));
                 continue;
             }
-            // Respect debounce_ms after a class change
             if current_checksum != last_classes_checksum {
                 let changed_at = Instant::now();
                 while changed_at.elapsed() < Duration::from_millis(debounce_ms) {
-                    // If another change happens restart debounce
                     let new_checksum = {
                         state
                             .lock()
@@ -90,12 +86,6 @@ fn start_delayed_formatter(
                 }
             }
             let _dur = start.elapsed();
-            // println!(
-            //     "[auto-format] Pretty format pass{} (interval {} ms) in {:?}",
-            //     if force_write { " (force-write)" } else { "" },
-            //     interval_ms,
-            //     dur
-            // );
             std::thread::sleep(Duration::from_millis(50));
         }
     });
@@ -154,10 +144,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if existing.windows(18).any(|w| w == b"@layer properties") {
             set_properties_layer_present();
         }
-        // Attempt multi-line rule recovery for existing utilities (best-effort).
         let mut cursor = 0usize;
         while cursor < existing.len() {
-            // Skip whitespace/newlines
             while cursor < existing.len()
                 && (existing[cursor] == b'\n'
                     || existing[cursor] == b' '
@@ -226,7 +214,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
             }
-            // Not a rule; move to next line
             while cursor < existing.len() && existing[cursor] != b'\n' {
                 cursor += 1;
             }
@@ -263,7 +250,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     rebuild_styles(app_state.clone(), &config.paths.index_file, true)?;
-    // Schedule one delayed pretty-format pass (configurable)
     start_delayed_formatter(
         app_state.clone(),
         config.paths.index_file.clone(),
@@ -273,7 +259,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         config.format_force_write(),
     );
 
-    // Start background validator thread (1.5s interval)
     start_css_validator(app_state.clone());
 
     watcher::start(app_state, config)?;
@@ -281,8 +266,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-// Background validator: every 1.5s read CSS, parse; if errors inside managed layers (theme, components, base, properties, utilities)
-// we attempt to reformat + rebuild via forcing full rebuild. If errors outside those layers, we comment them out until valid.
 fn start_css_validator(state: Arc<Mutex<AppState>>) {
     const INTERVAL: Duration = Duration::from_millis(1500);
     thread::spawn(move || {
@@ -307,11 +290,9 @@ fn start_css_validator(state: Arc<Mutex<AppState>>) {
             let Ok(text) = String::from_utf8(contents) else {
                 continue;
             };
-            // Quick skip: if file very small skip
             if text.trim().is_empty() {
                 continue;
             }
-            // Attempt strict parse; if ok, also scan for user manual styles placed inside layers (should be moved out)
             let mut strict_ok = true;
             if StyleSheet::parse(
                 &text,
@@ -324,24 +305,19 @@ fn start_css_validator(state: Arc<Mutex<AppState>>) {
             {
                 strict_ok = false;
             }
-            // Collect layer regions to detect manual insertions
             let layer_names = ["theme", "components", "base", "properties", "utilities"];
-            // Build vector of (start,end) byte indices for each @layer block
             let mut layer_ranges: Vec<(usize, usize)> = Vec::new();
             let bytes = text.as_bytes();
             let mut i = 0usize;
             while i < bytes.len() {
                 if bytes[i] == b'@' {
-                    // attempt match '@layer '
                     if i + 7 < bytes.len() && &bytes[i..i + 7] == b"@layer " {
-                        // parse name
                         let mut j = i + 7;
                         while j < bytes.len() && bytes[j].is_ascii_alphanumeric() {
                             j += 1;
                         }
                         let name = &text[i + 7..j];
                         if layer_names.iter().any(|ln| *ln == name) {
-                            // find opening '{'
                             while j < bytes.len() && bytes[j] != b'{' {
                                 j += 1;
                             }
@@ -375,21 +351,15 @@ fn start_css_validator(state: Arc<Mutex<AppState>>) {
                 .map(|v| v == "1")
                 .unwrap_or(false);
             if strict_ok {
-                // Ensure any styles located outside layers remain at file end; extract trailing manual block after last layer close
                 if let Some((_, last_end)) = layer_ranges.iter().max_by_key(|r| r.1) {
                     let trailing = &text[*last_end..];
                     if trailing.trim().contains('\n')
                         || trailing.trim().starts_with('.')
                         || trailing.contains('{')
-                    {
-                        // Already outside layers - nothing; user manual styles are allowed only here
-                    }
+                    {}
                 }
-                continue; // nothing else to do
+                continue;
             }
-            // strict parse failed: need classification
-            // Heuristic: if the failure text segment intersects a layer range -> generator error
-            // Simplify: if any layer ranges exist assume generator error; else user manual
             let is_generator_error = !layer_ranges.is_empty();
             if is_generator_error {
                 if validator_log {

@@ -497,8 +497,7 @@ impl CssOutput {
                 if abs_start + len > *logical_len {
                     return Ok(());
                 }
-                writer.flush()?; // ensure on-disk is current before direct overwrite
-                // We will always write len bytes, normalizing last byte to newline.
+                writer.flush()?;
                 let space_len = if len > 0 { len - 1 } else { 0 };
                 writer.seek(SeekFrom::Start(abs_start as u64))?;
                 const SPACE_BLOCK: [u8; 1024] = [b' '; 1024];
