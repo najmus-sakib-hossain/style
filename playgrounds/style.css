@@ -936,9 +936,9 @@ Dx Style v0.0.1 | MIT License | https://dx.com
 }
 
 @layer utilities {
-  .custom, .\@custom\(border\ grid\) {
+  .custom, .\@custom\(border\ hidden\) {
     border-width: 1px;
-    display: grid;
+    display: none;
   }
 
   .flex {
