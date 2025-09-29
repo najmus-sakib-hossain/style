@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+/* @custom-variant dark (&:is(.dark *));
 
 @theme inline {
     --color-background: var(--background);
@@ -41,7 +41,7 @@
     --radius-md: calc(var(--radius) - 2px);
     --radius-lg: var(--radius);
     --radius-xl: calc(var(--radius) + 4px);
-}
+} */
 
 /* Custom animations for gooey pill effect */
 @keyframes bounce-in-right {
@@ -343,12 +343,12 @@
         outline-color: var(--ring) / 0.5;
     }
 
-    body {
+    /* body {
         background: var(--background);
         background-size: cover;
         background-repeat: no-repeat;
         background-position: center;
         height: 100vh;
         overflow: hidden;
-    }
+    } */
 }
