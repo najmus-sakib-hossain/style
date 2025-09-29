@@ -18,11 +18,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-
-if (typeof window !== "undefined") {
-  gsap.registerPlugin(Draggable);
-}
 
 const base = {
   icons: false,
@@ -91,6 +88,12 @@ const LiquidGlassPage = () => {
 
   const [config, setConfig] = useState(presets.dock);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      gsap.registerPlugin(Draggable);
+    }
+  }, []);
+
   const handleConfigChange = (key: string, value: any) => {
     setConfig((prev) => ({ ...prev, [key]: value }));
   };
@@ -98,11 +101,11 @@ const LiquidGlassPage = () => {
   const handlePresetChange = (presetName: string) => {
     const newConfig = presets[presetName as keyof typeof presets];
     gsap.to(config, {
-        ...newConfig,
-        duration: 0.5,
-        onUpdate: () => {
-            setConfig({...config})
-        }
+      ...newConfig,
+      duration: 0.5,
+      onUpdate: () => {
+        setConfig({ ...config })
+      }
     })
   };
 
@@ -115,9 +118,8 @@ const LiquidGlassPage = () => {
       const border =
         Math.min(config.width, config.height) * (config.border * 0.5);
       const kids = `
-        <svg class="displacement-image" viewBox="0 0 ${config.width} ${
-        config.height
-      }" xmlns="http://www.w3.org/2000/svg">
+        <svg class="displacement-image" viewBox="0 0 ${config.width} ${config.height
+        }" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="red" x1="100%" y1="0%" x2="0%" y2="0%">
               <stop offset="0%" stop-color="#000"/>
@@ -128,24 +130,17 @@ const LiquidGlassPage = () => {
               <stop offset="100%" stop-color="blue"/>
             </linearGradient>
           </defs>
-          <rect x="0" y="0" width="${config.width}" height="${
-        config.height
-      }" fill="black"></rect>
-          <rect x="0" y="0" width="${config.width}" height="${
-        config.height
-      }" rx="${config.radius}" fill="url(#red)" />
-          <rect x="0" y="0" width="${config.width}" height="${
-        config.height
-      }" rx="${config.radius}" fill="url(#blue)" style="mix-blend-mode: ${
-        config.blend
-      }" />
-          <rect x="${border}" y="${border}" width="${
-        config.width - border * 2
-      }" height="${config.height - border * 2}" rx="${
-        config.radius
-      }" fill="hsl(0 0% ${config.lightness}% / ${
-        config.alpha
-      })" style="filter:blur(${config.blur}px)" />
+          <rect x="0" y="0" width="${config.width}" height="${config.height
+        }" fill="black"></rect>
+          <rect x="0" y="0" width="${config.width}" height="${config.height
+        }" rx="${config.radius}" fill="url(#red)" />
+          <rect x="0" y="0" width="${config.width}" height="${config.height
+        }" rx="${config.radius}" fill="url(#blue)" style="mix-blend-mode: ${config.blend
+        }" />
+          <rect x="${border}" y="${border}" width="${config.width - border * 2
+        }" height="${config.height - border * 2}" rx="${config.radius
+        }" fill="hsl(0 0% ${config.lightness}% / ${config.alpha
+        })" style="filter:blur(${config.blur}px)" />
         </svg>
         <div class="label">
           <span>displacement image</span>
@@ -203,7 +198,7 @@ const LiquidGlassPage = () => {
       });
     }
 
-     return () => {
+    return () => {
       if (effectRef.current) {
         const draggableInstance = Draggable.get(effectRef.current);
         if (draggableInstance) {
@@ -230,7 +225,7 @@ const LiquidGlassPage = () => {
           rel="stylesheet"
         />
       </Head>
-       <style jsx global>{`
+      <style jsx global>{`
         @import url("https://unpkg.com/normalize.css") layer(normalize);
 
         @layer normalize, base, demo;
@@ -392,7 +387,6 @@ const LiquidGlassPage = () => {
             width: calc(var(--width) * 1px);
             border-radius: calc(var(--radius) * 1px);
             position: fixed;
-            z-index: 20;
             background: light-dark(
               hsl(0 0% 100% / var(--frost, 0)),
               hsl(0 0% 0% / var(--frost, 0))
@@ -458,7 +452,6 @@ const LiquidGlassPage = () => {
             transition-property: transform, opacity, scale;
             transition-duration: 0.26s;
             transition-timing-function: ease-out;
-            z-index: -1;
           }
 
           .displacement-debug .label {
@@ -578,7 +571,6 @@ const LiquidGlassPage = () => {
             top: 0;
             transform-style: flat;
             pointer-events: none;
-            z-index: -1;
           }
 
           .bear-link {
@@ -618,133 +610,135 @@ const LiquidGlassPage = () => {
         }
       `}</style>
 
-        <Card className="fixed bottom-4 left-4 w-[320px] z-30">
-            <CardHeader>
-                <CardTitle>Glass Controls</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <Tabs defaultValue="dock" className="w-full" onValueChange={handlePresetChange}>
-                    <TabsList className="grid w-full grid-cols-4">
-                        <TabsTrigger value="dock">Dock</TabsTrigger>
-                        <TabsTrigger value="pill">Pill</TabsTrigger>
-                        <TabsTrigger value="bubble">Bubble</TabsTrigger>
-                        <TabsTrigger value="free">Free</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="dock" />
-                    <TabsContent value="pill" />
-                    <TabsContent value="bubble" />
-                    <TabsContent value="free">
-                        <div className="space-y-4 pt-4">
-                            <h4 className="font-medium leading-none">Settings</h4>
-                             <div className="space-y-2">
-                                <Label>Width: {config.width}px</Label>
-                                <Slider defaultValue={[config.width]} min={80} max={500} step={1} onValueChange={([val]: number[]) => handleConfigChange('width', val)} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Height: {config.height}px</Label>
-                                <Slider defaultValue={[config.height]} min={35} max={500} step={1} onValueChange={([val]: number[]) => handleConfigChange('height', val)} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Radius: {config.radius}px</Label>
-                                <Slider defaultValue={[config.radius]} min={0} max={500} step={1} onValueChange={([val]: number[]) => handleConfigChange('radius', val)} />
-                            </div>
-                             <div className="space-y-2">
-                                <Label>Frost: {config.frost.toFixed(2)}</Label>
-                                <Slider defaultValue={[config.frost]} min={0} max={1} step={0.01} onValueChange={([val]: number[]) => handleConfigChange('frost', val)} />
-                            </div>
-                             <div className="space-y-2">
-                                <Label>Saturation: {config.saturation.toFixed(1)}</Label>
-                                <Slider defaultValue={[config.saturation]} min={0} max={2} step={0.1} onValueChange={([val]: number[]) => handleConfigChange('saturation', val)} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Border: {config.border.toFixed(2)}</Label>
-                                <Slider defaultValue={[config.border]} min={0} max={1} step={0.01} onValueChange={([val]: number[]) => handleConfigChange('border', val)} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Alpha: {config.alpha.toFixed(2)}</Label>
-                                <Slider defaultValue={[config.alpha]} min={0} max={1} step={0.01} onValueChange={([val]: number[]) => handleConfigChange('alpha', val)} />
-                            </div>
-                             <div className="space-y-2">
-                                <Label>Lightness: {config.lightness}</Label>
-                                <Slider defaultValue={[config.lightness]} min={0} max={100} step={1} onValueChange={([val]: number[]) => handleConfigChange('lightness', val)} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Input Blur: {config.blur}</Label>
-                                <Slider defaultValue={[config.blur]} min={0} max={20} step={1} onValueChange={([val]: number[]) => handleConfigChange('blur', val)} />
-                            </div>
-                             <div className="space-y-2">
-                                <Label>Output Blur: {config.displace.toFixed(1)}</Label>
-                                <Slider defaultValue={[config.displace]} min={0} max={12} step={0.1} onValueChange={([val]: number[]) => handleConfigChange('displace', val)} />
-                            </div>
-                              <div className="space-y-2">
-                                <Label>Scale: {config.scale}</Label>
-                                <Slider defaultValue={[config.scale]} min={-1000} max={1000} step={1} onValueChange={([val]: number[]) => handleConfigChange('scale', val)} />
-                            </div>
+      <Card className="fixed bottom-4 right-4 w-[320px] z-[999999999999999]">
+        <CardHeader>
+          <CardTitle>Glass Controls</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ScrollArea className="bg-background max-h-[500px]">
+            <Tabs defaultValue="dock" className="w-full" onValueChange={handlePresetChange}>
+              <TabsList className="grid w-full grid-cols-4 border">
+                <TabsTrigger value="dock">Dock</TabsTrigger>
+                <TabsTrigger value="pill">Pill</TabsTrigger>
+                <TabsTrigger value="bubble">Bubble</TabsTrigger>
+                <TabsTrigger value="free">Free</TabsTrigger>
+              </TabsList>
+              <TabsContent value="dock" />
+              <TabsContent value="pill" />
+              <TabsContent value="bubble" />
+              <TabsContent value="free">
+                <div className="space-y-4 pt-4">
+                  <h4 className="font-medium leading-none">Settings</h4>
+                  <div className="space-y-2">
+                    <Label>Width: {config.width}px</Label>
+                    <Slider defaultValue={[config.width]} min={80} max={500} step={1} onValueChange={([val]: number[]) => handleConfigChange('width', val)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Height: {config.height}px</Label>
+                    <Slider defaultValue={[config.height]} min={35} max={500} step={1} onValueChange={([val]: number[]) => handleConfigChange('height', val)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Radius: {config.radius}px</Label>
+                    <Slider defaultValue={[config.radius]} min={0} max={500} step={1} onValueChange={([val]: number[]) => handleConfigChange('radius', val)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Frost: {config.frost.toFixed(2)}</Label>
+                    <Slider defaultValue={[config.frost]} min={0} max={1} step={0.01} onValueChange={([val]: number[]) => handleConfigChange('frost', val)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Saturation: {config.saturation.toFixed(1)}</Label>
+                    <Slider defaultValue={[config.saturation]} min={0} max={2} step={0.1} onValueChange={([val]: number[]) => handleConfigChange('saturation', val)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Border: {config.border.toFixed(2)}</Label>
+                    <Slider defaultValue={[config.border]} min={0} max={1} step={0.01} onValueChange={([val]: number[]) => handleConfigChange('border', val)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Alpha: {config.alpha.toFixed(2)}</Label>
+                    <Slider defaultValue={[config.alpha]} min={0} max={1} step={0.01} onValueChange={([val]: number[]) => handleConfigChange('alpha', val)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Lightness: {config.lightness}</Label>
+                    <Slider defaultValue={[config.lightness]} min={0} max={100} step={1} onValueChange={([val]: number[]) => handleConfigChange('lightness', val)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Input Blur: {config.blur}</Label>
+                    <Slider defaultValue={[config.blur]} min={0} max={20} step={1} onValueChange={([val]: number[]) => handleConfigChange('blur', val)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Output Blur: {config.displace.toFixed(1)}</Label>
+                    <Slider defaultValue={[config.displace]} min={0} max={12} step={0.1} onValueChange={([val]: number[]) => handleConfigChange('displace', val)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Scale: {config.scale}</Label>
+                    <Slider defaultValue={[config.scale]} min={-1000} max={1000} step={1} onValueChange={([val]: number[]) => handleConfigChange('scale', val)} />
+                  </div>
 
-                            <h4 className="font-medium leading-none pt-4">Chromatic Aberration</h4>
-                             <div className="space-y-2">
-                                <Label>Red: {config.r}</Label>
-                                <Slider defaultValue={[config.r]} min={-100} max={100} step={1} onValueChange={([val]: number[]) => handleConfigChange('r', val)} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Green: {config.g}</Label>
-                                <Slider defaultValue={[config.g]} min={-100} max={100} step={1} onValueChange={([val]: number[]) => handleConfigChange('g', val)} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Blue: {config.b}</Label>
-                                <Slider defaultValue={[config.b]} min={-100} max={100} step={1} onValueChange={([val]: number[]) => handleConfigChange('b', val)} />
-                            </div>
+                  <h4 className="font-medium leading-none pt-4">Chromatic Aberration</h4>
+                  <div className="space-y-2">
+                    <Label>Red: {config.r}</Label>
+                    <Slider defaultValue={[config.r]} min={-100} max={100} step={1} onValueChange={([val]: number[]) => handleConfigChange('r', val)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Green: {config.g}</Label>
+                    <Slider defaultValue={[config.g]} min={-100} max={100} step={1} onValueChange={([val]: number[]) => handleConfigChange('g', val)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Blue: {config.b}</Label>
+                    <Slider defaultValue={[config.b]} min={-100} max={100} step={1} onValueChange={([val]: number[]) => handleConfigChange('b', val)} />
+                  </div>
 
-                             <h4 className="font-medium leading-none pt-4">Channels & Blend</h4>
-                            <div className="flex items-center space-x-4">
-                               <div className="space-y-2 w-1/2">
-                                  <Label>Channel X</Label>
-                                   <Select value={config.x} onValueChange={(val: any) => handleConfigChange('x', val)}>
-                                      <SelectTrigger><SelectValue /></SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="R">Red</SelectItem>
-                                        <SelectItem value="G">Green</SelectItem>
-                                        <SelectItem value="B">Blue</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                               </div>
-                               <div className="space-y-2 w-1/2">
-                                  <Label>Channel Y</Label>
-                                  <Select value={config.y} onValueChange={(val: any) => handleConfigChange('y', val)}>
-                                      <SelectTrigger><SelectValue /></SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="R">Red</SelectItem>
-                                        <SelectItem value="G">Green</SelectItem>
-                                        <SelectItem value="B">Blue</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                               </div>
-                            </div>
-                             <div className="space-y-2">
-                                <Label>Blend Mode</Label>
-                                <Select value={config.blend} onValueChange={(val: any) => handleConfigChange('blend', val)}>
-                                  <SelectTrigger><SelectValue /></SelectTrigger>
-                                  <SelectContent>
-                                    {[
-                                        'normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 
-                                        'color-dodge', 'color-burn', 'hard-light', 'soft-light', 
-                                        'difference', 'exclusion', 'hue', 'saturation', 'color', 
-                                        'luminosity', 'plus-darker', 'plus-lighter'
-                                    ].map(mode => <SelectItem key={mode} value={mode}>{mode}</SelectItem>)}
-                                  </SelectContent>
-                                </Select>
-                            </div>
+                  <h4 className="font-medium leading-none pt-4">Channels & Blend</h4>
+                  <div className="flex items-center space-x-4">
+                    <div className="space-y-2 w-1/2">
+                      <Label>Channel X</Label>
+                      <Select value={config.x} onValueChange={(val: any) => handleConfigChange('x', val)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="R">Red</SelectItem>
+                          <SelectItem value="G">Green</SelectItem>
+                          <SelectItem value="B">Blue</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2 w-1/2">
+                      <Label>Channel Y</Label>
+                      <Select value={config.y} onValueChange={(val: any) => handleConfigChange('y', val)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="R">Red</SelectItem>
+                          <SelectItem value="G">Green</SelectItem>
+                          <SelectItem value="B">Blue</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Blend Mode</Label>
+                    <Select value={config.blend} onValueChange={(val: any) => handleConfigChange('blend', val)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {[
+                          'normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten',
+                          'color-dodge', 'color-burn', 'hard-light', 'soft-light',
+                          'difference', 'exclusion', 'hue', 'saturation', 'color',
+                          'luminosity', 'plus-darker', 'plus-lighter'
+                        ].map(mode => <SelectItem key={mode} value={mode}>{mode}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                             <div className="flex items-center space-x-2 pt-4">
-                                <Switch id="icons-mode" checked={config.icons} onCheckedChange={(val: any) => handleConfigChange('icons', val)} />
-                                <Label htmlFor="icons-mode">Show Icons</Label>
-                            </div>
-                        </div>
+                  <div className="flex items-center space-x-2 pt-4">
+                    <Switch id="icons-mode" checked={config.icons} onCheckedChange={(val: any) => handleConfigChange('icons', val)} />
+                    <Label htmlFor="icons-mode">Show Icons</Label>
+                  </div>
+                </div>
 
-                    </TabsContent>
-                </Tabs>
-            </CardContent>
-        </Card>
+              </TabsContent>
+            </Tabs>
+          </ScrollArea>
+        </CardContent>
+      </Card>
 
       <header>
         <h1 className="fluid">
@@ -1045,4 +1039,3 @@ const LiquidGlassPage = () => {
 };
 
 export default LiquidGlassPage;
-
