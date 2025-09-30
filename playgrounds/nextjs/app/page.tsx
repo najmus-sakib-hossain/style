@@ -2,11 +2,27 @@
 
 import gsap from "gsap";
 import { Draggable } from "gsap/all";
-
+import {
+  Blend,
+  Circle,
+  Cloud,
+  Eye,
+  Frame,
+  MoveHorizontal,
+  MoveVertical,
+  Palette,
+  Palette as PaletteIcon,
+  Redo,
+  Settings,
+  Snowflake,
+  Sun,
+  ToggleLeft,
+  Undo,
+  Zap,
+} from "lucide-react";
 import Head from "next/head";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -250,7 +266,10 @@ const LiquidGlassPage = () => {
                 <div className="space-y-4 pt-4">
                   <h4 className="font-medium leading-none">Settings</h4>
                   <div className="space-y-2">
-                    <Label>Width: {config.width}px</Label>
+                    <Label>
+                      <MoveHorizontal className="inline w-4 h-4 mr-2" />
+                      Width: {config.width}px
+                    </Label>
                     <Slider
                       defaultValue={[config.width]}
                       min={80}
@@ -262,7 +281,10 @@ const LiquidGlassPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Height: {config.height}px</Label>
+                    <Label>
+                      <MoveVertical className="inline w-4 h-4 mr-2" />
+                      Height: {config.height}px
+                    </Label>
                     <Slider
                       defaultValue={[config.height]}
                       min={35}
@@ -274,7 +296,10 @@ const LiquidGlassPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Radius: {config.radius}px</Label>
+                    <Label>
+                      <Circle className="inline w-4 h-4 mr-2" />
+                      Radius: {config.radius}px
+                    </Label>
                     <Slider
                       defaultValue={[config.radius]}
                       min={0}
@@ -286,7 +311,10 @@ const LiquidGlassPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Frost: {config.frost.toFixed(2)}</Label>
+                    <Label>
+                      <Snowflake className="inline w-4 h-4 mr-2" />
+                      Frost: {config.frost.toFixed(2)}
+                    </Label>
                     <Slider
                       defaultValue={[config.frost]}
                       min={0}
@@ -298,7 +326,10 @@ const LiquidGlassPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Saturation: {config.saturation.toFixed(1)}</Label>
+                    <Label>
+                      <Palette className="inline w-4 h-4 mr-2" />
+                      Saturation: {config.saturation.toFixed(1)}
+                    </Label>
                     <Slider
                       defaultValue={[config.saturation]}
                       min={0}
@@ -310,7 +341,10 @@ const LiquidGlassPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Border: {config.border.toFixed(2)}</Label>
+                    <Label>
+                      <Frame className="inline w-4 h-4 mr-2" />
+                      Border: {config.border.toFixed(2)}
+                    </Label>
                     <Slider
                       defaultValue={[config.border]}
                       min={0}
@@ -322,7 +356,10 @@ const LiquidGlassPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Alpha: {config.alpha.toFixed(2)}</Label>
+                    <Label>
+                      <Eye className="inline w-4 h-4 mr-2" />
+                      Alpha: {config.alpha.toFixed(2)}
+                    </Label>
                     <Slider
                       defaultValue={[config.alpha]}
                       min={0}
@@ -334,7 +371,10 @@ const LiquidGlassPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Lightness: {config.lightness}</Label>
+                    <Label>
+                      <Sun className="inline w-4 h-4 mr-2" />
+                      Lightness: {config.lightness}
+                    </Label>
                     <Slider
                       defaultValue={[config.lightness]}
                       min={0}
@@ -346,7 +386,10 @@ const LiquidGlassPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Input Blur: {config.blur}</Label>
+                    <Label>
+                      <Cloud className="inline w-4 h-4 mr-2" />
+                      Input Blur: {config.blur}
+                    </Label>
                     <Slider
                       defaultValue={[config.blur]}
                       min={0}
@@ -358,7 +401,10 @@ const LiquidGlassPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Output Blur: {config.displace.toFixed(1)}</Label>
+                    <Label>
+                      <Zap className="inline w-4 h-4 mr-2" />
+                      Output Blur: {config.displace.toFixed(1)}
+                    </Label>
                     <Slider
                       defaultValue={[config.displace]}
                       min={0}
@@ -370,7 +416,10 @@ const LiquidGlassPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Scale: {config.scale}</Label>
+                    <Label>
+                      <Settings className="inline w-4 h-4 mr-2" />
+                      Scale: {config.scale}
+                    </Label>
                     <Slider
                       defaultValue={[config.scale]}
                       min={-1000}
@@ -386,7 +435,10 @@ const LiquidGlassPage = () => {
                     Chromatic Aberration
                   </h4>
                   <div className="space-y-2">
-                    <Label>Red: {config.r}</Label>
+                    <Label>
+                      <Redo className="inline w-4 h-4 mr-2" />
+                      Red: {config.r}
+                    </Label>
                     <Slider
                       defaultValue={[config.r]}
                       min={-100}
@@ -398,7 +450,10 @@ const LiquidGlassPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Green: {config.g}</Label>
+                    <Label>
+                      <Undo className="inline w-4 h-4 mr-2" />
+                      Green: {config.g}
+                    </Label>
                     <Slider
                       defaultValue={[config.g]}
                       min={-100}
@@ -410,7 +465,10 @@ const LiquidGlassPage = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Blue: {config.b}</Label>
+                    <Label>
+                      <PaletteIcon className="inline w-4 h-4 mr-2" />
+                      Blue: {config.b}
+                    </Label>
                     <Slider
                       defaultValue={[config.b]}
                       min={-100}
@@ -464,7 +522,10 @@ const LiquidGlassPage = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Blend Mode</Label>
+                    <Label>
+                      <Blend className="inline w-4 h-4 mr-2" />
+                      Blend Mode
+                    </Label>
                     <Select
                       value={config.blend}
                       onValueChange={(val: string) =>
@@ -511,7 +572,10 @@ const LiquidGlassPage = () => {
                         handleConfigChange("icons", val)
                       }
                     />
-                    <Label htmlFor="icons-mode">Show Icons</Label>
+                    <Label htmlFor="icons-mode">
+                      <ToggleLeft className="inline w-4 h-4 mr-2" />
+                      Show Icons
+                    </Label>
                   </div>
                 </div>
               </TabsContent>
