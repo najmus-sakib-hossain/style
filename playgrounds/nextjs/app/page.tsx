@@ -239,9 +239,9 @@ const LiquidGlassPage = () => {
         />
       </Head>
 
-      <Card className="fixed bottom-4 right-4 w-[320px] z-[999999999999999]">
+      <Card className="fixed bottom-4 right-4 w-[320px] z-[999999999999999] rounded-[7px]">
         <CardHeader>
-          <CardTitle>Glass Controls</CardTitle>
+          <CardTitle>Liquid Glass Controls</CardTitle>
         </CardHeader>
         <CardContent>
           <ScrollArea className="bg-background max-h-[500px]">
