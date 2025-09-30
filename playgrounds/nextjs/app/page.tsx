@@ -1,7 +1,6 @@
 "use client";
 
 import gsap from "gsap";
-import { Draggable } from "gsap/all";
 import {
   Cloud,
   Eye,
@@ -19,7 +18,7 @@ import {
 } from "lucide-react";
 import Head from "next/head";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -53,6 +52,7 @@ const base = {
   width: 336,
   height: 96,
   frost: 0.05,
+  elasticity: 0.15,
 };
 
 type Config = typeof base;
@@ -65,6 +65,7 @@ const presets = {
     displace: 0.2,
     icons: true,
     frost: 0.05,
+    elasticity: 0.1,
   },
   pill: {
     ...base,
@@ -73,6 +74,7 @@ const presets = {
     displace: 0,
     frost: 0,
     radius: 40,
+    elasticity: 0.15,
   },
   bubble: {
     ...base,
@@ -81,6 +83,7 @@ const presets = {
     height: 140,
     displace: 0,
     frost: 0,
+    elasticity: 0.2,
   },
   free: {
     ...base,
@@ -93,6 +96,7 @@ const presets = {
     blur: 10,
     displace: 0,
     scale: -300,
+    elasticity: 0.25,
   },
 };
 
@@ -102,12 +106,9 @@ const LiquidGlassPage = () => {
   const dockPlaceholderRef = useRef<HTMLDivElement>(null);
 
   const [config, setConfig] = useState(presets.dock);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      gsap.registerPlugin(Draggable);
-    }
-  }, []);
+  const [isActive, setIsActive] = useState(false);
+  const [globalMousePos, setGlobalMousePos] = useState({ x: 0, y: 0 });
+  const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 });
 
   const handleConfigChange = (
     key: keyof Config,
@@ -126,6 +127,103 @@ const LiquidGlassPage = () => {
       },
     });
   };
+
+  const calculateFadeInFactor = useCallback(() => {
+    if (!globalMousePos.x || !globalMousePos.y || !effectRef.current) {
+      return 0;
+    }
+    const rect = effectRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    const edgeDistanceX = Math.max(
+      0,
+      Math.abs(globalMousePos.x - centerX) - config.width / 2,
+    );
+    const edgeDistanceY = Math.max(
+      0,
+      Math.abs(globalMousePos.y - centerY) - config.height / 2,
+    );
+    const edgeDistance = Math.sqrt(
+      edgeDistanceX * edgeDistanceX + edgeDistanceY * edgeDistanceY,
+    );
+    const activationZone = 200;
+    return edgeDistance > activationZone ? 0 : 1 - edgeDistance / activationZone;
+  }, [globalMousePos, config.width, config.height]);
+
+  const calculateElasticTranslation = useCallback(() => {
+    if (!effectRef.current) return { x: 0, y: 0 };
+    const fadeInFactor = calculateFadeInFactor();
+    const rect = effectRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    return {
+      x: (globalMousePos.x - centerX) * config.elasticity * 0.1 * fadeInFactor,
+      y: (globalMousePos.y - centerY) * config.elasticity * 0.1 * fadeInFactor,
+    };
+  }, [globalMousePos, config.elasticity, calculateFadeInFactor]);
+
+  const calculateDirectionalScale = useCallback(() => {
+    if (!globalMousePos.x || !globalMousePos.y || !effectRef.current) {
+      return "scale(1)";
+    }
+    const rect = effectRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const deltaX = globalMousePos.x - centerX;
+    const deltaY = globalMousePos.y - centerY;
+
+    const edgeDistanceX = Math.max(
+      0,
+      Math.abs(deltaX) - config.width / 2,
+    );
+    const edgeDistanceY = Math.max(
+      0,
+      Math.abs(deltaY) - config.height / 2,
+    );
+    const edgeDistance = Math.sqrt(
+      edgeDistanceX * edgeDistanceX + edgeDistanceY * edgeDistanceY,
+    );
+    const activationZone = 200;
+    if (edgeDistance > activationZone) return "scale(1)";
+
+    const fadeInFactor = 1 - edgeDistance / activationZone;
+    const centerDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    if (centerDistance === 0) return "scale(1)";
+
+    const normalizedX = deltaX / centerDistance;
+    const normalizedY = deltaY / centerDistance;
+    const stretchIntensity =
+      Math.min(centerDistance / 300, 1) * config.elasticity * fadeInFactor;
+    const scaleX =
+      1 +
+      Math.abs(normalizedX) * stretchIntensity * 0.3 -
+      Math.abs(normalizedY) * stretchIntensity * 0.15;
+    const scaleY =
+      1 +
+      Math.abs(normalizedY) * stretchIntensity * 0.3 -
+      Math.abs(normalizedX) * stretchIntensity * 0.15;
+
+    return `scaleX(${Math.max(0.8, scaleX)}) scaleY(${Math.max(0.8, scaleY)})`;
+  }, [globalMousePos, config.elasticity, config.width, config.height]);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setGlobalMousePos({ x: e.clientX, y: e.clientY });
+      if (effectRef.current) {
+        const rect = effectRef.current.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        setMouseOffset({
+          x: ((e.clientX - centerX) / rect.width) * 100,
+          y: ((e.clientY - centerY) / rect.height) * 100,
+        });
+      }
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -199,28 +297,31 @@ const LiquidGlassPage = () => {
 
     update();
 
-    if (effectRef.current) {
-      Draggable.create(effectRef.current, { type: "x,y" });
-    }
-
     if (dockPlaceholderRef.current) {
       const { top, left } = dockPlaceholderRef.current.getBoundingClientRect();
-      gsap.set(".effect", {
-        top: top > window.innerHeight ? window.innerHeight * 0.5 : top,
+      const newTop = top > window.innerHeight ? window.innerHeight * 0.5 : top;
+      gsap.set(".effect, .effect-border", {
+        top: newTop,
         left,
         opacity: 1,
       });
     }
-
-    return () => {
-      if (effectRef.current) {
-        const draggableInstance = Draggable.get(effectRef.current);
-        if (draggableInstance) {
-          draggableInstance.kill();
-        }
-      }
-    };
   }, [config]);
+
+  const transformStyle = `translate(${calculateElasticTranslation().x}px, ${calculateElasticTranslation().y}px) ${isActive ? "scale(0.96)" : calculateDirectionalScale()}`;
+
+  const baseStyle = {
+    transform: transformStyle,
+    transition: "transform ease-out 0.2s",
+    width: `${config.width}px`,
+    height: `${config.height}px`,
+  };
+
+  const borderStyle = {
+    ...baseStyle,
+    borderRadius: `${config.radius}px`,
+    pointerEvents: "none" as const,
+  };
 
   return (
     <>
@@ -428,6 +529,21 @@ const LiquidGlassPage = () => {
                         }
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label>
+                        <Zap className="inline w-4 h-4 mr-2" />
+                        Elasticity: {config.elasticity.toFixed(2)}
+                      </Label>
+                      <Slider
+                        defaultValue={[config.elasticity]}
+                        min={0}
+                        max={0.5}
+                        step={0.01}
+                        onValueChange={([val]: number[]) =>
+                          handleConfigChange("elasticity", val)
+                        }
+                      />
+                    </div>
 
                     <h4 className="font-medium leading-none pt-4">
                       Chromatic Aberration
@@ -589,7 +705,14 @@ const LiquidGlassPage = () => {
           we love it anyway.
         </p>
       </header>
-      <div className="effect" ref={effectRef}>
+      <div
+        className="effect"
+        ref={effectRef}
+        style={baseStyle}
+        onMouseDown={() => setIsActive(true)}
+        onMouseUp={() => setIsActive(false)}
+        onMouseLeave={() => setIsActive(false)}
+      >
         <div className="nav-wrap">
           <nav>
             <Image
@@ -635,9 +758,9 @@ const LiquidGlassPage = () => {
                 in="dispRed"
                 type="matrix"
                 values="1 0 0 0 0
-                      0 0 0 0 0
-                      0 0 0 0 0
-                      0 0 0 1 0"
+                          0 0 0 0 0
+                          0 0 0 0 0
+                          0 0 0 1 0"
                 result="red"
               />
               <feDisplacementMap
@@ -652,9 +775,9 @@ const LiquidGlassPage = () => {
                 in="dispGreen"
                 type="matrix"
                 values="0 0 0 0 0
-                      0 1 0 0 0
-                      0 0 0 0 0
-                      0 0 0 1 0"
+                          0 1 0 0 0
+                          0 0 0 0 0
+                          0 0 0 1 0"
                 result="green"
               />
               <feDisplacementMap
@@ -669,9 +792,9 @@ const LiquidGlassPage = () => {
                 in="dispBlue"
                 type="matrix"
                 values="0 0 0 0 0
-                      0 0 0 0 0
-                      0 0 1 0 0
-                      0 0 0 1 0"
+                          0 0 0 0 0
+                          0 0 1 0 0
+                          0 0 0 1 0"
                 result="blue"
               />
               <feBlend in="red" in2="green" mode="screen" result="rg" />
@@ -682,6 +805,48 @@ const LiquidGlassPage = () => {
         </svg>
         <div className="displacement-debug" ref={debugPenRef} />
       </div>
+
+      <span
+        className="effect-border"
+        style={{
+          ...borderStyle,
+          position: "fixed",
+          mixBlendMode: "screen",
+          opacity: 0.2,
+          padding: "1.5px",
+          WebkitMask:
+            "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+          WebkitMaskComposite: "xor",
+          maskComposite: "exclude",
+          background: `linear-gradient(
+            ${135 + mouseOffset.x * 1.2}deg,
+            rgba(255, 255, 255, 0.0) 0%,
+            rgba(255, 255, 255, ${0.12 + Math.abs(mouseOffset.x) * 0.008}) ${Math.max(10, 33 + mouseOffset.y * 0.3)}%,
+            rgba(255, 255, 255, ${0.4 + Math.abs(mouseOffset.x) * 0.012}) ${Math.min(90, 66 + mouseOffset.y * 0.4)}%,
+            rgba(255, 255, 255, 0.0) 100%
+          )`,
+        }}
+      />
+      <span
+        className="effect-border"
+        style={{
+          ...borderStyle,
+          position: "fixed",
+          mixBlendMode: "overlay",
+          padding: "1.5px",
+          WebkitMask:
+            "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+          WebkitMaskComposite: "xor",
+          maskComposite: "exclude",
+          background: `linear-gradient(
+            ${135 + mouseOffset.x * 1.2}deg,
+            rgba(255, 255, 255, 0.0) 0%,
+            rgba(255, 255, 255, ${0.32 + Math.abs(mouseOffset.x) * 0.008}) ${Math.max(10, 33 + mouseOffset.y * 0.3)}%,
+            rgba(255, 255, 255, ${0.6 + Math.abs(mouseOffset.x) * 0.012}) ${Math.min(90, 66 + mouseOffset.y * 0.4)}%,
+            rgba(255, 255, 255, 0.0) 100%
+          )`,
+        }}
+      />
       <main>
         <section className="placeholder">
           <div className="dock-placeholder" ref={dockPlaceholderRef} />
@@ -865,7 +1030,7 @@ const LiquidGlassPage = () => {
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <title>Jhey's bear logo, link to Twitter profile</title>
+          <title>Jhey&apos;s bear logo, link to Twitter profile</title>
           <circle
             cx="161.191"
             cy="320.191"
