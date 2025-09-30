@@ -3,8 +3,6 @@
 import gsap from "gsap";
 import { Draggable } from "gsap/all";
 import {
-  Blend,
-  Circle,
   Cloud,
   Eye,
   Frame,
@@ -16,7 +14,6 @@ import {
   Settings,
   Snowflake,
   Sun,
-  ToggleLeft,
   Undo,
   Zap,
 } from "lucide-react";
@@ -523,9 +520,7 @@ const LiquidGlassPage = () => {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>
-                        Blend Mode
-                      </Label>
+                      <Label>Blend Mode</Label>
                       <Select
                         value={config.blend}
                         onValueChange={(val: string) =>
@@ -572,9 +567,7 @@ const LiquidGlassPage = () => {
                           handleConfigChange("icons", val)
                         }
                       />
-                      <Label htmlFor="icons-mode">
-                        Show Icons
-                      </Label>
+                      <Label htmlFor="icons-mode">Show Icons</Label>
                     </div>
                   </div>
                 </ScrollArea>
