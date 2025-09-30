@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Ripple Button</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+            /* Disables the tap highlight on mobile */
+        }
+
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            /* Make the ripple a circle */
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transform: scale(0);
+            pointer-events: none;
+            /* Animation now includes a fade-out and is slightly faster */
+            animation: ripple-in 500ms cubic-bezier(0.25, 0.8, 0.25, 1);
+            will-change: transform, opacity;
+            opacity: 1;
+            transition: opacity 250ms ease-out;
+            /* For fade out on destroy */
+        }
+
+        @keyframes ripple-in {
+            0% {
+                transform: scale(0);
+                opacity: 0.7;
+            }
+
+            80% {
+                transform: scale(2.5);
+                opacity: 0.3;
+            }
+
+            100% {
+                transform: scale(2.5);
+                opacity: 0;
+            }
+        }
+
+        .bounce-effect {
+            animation: smooth-bounce-effect 800ms ease-out;
+        }
+
+        @keyframes smooth-bounce-effect {
+            0% {
+                transform: scale(1);
+            }
+
+            20% {
+                transform: scale(0.95);
+            }
+
+            40% {
+                transform: scale(1.02);
+            }
+
+            60% {
+                transform: scale(0.98);
+            }
+
+            80% {
+                transform: scale(1.01);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .long-press-bounce-effect {
+            animation: long-press-bounce-release 700ms ease-out;
+        }
+
+        @keyframes long-press-bounce-release {
+            0% {
+                transform: scale(0.9);
+            }
+
+            /* Start from the pressed down state */
+            40% {
+                transform: scale(1.04);
+            }
+
+            70% {
+                transform: scale(0.98);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-black flex items-center justify-center h-screen overflow-hidden">
+
+    <!-- The main interactive element is now a rectangle without rounded corners -->
+    <div id="interactive-element"
+        class="relative w-80 h-56 md:w-96 md:h-64 bg-rose-500 flex items-center justify-center text-white font-sans text-lg select-none overflow-hidden cursor-pointer shadow-2xl shadow-rose-500/40 transition-transform duration-300 ease-in-out isolate transform-gpu">
+        Click or Hold Me
+    </div>
+
+    <script>
+        const element = document.getElementById("interactive-element");
+        let pressTimer = null;
+        let isLongPress = false;
+        let currentPressRipple = null; // Tracks the ripple for the current press action
+
+        // This function destroys a given ripple element
+        const destroyRipple = (ripple) => {
+            if (!ripple) return;
+            // By setting the animation to 'none', we ensure the opacity transition isn't overridden by the paused animation state.
+            ripple.style.animation = 'none';
+            // We need to trigger a browser reflow for the animation removal to be processed before the opacity change.
+            void ripple.offsetWidth;
+
+            ripple.style.opacity = '0';
+            ripple.addEventListener('transitionend', () => ripple.remove(), { once: true });
+        };
+
+        const handlePressStart = (e) => {
+            e.preventDefault();
+            isLongPress = false;
+
+            // Create a new ripple for this press
+            const rect = element.getBoundingClientRect();
+            const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
+
+            const size = Math.max(rect.width, rect.height) * 2;
+            const x = clientX - rect.left - size / 2;
+            const y = clientY - rect.top - size / 2;
+
+            const ripple = document.createElement("div");
+            ripple.classList.add("ripple");
+            ripple.style.width = ripple.style.height = `${size}px`;
+            ripple.style.left = `${x}px`;
+            ripple.style.top = `${y}px`;
+
+            element.appendChild(ripple);
+            currentPressRipple = ripple;
+
+            // Detect long press
+            pressTimer = setTimeout(() => {
+                isLongPress = true;
+                element.style.transform = "scale(0.9)";
+                if (currentPressRipple) {
+                    // Pause the ripple's growth animation on long press
+                    currentPressRipple.style.animationPlayState = 'paused';
+                }
+            }, 250);
+        };
+
+        const handlePressEnd = (e) => {
+            clearTimeout(pressTimer);
+
+            const rippleToHandle = currentPressRipple;
+            currentPressRipple = null; // Current press action is finished
+
+            if (isLongPress) {
+                // It was a long press, so destroy the ripple immediately on release
+                destroyRipple(rippleToHandle);
+
+                element.classList.add("long-press-bounce-effect");
+                element.addEventListener('animationend', () => {
+                    element.classList.remove("long-press-bounce-effect");
+                }, { once: true });
+            } else {
+                // It was a short click, let the ripple animation (which now fades out) finish on its own
+                if (rippleToHandle) {
+                    rippleToHandle.addEventListener('animationend', () => {
+                        rippleToHandle.remove();
+                    }, { once: true });
+                }
+
+                element.classList.add("bounce-effect");
+                element.addEventListener('animationend', () => {
+                    element.classList.remove("bounce-effect");
+                }, { once: true });
+            }
+
+            element.style.transform = "scale(1)";
+            isLongPress = false;
+        };
+
+        const handlePressLeave = (e) => {
+            clearTimeout(pressTimer);
+            // Destroy any active ripple if the user's cursor leaves the element
+            destroyRipple(currentPressRipple);
+            currentPressRipple = null;
+            element.style.transform = "scale(1)";
+            isLongPress = false;
+        };
+
+        // Add event listeners
+        element.addEventListener("mousedown", handlePressStart);
+        element.addEventListener("mouseup", handlePressEnd);
+        element.addEventListener("mouseleave", handlePressLeave);
+
+        element.addEventListener("touchstart", handlePressStart, { passive: false });
+        element.addEventListener("touchend", handlePressEnd);
+        element.addEventListener("touchcancel", handlePressLeave);
+    </script>
+</body>
+
+</html>
