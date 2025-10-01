@@ -1,10 +1,7 @@
-import Goo from "gooey-react";
-
-export default function GooeyPage() {
+export default function Home() {
   return (
-    <Goo className="h-48 relative w-48">
-      <div className="bg-rose-500 rounded-full h-16 w-16 left-10 top-0 absolute" />
-      <div className="bg-pink-500 rounded-full h-16 w-16 left-22 top-10 absolute" />
-    </Goo>
+    <main className="flex min-h-screen flex-col items-center justify-between p-24">
+      <h1 className="text-4xl font-bold">Welcome to the Home Page</h1>
+    </main>
   );
 }
