@@ -101,7 +101,7 @@ const presets = {
 };
 
 const HomePage = () => {
-  const effectRef = useRef<HTMLDivElement>(null);
+  const effectRef = useRef<HTMLButtonElement>(null);
   const dockPlaceholderRef = useRef<HTMLDivElement>(null);
 
   const [config, setConfig] = useState(presets.dock);
@@ -114,6 +114,10 @@ const HomePage = () => {
     g: presets.dock.g,
     b: presets.dock.b,
   });
+
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragOffset = useRef({ x: 0, y: 0 });
 
   const handleConfigChange = (
     key: keyof Config,
@@ -239,8 +243,37 @@ const HomePage = () => {
     return `scaleX(${Math.max(0.8, scaleX)}) scaleY(${Math.max(0.8, scaleY)})`;
   }, [globalMousePos, config.elasticity, config.width, config.height]);
 
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (!effectRef.current) return;
+      setIsDragging(true);
+      const rect = effectRef.current.getBoundingClientRect();
+      dragOffset.current = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
+      e.preventDefault();
+    },
+    [],
+  );
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  const handleMouseMoveGlobal = useCallback(
+    (e: MouseEvent) => {
+      if (!isDragging) return;
+      setPosition({
+        x: e.clientX - dragOffset.current.x,
+        y: e.clientY - dragOffset.current.y,
+      });
+    },
+    [isDragging],
+  );
+
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    const handleLocalMouseMove = (e: MouseEvent) => {
       setGlobalMousePos({ x: e.clientX, y: e.clientY });
       if (effectRef.current) {
         const rect = effectRef.current.getBoundingClientRect();
@@ -252,8 +285,31 @@ const HomePage = () => {
         });
       }
     };
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mousemove", handleLocalMouseMove);
+    return () => window.removeEventListener("mousemove", handleLocalMouseMove);
+  }, []);
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener("mousemove", handleMouseMoveGlobal);
+      window.addEventListener("mouseup", handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMoveGlobal);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging, handleMouseMoveGlobal, handleMouseUp]);
+
+  useEffect(() => {
+    if (dockPlaceholderRef.current) {
+      const rect = dockPlaceholderRef.current.getBoundingClientRect();
+      setPosition({
+        x: rect.left,
+        y: rect.top > window.innerHeight ? window.innerHeight * 0.5 : rect.top,
+      });
+      gsap.set(".effect, .effect-border", { opacity: 1 });
+    }
   }, []);
 
   useEffect(() => {
@@ -264,8 +320,8 @@ const HomePage = () => {
         Math.min(config.width, config.height) * (config.border * 0.5);
       const svgString = `
         <svg class="displacement-image" viewBox="0 0 ${config.width} ${
-          config.height
-        }" xmlns="http://www.w3.org/2000/svg">
+        config.height
+      }" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="red" x1="100%" y1="0%" x2="0%" y2="0%">
               <stop offset="0%" stop-color="#000"/>
@@ -277,23 +333,23 @@ const HomePage = () => {
             </linearGradient>
           </defs>
           <rect x="0" y="0" width="${config.width}" height="${
-            config.height
-          }" fill="black"></rect>
+        config.height
+      }" fill="black"></rect>
           <rect x="0" y="0" width="${config.width}" height="${
-            config.height
-          }" rx="${config.radius}" fill="url(#red)" />
+        config.height
+      }" rx="${config.radius}" fill="url(#red)" />
           <rect x="0" y="0" width="${config.width}" height="${
-            config.height
-          }" rx="${
-            config.radius
-          }" fill="url(#blue)" style="mix-blend-mode: ${config.blend}" />
+        config.height
+      }" rx="${
+        config.radius
+      }" fill="url(#blue)" style="mix-blend-mode: ${config.blend}" />
           <rect x="${border}" y="${border}" width="${
-            config.width - border * 2
-          }" height="${config.height - border * 2}" rx="${
-            config.radius
-          }" fill="hsl(0 0% ${config.lightness}% / ${
-            config.alpha
-          })" style="filter:blur(${config.blur}px)" />
+        config.width - border * 2
+      }" height="${config.height - border * 2}" rx="${
+        config.radius
+      }" fill="hsl(0 0% ${config.lightness}% / ${
+        config.alpha
+      })" style="filter:blur(${config.blur}px)" />
         </svg>
       `;
       const encoded = encodeURIComponent(svgString);
@@ -328,33 +384,38 @@ const HomePage = () => {
     };
 
     update();
-
-    if (dockPlaceholderRef.current) {
-      const { top, left } = dockPlaceholderRef.current.getBoundingClientRect();
-      const newTop = top > window.innerHeight ? window.innerHeight * 0.5 : top;
-      gsap.set(".effect, .effect-border", {
-        top: newTop,
-        left,
-        opacity: 1,
-      });
-    }
   }, [config]);
 
-  const transformStyle = `translate(${calculateElasticTranslation().x}px, ${
-    calculateElasticTranslation().y
-  }px) ${isActive ? "scale(0.96)" : calculateDirectionalScale()}`;
+  const elasticTranslation = isDragging
+    ? { x: 0, y: 0 }
+    : calculateElasticTranslation();
+  const directionalScale = isDragging ? "scale(1)" : calculateDirectionalScale();
 
-  const baseStyle = {
+  const transformStyle = `translate(${elasticTranslation.x}px, ${
+    elasticTranslation.y
+  }px) ${isActive ? "scale(0.96)" : directionalScale}`;
+
+  const baseStyle: React.CSSProperties = {
+    background: "transparent",
+    border: "none",
+    padding: 0,
+    margin: 0,
+    textAlign: "inherit",
+    font: "inherit",
     transform: transformStyle,
-    transition: "transform ease-out 0.2s",
+    transition: isDragging ? "none" : "transform ease-out 0.2s",
     width: `${config.width}px`,
     height: `${config.height}px`,
+    position: "fixed",
+    top: `${position.y}px`,
+    left: `${position.x}px`,
+    cursor: isDragging ? "grabbing" : "grab",
   };
 
-  const borderStyle = {
+  const borderStyle: React.CSSProperties = {
     ...baseStyle,
     borderRadius: `${config.radius}px`,
-    pointerEvents: "none" as const,
+    pointerEvents: "none",
   };
 
   return (
@@ -724,7 +785,16 @@ const HomePage = () => {
         </CardContent>
       </Card>
 
-      <div className="effect" ref={effectRef} style={baseStyle}>
+      <button
+        type="button"
+        className="effect"
+        ref={effectRef}
+        style={baseStyle}
+        onMouseDown={handleMouseDown}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") e.preventDefault();
+        }}
+      >
         <div className="nav-wrap">
           <nav>
             <Image
@@ -815,13 +885,12 @@ const HomePage = () => {
             </filter>
           </defs>
         </svg>
-      </div>
+      </button>
 
       <span
         className="effect-border"
         style={{
           ...borderStyle,
-          position: "fixed",
           mixBlendMode: "screen",
           opacity: 0.2,
           padding: "0.5px",
@@ -846,7 +915,6 @@ const HomePage = () => {
         className="effect-border"
         style={{
           ...borderStyle,
-          position: "fixed",
           mixBlendMode: "overlay",
           padding: "0.5px",
           WebkitMask:
