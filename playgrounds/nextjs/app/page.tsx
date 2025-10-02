@@ -431,7 +431,7 @@ const HomePage = () => {
               className="w-full"
               onValueChange={handlePresetChange}
             >
-              <TabsList className="grid w-full grid-cols-4 border">
+              <TabsList className="grid w-full grid-cols-4 border rounded-2xl">
                 <TabsTrigger value="dock">Dock</TabsTrigger>
                 <TabsTrigger value="pill">Pill</TabsTrigger>
                 <TabsTrigger value="bubble">Bubble</TabsTrigger>

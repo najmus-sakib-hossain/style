@@ -45,7 +45,8 @@
 
 @layer theme {
     :root {
-        --background: url("/suzume-no-tojimari.png");
+
+        --background: oklch(0.13 0 0);
         --foreground: oklch(1 0 0);
         --card: oklch(0.14 0 0);
         --card-foreground: oklch(1 0 0);
@@ -77,10 +78,7 @@
         --sidebar-accent-foreground: oklch(1 0 0);
         --sidebar-border: oklch(0.32 0 0);
         --sidebar-ring: oklch(0.72 0 0);
-        --font-sans: Geist, sans-serif;
-        --font-serif: Georgia, serif;
-        --font-mono: Geist Mono, monospace;
-        --radius: 0.5rem;
+
     }
 
     .dark {
@@ -200,7 +198,7 @@
     }
 
     body {
-        background: var(--color-background);
+        background: url("/suzume-no-tojimari.png");
         background-size: cover;
         background-repeat: no-repeat;
         background-position: center;
