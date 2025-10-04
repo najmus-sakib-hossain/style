@@ -160,46 +160,45 @@ export default function GooeyPage() {
   };
 
   return (
-      <div className="fixed bottom-0  left-80 w-96 h-96 flex items-center justify-center">
-        <Goo className="w-full h-full absolute flex items-center justify-center">
-          {/* Gooey skeleton panel */}
-          <div
-            className="top-[-25px] left-1/2 absolute w-64 h-76 bg-card rounded-2xl"
-            style={skeletonStyle}
-            onTransitionEnd={onMoveEnd}
-          />
-          <div className="absolute w-24 h-24 rounded-full bg-rose-500" />
-        </Goo>
-
-        {/* Text container */}
+    <div className="fixed bottom-0  left-80 w-96 h-96 flex items-center justify-center">
+      <Goo id="gooey-menu-filter" className="w-full h-full absolute flex items-center justify-center">
+        {/* Gooey skeleton panel */}
         <div
-          className="top-[-25px] left-1/2 absolute w-64 h-80 rounded-2xl p-4 flex flex-col gap-2"
-          style={contentStyle}
-        >
-          {menuItems.map((item, index) => (
-            <div
-              key={index}
-              className="rounded-2xl flex items-center gap-4 p-3 hover:bg-secondary cursor-pointer"
-            >
-              {item.icon}
-              <span className="text-white font-medium">{item.text}</span>
-            </div>
-          ))}
-        </div>
+          className="top-[-25px] left-1/2 absolute w-64 h-76 bg-card rounded-2xl"
+          style={skeletonStyle}
+          onTransitionEnd={onMoveEnd}
+        />
+        <div className="absolute w-24 h-24 rounded-full bg-rose-500" />
+      </Goo>
 
-        {/* Toggle button */}
-        <div
-          onClick={handleClick}
-          className="absolute w-24 h-24 rounded-full cursor-pointer transition-transform duration-200 hover:scale-110 active:scale-95 z-10 flex items-center justify-center"
-        >
+      {/* Text container */}
+      <div
+        className="top-[-25px] left-1/2 absolute w-64 h-80 rounded-2xl p-4 flex flex-col gap-2"
+        style={contentStyle}
+      >
+        {menuItems.map((item, index) => (
           <div
-            className={`transition-transform duration-300 ${
-              isExpanded ? "rotate-45" : "rotate-0"
-            }`}
+            key={index}
+            className="rounded-2xl flex items-center gap-4 p-3 hover:bg-secondary cursor-pointer"
           >
-            <Icon path="M12 5v14m-7-7h14" className="text-black" />
+            {item.icon}
+            <span className="text-white font-medium">{item.text}</span>
           </div>
+        ))}
+      </div>
+
+      {/* Toggle button */}
+      <div
+        onClick={handleClick}
+        className="absolute w-24 h-24 rounded-full cursor-pointer transition-transform duration-200 hover:scale-110 active:scale-95 z-10 flex items-center justify-center"
+      >
+        <div
+          className={`transition-transform duration-300 ${isExpanded ? "rotate-45" : "rotate-0"
+            }`}
+        >
+          <Icon path="M12 5v14m-7-7h14" className="text-black" />
         </div>
       </div>
+    </div>
   );
 }
