@@ -8,7 +8,6 @@ import { GlassFilter, updateDisplacementFilter } from "./liquid-glass-filter";
 
 const HomePage = () => {
   const effectRef = useRef<HTMLButtonElement>(null);
-  // NEW: Ref for a common wrapper to apply shared transform animations
   const wrapperRef = useRef<HTMLDivElement>(null);
   const dockPlaceholderRef = useRef<HTMLDivElement>(null);
 
@@ -25,27 +24,47 @@ const HomePage = () => {
 
   const [position, setPosition] = useState({ x: 0, y: 0 });
 
-  // NEW: hold/jelly state
   const [isHeld, setIsHeld] = useState(false);
-  const [pressOffset, setPressOffset] = useState({ x: 0, y: 0 }); // percent-based for splash origin
+  const [pressOffset, setPressOffset] = useState({ x: 0, y: 0 });
   const holdXTween = useRef<any>(null);
   const holdYTween = useRef<any>(null);
 
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isMoving, setIsMoving] = useState(false); // keep visible during motion
+  const [isMoving, setIsMoving] = useState(false);
 
-  // Asymmetric easing (open: slow start, close: slow end)
   const OPEN_EASE = "cubic-bezier(0.55, 0.085, 0.68, 0.53)";
   const CLOSE_EASE = "cubic-bezier(0.25, 0.46, 0.45, 0.94)";
   const ease = isExpanded ? OPEN_EASE : CLOSE_EASE;
 
-  // Faster movement
   const OPEN_MS = 1200;
   const CLOSE_MS = 900;
   const transformMs = isExpanded ? OPEN_MS : CLOSE_MS;
 
   const y = isExpanded ? -160 : -100;
   const move = `translateX(-50%) translateY(${y}px)`;
+
+  const skeletonStyle: React.CSSProperties = {
+    transform: move,
+    opacity: isExpanded || isMoving ? 1 : 0,
+    transformOrigin: "bottom center",
+    willChange: "transform, opacity",
+    transition: [`transform ${transformMs}ms ${ease}`, "opacity 150ms ease-out"].join(", "),
+  };
+
+  const contentStyle: React.CSSProperties = {
+    transform: move,
+    opacity: isExpanded || isMoving ? 1 : 0,
+    pointerEvents: isExpanded ? "auto" : "none",
+    transformOrigin: "bottom center",
+    willChange: "transform, opacity",
+    transition: `transform ${transformMs}ms ${ease}, opacity 150ms ease`,
+  };
+
+  const onMoveEnd = (e: React.TransitionEvent<HTMLDivElement>) => {
+    if (e.propertyName === "transform") {
+      setIsMoving(false);
+    }
+  };
 
   const handleConfigChange = (
     key: keyof Config,
@@ -171,7 +190,6 @@ const HomePage = () => {
     return `scaleX(${Math.max(0.8, scaleX)}) scaleY(${Math.max(0.8, scaleY)})`;
   }, [globalMousePos, config.elasticity, config.width, config.height]);
 
-  // NEW: initialize CSS vars for jelly on the wrapper
   useEffect(() => {
     if (!wrapperRef.current) return;
     gsap.set(wrapperRef.current, {
@@ -200,7 +218,6 @@ const HomePage = () => {
     return () => window.removeEventListener("mousemove", handleLocalMouseMove);
   }, []);
 
-  // Center the glass by default
   useEffect(() => {
     setPosition({
       x: Math.round((window.innerWidth - config.width) / 2),
@@ -237,16 +254,13 @@ const HomePage = () => {
     update();
   }, [config]);
 
-  // NEW: Press/hold handlers for jelly effect
   const handlePressStart = useCallback(
     (e: React.PointerEvent<HTMLButtonElement>) => {
-      // MODIFIED: Check for wrapperRef
       if (!effectRef.current || !wrapperRef.current) return;
       setIsHeld(true);
       try {
         e.currentTarget.setPointerCapture(e.pointerId);
       } catch {}
-      // MODIFIED: Target the wrapperRef for animations
       holdXTween.current = gsap.quickTo(wrapperRef.current, "--hold-x", {
         duration: 0.25,
         ease: "expo.out",
@@ -264,9 +278,9 @@ const HomePage = () => {
         y: ((e.clientY - centerY) / rect.height) * 100,
       });
 
-      // MODIFIED: Target the wrapperRef for animations
+      // MODIFIED: Scale up on press for a juicier feel
       gsap.to(wrapperRef.current, {
-        "--press-scale": 0.96,
+        "--press-scale": 1.05,
         duration: 0.12,
         ease: "power2.out",
       } as any);
@@ -304,14 +318,12 @@ const HomePage = () => {
   useEffect(() => {
     const onMove = (e: PointerEvent) => handlePressMove(e);
     const onUp = () => {
-      // MODIFIED: Check for wrapperRef
       if (!isHeld || !wrapperRef.current) return;
       setIsHeld(false);
       holdXTween.current?.(0);
       holdYTween.current?.(0);
 
       const tl = gsap.timeline();
-      // MODIFIED: Target the wrapperRef for all animations
       tl.to(wrapperRef.current, {
         "--jello-x": 1.06,
         "--jello-y": 0.94,
@@ -361,7 +373,6 @@ const HomePage = () => {
     };
   }, [isHeld, handlePressMove, config.displace]);
 
-  // During hold we override the hover elastic/scale so it feels “anchored”
   const elasticTranslation = isHeld ? { x: 0, y: 0 } : calculateElasticTranslation();
   const directionalScale = isHeld ? "scale(1)" : calculateDirectionalScale();
 
@@ -449,7 +460,6 @@ const HomePage = () => {
         isChromaticEnabled={isChromaticEnabled}
       />
 
-      {/* NEW: Wrapper div to hold the button and its borders */}
       <div ref={wrapperRef}>
         <button
           type="button"
@@ -522,17 +532,19 @@ const HomePage = () => {
               borderRadius: `${config.radius}px`,
               pointerEvents: "none",
               mixBlendMode: "screen",
-              opacity: isHeld ? 0.9 : 0,
-              transition: "opacity 180ms ease-out",
+              // MODIFIED: Stronger splash with more opacity and a smooth blur transition
+              opacity: isHeld ? 1 : 0,
+              transition:
+                "opacity 180ms ease-out, backdrop-filter 250ms ease-out",
               background: `
                 radial-gradient(180% 140% at calc(${50 + activeOffset.x * 0.5}%) calc(${50 + activeOffset.y * 0.5}%),
-                  rgba(255,255,255,0.95) 0%,
-                  rgba(255,255,255,0.45) 22%,
-                  rgba(255,255,255,0.12) 45%,
-                  rgba(255,255,255,0.0) 65%)
+                  rgba(255,255,255,1.0) 0%,
+                  rgba(255,255,255,0.65) 25%,
+                  rgba(255,255,255,0.2) 50%,
+                  rgba(255,255,255,0.0) 70%)
               `,
               filter: "saturate(1.12)",
-              backdropFilter: "blur(8px)",
+              backdropFilter: isHeld ? "blur(12px)" : "blur(0px)",
             } as React.CSSProperties}
           />
 
