@@ -47,32 +47,6 @@ const HomePage = () => {
   const y = isExpanded ? -160 : -100;
   const move = `translateX(-50%) translateY(${y}px)`;
 
-  // Skeleton panel: full, fixed height; stays visible while moving so close is seen
-  const skeletonStyle: React.CSSProperties = {
-    transform: move,
-    opacity: isExpanded || isMoving ? 1 : 0,
-    transformOrigin: "bottom center",
-    willChange: "transform, opacity",
-    transition: [`transform ${transformMs}ms ${ease}`, "opacity 150ms ease-out"].join(", "),
-  };
-
-  // Text container: always visible during motion; clicks only when expanded
-  const contentStyle: React.CSSProperties = {
-    transform: move,
-    opacity: isExpanded || isMoving ? 1 : 0,
-    pointerEvents: isExpanded ? "auto" : "none",
-    transformOrigin: "bottom center",
-    willChange: "transform, opacity",
-    transition: `transform ${transformMs}ms ${ease}, opacity 150ms ease`,
-  };
-
-  // When movement finishes, allow panel to hide if we're closing
-  const onMoveEnd = (e: React.TransitionEvent<HTMLDivElement>) => {
-    if (e.propertyName === "transform") {
-      setIsMoving(false);
-    }
-  };
-
   const handleConfigChange = (
     key: keyof Config,
     value: string | number | boolean,
