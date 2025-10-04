@@ -5,6 +5,8 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import LiquidGlassControls from "./liquid-glass-controls";
 import { base, presets, type Config } from "./liquid-glass-configs";
 import { GlassFilter, updateDisplacementFilter } from "./liquid-glass-filter";
+import GooeyPage from "./gooey";
+
 
 const HomePage = () => {
   const effectRef = useRef<HTMLButtonElement>(null);
@@ -452,7 +454,7 @@ const HomePage = () => {
 
   return (
     <>
-      <LiquidGlassControls
+      {/* <LiquidGlassControls
         config={config}
         handleConfigChange={handleConfigChange}
         handlePresetChange={handlePresetChange}
@@ -532,7 +534,6 @@ const HomePage = () => {
               borderRadius: `${config.radius}px`,
               pointerEvents: "none",
               mixBlendMode: "screen",
-              // MODIFIED: Stronger splash with more opacity and a smooth blur transition
               opacity: isHeld ? 1 : 0,
               transition:
                 "opacity 180ms ease-out, backdrop-filter 250ms ease-out",
@@ -585,7 +586,9 @@ const HomePage = () => {
         <section className="placeholder">
           <div className="dock-placeholder" ref={dockPlaceholderRef} />
         </section>
-      </main>
+      </main> */}
+
+      <GooeyPage />
     </>
   );
 };

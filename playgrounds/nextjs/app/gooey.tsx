@@ -126,11 +126,11 @@ export default function GooeyPage() {
   const ease = isExpanded ? OPEN_EASE : CLOSE_EASE;
 
   // Faster movement
-  const OPEN_MS = 1200;
-  const CLOSE_MS = 900;
+  const OPEN_MS = 600;
+  const CLOSE_MS = 700;
   const transformMs = isExpanded ? OPEN_MS : CLOSE_MS;
 
-  const y = isExpanded ? -170 : -100;
+  const y = isExpanded ? -160 : -100;
   const move = `translateX(-50%) translateY(${y}px)`;
 
   // Skeleton panel: full, fixed height; stays visible while moving so close is seen
@@ -160,12 +160,11 @@ export default function GooeyPage() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8">
-      <div className="relative w-96 h-96 flex items-center justify-center">
+      <div className="fixed bottom-0  left-80 w-96 h-96 flex items-center justify-center">
         <Goo className="w-full h-full absolute flex items-center justify-center">
           {/* Gooey skeleton panel */}
           <div
-            className="top-[-25px] left-1/2 absolute w-64 h-80 bg-card rounded-2xl"
+            className="top-[-25px] left-1/2 absolute w-64 h-76 bg-card rounded-2xl"
             style={skeletonStyle}
             onTransitionEnd={onMoveEnd}
           />
@@ -202,6 +201,5 @@ export default function GooeyPage() {
           </div>
         </div>
       </div>
-    </main>
   );
 }
