@@ -7,7 +7,7 @@ const Goo = ({
   children,
   className,
   composite = false,
-  intensity = "medium",
+  intensity = "strong",
   id = "gooey-react",
   style,
 }: {
@@ -126,7 +126,7 @@ export default function GooeyPage() {
   const ease = isExpanded ? OPEN_EASE : CLOSE_EASE;
 
   // Faster movement
-  const OPEN_MS = 300;
+  const OPEN_MS = 450;
   const CLOSE_MS = 400;
   const transformMs = isExpanded ? OPEN_MS : CLOSE_MS;
 
