@@ -276,7 +276,7 @@
     }
 
     [data-mode="dock"] .effect {
-        backdrop-filter: url(#filter) brightness(1.1) saturate(1.5);
+        backdrop-filter: url(#liquid-glass-filter) brightness(1.1) saturate(1.5);
     }
 
     .effect nav {
@@ -307,7 +307,7 @@
         position: fixed;
         background: light-dark(hsl(var(--hue) 50% 70% / 0.2),
                 hsl(var(--hue) 50% 30% / 0.2));
-        backdrop-filter: url(#filter) saturate(var(--saturation, 1));
+        backdrop-filter: url(#liquid-glass-filter) saturate(var(--saturation, 1));
     }
 
     .effect * {

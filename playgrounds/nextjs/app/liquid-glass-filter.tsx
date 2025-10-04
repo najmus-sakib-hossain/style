@@ -7,7 +7,7 @@ export const GlassFilter: React.FC = () => {
         <svg className="filter" xmlns="http://www.w3.org/2000/svg">
             <title>Glass effect SVG filter</title>
             <defs>
-                <filter id="filter" colorInterpolationFilters="sRGB">
+                <filter id="liquid-glass-filter" colorInterpolationFilters="sRGB">
                     <feImage x="0" y="0" width="100%" height="100%" result="map" />
                     <feDisplacementMap
                         in="SourceGraphic"
@@ -93,20 +93,20 @@ export const updateDisplacementFilter = (config: Config) => {
     `;
         const encoded = encodeURIComponent(svgString);
         const dataUri = `data:image/svg+xml,${encoded}`;
-        gsap.set("feImage", { attr: { href: dataUri } });
-        gsap.set("feDisplacementMap", {
+        gsap.set("#liquid-glass-filter feImage", { attr: { href: dataUri } });
+        gsap.set("#liquid-glass-filter feDisplacementMap", {
             attr: { xChannelSelector: config.x, yChannelSelector: config.y },
         });
     };
 
     buildDisplacementImage();
-    gsap.set("feDisplacementMap", { attr: { scale: config.scale } });
+    gsap.set("#liquid-glass-filter feDisplacementMap", { attr: { scale: config.scale } });
     gsap.set("#redchannel", { attr: { scale: config.scale + config.r } });
     gsap.set("#greenchannel", {
         attr: { scale: config.scale + config.g },
     });
     gsap.set("#bluechannel", { attr: { scale: config.scale + config.b } });
-    gsap.set("feGaussianBlur", {
+    gsap.set("#liquid-glass-filter feGaussianBlur", {
         attr: { stdDeviation: config.displace },
     });
 };
