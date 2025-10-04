@@ -22,8 +22,17 @@ const HomePage = () => {
   });
 
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const dragOffset = useRef({ x: 0, y: 0 });
+
+  // COMMENTED: dragging state (disabled)
+  // const [isDragging, setIsDragging] = useState(false);
+  // const dragOffset = useRef({ x: 0, y: 0 });
+
+  // NEW: hold/jelly state
+  const [isHeld, setIsHeld] = useState(false);
+  const [pressOffset, setPressOffset] = useState({ x: 0, y: 0 }); // percent-based for splash origin
+  const holdXTween = useRef<any>(null);
+  const holdYTween = useRef<any>(null);
+
   const [isExpanded, setIsExpanded] = useState(false);
   const [isMoving, setIsMoving] = useState(false); // keep visible during motion
 
@@ -190,34 +199,45 @@ const HomePage = () => {
     return `scaleX(${Math.max(0.8, scaleX)}) scaleY(${Math.max(0.8, scaleY)})`;
   }, [globalMousePos, config.elasticity, config.width, config.height]);
 
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      if (!effectRef.current) return;
-      setIsDragging(true);
-      const rect = effectRef.current.getBoundingClientRect();
-      dragOffset.current = {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      };
-      e.preventDefault();
-    },
-    [],
-  );
+  // COMMENTED: dragging handlers (disabled)
+  // const handleMouseDown = useCallback(
+  //   (e: React.MouseEvent<HTMLButtonElement>) => {
+  //     if (!effectRef.current) return;
+  //     setIsDragging(true);
+  //     const rect = effectRef.current.getBoundingClientRect();
+  //     dragOffset.current = {
+  //       x: e.clientX - rect.left,
+  //       y: e.clientY - rect.top,
+  //     };
+  //     e.preventDefault();
+  //   },
+  //   [],
+  // );
+  // const handleMouseUp = useCallback(() => {
+  //   setIsDragging(false);
+  // }, []);
+  // const handleMouseMoveGlobal = useCallback(
+  //   (e: MouseEvent) => {
+  //     if (!isDragging) return;
+  //     setPosition({
+  //       x: e.clientX - dragOffset.current.x,
+  //       y: e.clientY - dragOffset.current.y,
+  //     });
+  //   },
+  //   [isDragging],
+  // );
 
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
+  // NEW: initialize CSS vars for jelly
+  useEffect(() => {
+    if (!effectRef.current) return;
+    gsap.set(effectRef.current, {
+      "--hold-x": "0px",
+      "--hold-y": "0px",
+      "--press-scale": 1,
+      "--jello-x": 1,
+      "--jello-y": 1,
+    } as any);
   }, []);
-
-  const handleMouseMoveGlobal = useCallback(
-    (e: MouseEvent) => {
-      if (!isDragging) return;
-      setPosition({
-        x: e.clientX - dragOffset.current.x,
-        y: e.clientY - dragOffset.current.y,
-      });
-    },
-    [isDragging],
-  );
 
   useEffect(() => {
     const handleLocalMouseMove = (e: MouseEvent) => {
@@ -236,28 +256,34 @@ const HomePage = () => {
     return () => window.removeEventListener("mousemove", handleLocalMouseMove);
   }, []);
 
-  useEffect(() => {
-    if (isDragging) {
-      window.addEventListener("mousemove", handleMouseMoveGlobal);
-      window.addEventListener("mouseup", handleMouseUp);
-    }
+  // COMMENTED: dragging listeners (disabled)
+  // useEffect(() => {
+  //   if (isDragging) {
+  //     window.addEventListener("mousemove", handleMouseMoveGlobal);
+  //     window.addEventListener("mouseup", handleMouseUp);
+  //   }
+  //   return () => {
+  //     window.removeEventListener("mousemove", handleMouseMoveGlobal);
+  //     window.removeEventListener("mouseup", handleMouseUp);
+  //   };
+  // }, [isDragging, handleMouseMoveGlobal, handleMouseUp]);
 
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMoveGlobal);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [isDragging, handleMouseMoveGlobal, handleMouseUp]);
-
+  // Center the glass by default (replaces dock placeholder anchoring)
   useEffect(() => {
-    if (dockPlaceholderRef.current) {
-      const rect = dockPlaceholderRef.current.getBoundingClientRect();
+    setPosition({
+      x: Math.round((window.innerWidth - config.width) / 2),
+      y: Math.round((window.innerHeight - config.height) / 2),
+    });
+    gsap.set(".effect, .effect-border", { opacity: 1 });
+    const onResize = () => {
       setPosition({
-        x: rect.left,
-        y: rect.top > window.innerHeight ? window.innerHeight * 0.5 : rect.top,
+        x: Math.round((window.innerWidth - config.width) / 2),
+        y: Math.round((window.innerHeight - config.height) / 2),
       });
-      gsap.set(".effect, .effect-border", { opacity: 1 });
-    }
-  }, []);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [config.width, config.height]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -271,21 +297,145 @@ const HomePage = () => {
         "--frost": config.frost,
         "--output-blur": config.displace,
         "--saturation": config.saturation,
-      });
+      } as any);
 
-      document.documentElement.dataset.icons = String(config.icons);
+      (document.documentElement as any).dataset.icons = String(config.icons);
     };
 
     update();
   }, [config]);
 
-  const elasticTranslation = isDragging
-    ? { x: 0, y: 0 }
-    : calculateElasticTranslation();
-  const directionalScale = isDragging ? "scale(1)" : calculateDirectionalScale();
+  // NEW: Press/hold handlers for jelly effect
+  const handlePressStart = useCallback(
+    (e: React.PointerEvent<HTMLButtonElement>) => {
+      if (!effectRef.current) return;
+      setIsHeld(true);
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {}
+      // prepare soft-follow of hold offset
+      holdXTween.current = gsap.quickTo(effectRef.current, "--hold-x", {
+        duration: 0.25,
+        ease: "expo.out",
+      } as any);
+      holdYTween.current = gsap.quickTo(effectRef.current, "--hold-y", {
+        duration: 0.25,
+        ease: "expo.out",
+      } as any);
 
-  const transformStyle = `translate(${elasticTranslation.x}px, ${elasticTranslation.y
-    }px) ${isActive ? "scale(0.96)" : directionalScale}`;
+      const rect = effectRef.current.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      setPressOffset({
+        x: ((e.clientX - centerX) / rect.width) * 100,
+        y: ((e.clientY - centerY) / rect.height) * 100,
+      });
+
+      // press bounce + blur boost
+      gsap.to(effectRef.current, {
+        "--press-scale": 0.96,
+        duration: 0.12,
+        ease: "power2.out",
+      } as any);
+      gsap.to(document.documentElement, {
+        "--output-blur": Math.max(config.displace, 0) + 8,
+        duration: 0.18,
+        ease: "power2.out",
+      } as any);
+    },
+    [config.displace],
+  );
+
+  const handlePressMove = useCallback((e: PointerEvent) => {
+    if (!effectRef.current || !isHeld) return;
+    const rect = effectRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const dx = e.clientX - centerX;
+    const dy = e.clientY - centerY;
+
+    // cap translation so it "tries" to go there
+    const max = Math.max(18, Math.min(rect.width, rect.height) * 0.08);
+    const dist = Math.hypot(dx, dy);
+    const tx = dist > 0 ? (dx / dist) * Math.min(dist, max) : 0;
+    const ty = dist > 0 ? (dy / dist) * Math.min(dist, max) : 0;
+
+    holdXTween.current?.(tx);
+    holdYTween.current?.(ty);
+
+    setPressOffset({
+      x: ((e.clientX - centerX) / rect.width) * 100,
+      y: ((e.clientY - centerY) / rect.height) * 100,
+    });
+  }, [isHeld]);
+
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => handlePressMove(e);
+    const onUp = () => {
+      if (!isHeld) return;
+      setIsHeld(false);
+      holdXTween.current?.(0);
+      holdYTween.current?.(0);
+
+      // release: jello wobble + restore blur/scale
+      const tl = gsap.timeline();
+      tl.to(effectRef.current, {
+        "--jello-x": 1.06,
+        "--jello-y": 0.94,
+        duration: 0.1,
+        ease: "power2.out",
+      } as any)
+        .to(effectRef.current, {
+          "--jello-x": 0.96,
+          "--jello-y": 1.04,
+          duration: 0.12,
+          ease: "sine.out",
+        } as any)
+        .to(effectRef.current, {
+          "--jello-x": 1.02,
+          "--jello-y": 0.98,
+          duration: 0.14,
+          ease: "sine.out",
+        } as any)
+        .to(effectRef.current, {
+          "--jello-x": 1,
+          "--jello-y": 1,
+          duration: 0.2,
+          ease: "sine.out",
+        } as any);
+
+      gsap.to(effectRef.current, {
+        "--press-scale": 1,
+        duration: 0.5,
+        ease: "elastic.out(1, 0.45)",
+      } as any);
+      gsap.to(document.documentElement, {
+        "--output-blur": config.displace,
+        duration: 0.3,
+        ease: "power2.out",
+      } as any);
+    };
+
+    if (isHeld) {
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+    }
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [isHeld, handlePressMove, config.displace]);
+
+  // During hold we override the hover elastic/scale so it feels “anchored”
+  const elasticTranslation = isHeld ? { x: 0, y: 0 } : calculateElasticTranslation();
+  const directionalScale = isHeld ? "scale(1)" : calculateDirectionalScale();
+
+  const translateXStr = `calc(${elasticTranslation.x}px + var(--hold-x, 0px))`;
+  const translateYStr = `calc(${elasticTranslation.y}px + var(--hold-y, 0px))`;
+
+  const transformStyle = `translate(${translateXStr}, ${translateYStr}) ${isActive ? "scale(0.96)" : directionalScale} scale(var(--press-scale, 1)) scaleX(var(--jello-x, 1)) scaleY(var(--jello-y, 1))`;
 
   // Thicker ring + juicy water-drop shadow + fluid splash highlights
   const borderThickness = 2.5;
@@ -297,34 +447,37 @@ const HomePage = () => {
     `inset 0 -12px 28px rgba(0,0,0,0.22)`,
   ].join(", ");
 
+  // Active offset for border/splash (follow hold when active)
+  const activeOffset = isHeld ? pressOffset : mouseOffset;
+
   const fluidSplashBackground1 = `
     conic-gradient(
-      from ${110 + mouseOffset.x * 0.5}deg at ${50 + mouseOffset.x * 0.1}% ${50 + mouseOffset.y * 0.1}%,
+      from ${110 + activeOffset.x * 0.5}deg at ${50 + activeOffset.x * 0.1}% ${50 + activeOffset.y * 0.1}%,
       rgba(255,255,255,0.0) 0deg,
-      rgba(255,255,255, ${0.22 + Math.abs(mouseOffset.x) * 0.008}) 35deg,
-      rgba(255,255,255, ${0.70 + Math.abs(mouseOffset.y) * 0.010}) 65deg,
+      rgba(255,255,255, ${0.22 + Math.abs(activeOffset.x) * 0.008}) 35deg,
+      rgba(255,255,255, ${0.70 + Math.abs(activeOffset.y) * 0.010}) 65deg,
       rgba(255,255,255,0.0) 120deg,
-      rgba(255,255,255, ${0.30 + Math.abs(mouseOffset.y) * 0.006}) 170deg,
+      rgba(255,255,255, ${0.30 + Math.abs(activeOffset.y) * 0.006}) 170deg,
       rgba(255,255,255,0.0) 360deg
     ),
-    radial-gradient(120% 70% at ${28 + mouseOffset.x * 0.14}% ${18 + mouseOffset.y * 0.10}%,
+    radial-gradient(120% 70% at ${28 + activeOffset.x * 0.14}% ${18 + activeOffset.y * 0.10}%,
       rgba(255,255,255,0.65) 0%,
       rgba(255,255,255,0.22) 35%,
       rgba(255,255,255,0.0) 60%)
   `;
 
   const fluidSplashBackground2 = `
-    radial-gradient(140% 100% at ${35 + mouseOffset.x * 0.10}% ${22 + mouseOffset.y * 0.10}%,
+    radial-gradient(140% 100% at ${35 + activeOffset.x * 0.10}% ${22 + activeOffset.y * 0.10}%,
       rgba(255,255,255,0.35) 0%,
       rgba(255,255,255,0.12) 45%,
       rgba(255,255,255,0.0) 65%),
     conic-gradient(
-      from ${200 + mouseOffset.x * 0.3}deg at 50% 50%,
+      from ${200 + activeOffset.x * 0.3}deg at 50% 50%,
       rgba(255,255,255,0.0) 0deg,
-      rgba(255,255,255, ${0.35 + Math.abs(mouseOffset.x) * 0.006}) 55deg,
-      rgba(255,255,255, ${0.72 + Math.abs(mouseOffset.y) * 0.008}) 75deg,
+      rgba(255,255,255, ${0.35 + Math.abs(activeOffset.x) * 0.006}) 55deg,
+      rgba(255,255,255, ${0.72 + Math.abs(activeOffset.y) * 0.008}) 75deg,
       rgba(255,255,255,0.0) 160deg,
-      rgba(255,255,255, ${0.25 + Math.abs(mouseOffset.x) * 0.006}) 210deg,
+      rgba(255,255,255, ${0.25 + Math.abs(activeOffset.x) * 0.006}) 210deg,
       rgba(255,255,255,0.0) 360deg
     )
   `;
@@ -337,15 +490,16 @@ const HomePage = () => {
     textAlign: "inherit",
     font: "inherit",
     transform: transformStyle,
-    transition: isDragging ? "none" : "transform ease-out 0.2s",
+    transition: isHeld ? "none" : "transform ease-out 0.2s",
     width: `${config.width}px`,
     height: `${config.height}px`,
     position: "fixed",
     top: `${position.y}px`,
     left: `${position.x}px`,
-    cursor: isDragging ? "grabbing" : "grab",
+    cursor: "pointer", // no dragging
     borderRadius: `${config.radius}px`,
     boxShadow: dropShadow,
+    touchAction: "none",
   };
 
   const borderStyle: React.CSSProperties = {
@@ -369,7 +523,9 @@ const HomePage = () => {
         className="effect"
         ref={effectRef}
         style={baseStyle}
-        onMouseDown={handleMouseDown}
+        // REMOVED: onMouseDown drag
+        // onMouseDown={handleMouseDown}
+        onPointerDown={handlePressStart}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") e.preventDefault();
         }}
@@ -413,12 +569,12 @@ const HomePage = () => {
             pointerEvents: "none",
             mixBlendMode: "screen",
             background: `
-              radial-gradient(80% 50% at calc(22% + ${mouseOffset.x * 0.15}%) calc(18% + ${mouseOffset.y * 0.08}%),
+              radial-gradient(80% 50% at calc(22% + ${activeOffset.x * 0.15}%) calc(18% + ${activeOffset.y * 0.08}%),
                 rgba(255,255,255,0.75) 0%,
                 rgba(255,255,255,0.35) 25%,
                 rgba(255,255,255,0.10) 48%,
                 rgba(255,255,255,0.0) 60%),
-              radial-gradient(40% 30% at calc(58% + ${mouseOffset.x * 0.06}%) calc(20% + ${mouseOffset.y * 0.05}%),
+              radial-gradient(40% 30% at calc(58% + ${activeOffset.x * 0.06}%) calc(20% + ${activeOffset.y * 0.05}%),
                 rgba(255,255,255,0.45) 0%,
                 rgba(255,255,255,0.12) 45%,
                 rgba(255,255,255,0.0) 65%)
@@ -426,6 +582,29 @@ const HomePage = () => {
             filter: "blur(0.4px) saturate(1.15)",
             opacity: 0.9,
           }}
+        />
+
+        {/* NEW: White splash at hold position + blurred content */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: `${config.radius}px`,
+            pointerEvents: "none",
+            mixBlendMode: "screen",
+            opacity: isHeld ? 0.9 : 0,
+            transition: "opacity 180ms ease-out",
+            background: `
+              radial-gradient(180% 140% at calc(${50 + activeOffset.x * 0.5}%) calc(${50 + activeOffset.y * 0.5}%),
+                rgba(255,255,255,0.95) 0%,
+                rgba(255,255,255,0.45) 22%,
+                rgba(255,255,255,0.12) 45%,
+                rgba(255,255,255,0.0) 65%)
+            `,
+            filter: "saturate(1.12)",
+            backdropFilter: "blur(8px)",
+          } as React.CSSProperties}
         />
 
         <GlassFilter />
@@ -437,7 +616,7 @@ const HomePage = () => {
         style={{
           ...borderStyle,
           mixBlendMode: "screen",
-          opacity: 0.42,
+          opacity: isHeld ? 0.65 : 0.42,
           padding: `${borderThickness}px`,
           WebkitMask:
             "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
@@ -451,7 +630,7 @@ const HomePage = () => {
         style={{
           ...borderStyle,
           mixBlendMode: "overlay",
-          opacity: 0.85,
+          opacity: isHeld ? 1 : 0.85,
           padding: `${borderThickness}px`,
           WebkitMask:
             "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
@@ -466,7 +645,6 @@ const HomePage = () => {
           <div className="dock-placeholder" ref={dockPlaceholderRef} />
         </section>
       </main>
-
     </>
   );
 };
