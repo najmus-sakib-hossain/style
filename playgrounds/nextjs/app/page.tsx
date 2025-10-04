@@ -523,10 +523,7 @@ const HomePage = () => {
     }px) ${isActive ? "scale(0.96)" : directionalScale}`;
 
   // Thicker ring + juicy water-drop shadow + fluid splash highlights
-  const borderThickness = Math.max(
-    3,
-    Math.round(Math.min(config.width, config.height) * Math.max(config.border, 0.06)),
-  );
+const borderThickness =2.5;
 
   const dropShadow = [
     `0 ${Math.max(10, Math.round(config.height * 0.18))}px ${Math.max(28, Math.round(config.height * 0.55))}px ${-Math.max(6, Math.round(config.height * 0.18))}px rgba(0,0,0,0.45)`,
