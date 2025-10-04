@@ -8,6 +8,8 @@ import { GlassFilter, updateDisplacementFilter } from "./liquid-glass-filter";
 
 const HomePage = () => {
   const effectRef = useRef<HTMLButtonElement>(null);
+  // NEW: Ref for a common wrapper to apply shared transform animations
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const dockPlaceholderRef = useRef<HTMLDivElement>(null);
 
   const [config, setConfig] = useState(presets.dock);
@@ -22,10 +24,6 @@ const HomePage = () => {
   });
 
   const [position, setPosition] = useState({ x: 0, y: 0 });
-
-  // COMMENTED: dragging state (disabled)
-  // const [isDragging, setIsDragging] = useState(false);
-  // const dragOffset = useRef({ x: 0, y: 0 });
 
   // NEW: hold/jelly state
   const [isHeld, setIsHeld] = useState(false);
@@ -199,38 +197,10 @@ const HomePage = () => {
     return `scaleX(${Math.max(0.8, scaleX)}) scaleY(${Math.max(0.8, scaleY)})`;
   }, [globalMousePos, config.elasticity, config.width, config.height]);
 
-  // COMMENTED: dragging handlers (disabled)
-  // const handleMouseDown = useCallback(
-  //   (e: React.MouseEvent<HTMLButtonElement>) => {
-  //     if (!effectRef.current) return;
-  //     setIsDragging(true);
-  //     const rect = effectRef.current.getBoundingClientRect();
-  //     dragOffset.current = {
-  //       x: e.clientX - rect.left,
-  //       y: e.clientY - rect.top,
-  //     };
-  //     e.preventDefault();
-  //   },
-  //   [],
-  // );
-  // const handleMouseUp = useCallback(() => {
-  //   setIsDragging(false);
-  // }, []);
-  // const handleMouseMoveGlobal = useCallback(
-  //   (e: MouseEvent) => {
-  //     if (!isDragging) return;
-  //     setPosition({
-  //       x: e.clientX - dragOffset.current.x,
-  //       y: e.clientY - dragOffset.current.y,
-  //     });
-  //   },
-  //   [isDragging],
-  // );
-
-  // NEW: initialize CSS vars for jelly
+  // NEW: initialize CSS vars for jelly on the wrapper
   useEffect(() => {
-    if (!effectRef.current) return;
-    gsap.set(effectRef.current, {
+    if (!wrapperRef.current) return;
+    gsap.set(wrapperRef.current, {
       "--hold-x": "0px",
       "--hold-y": "0px",
       "--press-scale": 1,
@@ -256,19 +226,7 @@ const HomePage = () => {
     return () => window.removeEventListener("mousemove", handleLocalMouseMove);
   }, []);
 
-  // COMMENTED: dragging listeners (disabled)
-  // useEffect(() => {
-  //   if (isDragging) {
-  //     window.addEventListener("mousemove", handleMouseMoveGlobal);
-  //     window.addEventListener("mouseup", handleMouseUp);
-  //   }
-  //   return () => {
-  //     window.removeEventListener("mousemove", handleMouseMoveGlobal);
-  //     window.removeEventListener("mouseup", handleMouseUp);
-  //   };
-  // }, [isDragging, handleMouseMoveGlobal, handleMouseUp]);
-
-  // Center the glass by default (replaces dock placeholder anchoring)
+  // Center the glass by default
   useEffect(() => {
     setPosition({
       x: Math.round((window.innerWidth - config.width) / 2),
@@ -308,17 +266,18 @@ const HomePage = () => {
   // NEW: Press/hold handlers for jelly effect
   const handlePressStart = useCallback(
     (e: React.PointerEvent<HTMLButtonElement>) => {
-      if (!effectRef.current) return;
+      // MODIFIED: Check for wrapperRef
+      if (!effectRef.current || !wrapperRef.current) return;
       setIsHeld(true);
       try {
         e.currentTarget.setPointerCapture(e.pointerId);
       } catch {}
-      // prepare soft-follow of hold offset
-      holdXTween.current = gsap.quickTo(effectRef.current, "--hold-x", {
+      // MODIFIED: Target the wrapperRef for animations
+      holdXTween.current = gsap.quickTo(wrapperRef.current, "--hold-x", {
         duration: 0.25,
         ease: "expo.out",
       } as any);
-      holdYTween.current = gsap.quickTo(effectRef.current, "--hold-y", {
+      holdYTween.current = gsap.quickTo(wrapperRef.current, "--hold-y", {
         duration: 0.25,
         ease: "expo.out",
       } as any);
@@ -331,8 +290,8 @@ const HomePage = () => {
         y: ((e.clientY - centerY) / rect.height) * 100,
       });
 
-      // press bounce + blur boost
-      gsap.to(effectRef.current, {
+      // MODIFIED: Target the wrapperRef for animations
+      gsap.to(wrapperRef.current, {
         "--press-scale": 0.96,
         duration: 0.12,
         ease: "power2.out",
@@ -354,7 +313,6 @@ const HomePage = () => {
     const dx = e.clientX - centerX;
     const dy = e.clientY - centerY;
 
-    // cap translation so it "tries" to go there
     const max = Math.max(18, Math.min(rect.width, rect.height) * 0.08);
     const dist = Math.hypot(dx, dy);
     const tx = dist > 0 ? (dx / dist) * Math.min(dist, max) : 0;
@@ -372,39 +330,40 @@ const HomePage = () => {
   useEffect(() => {
     const onMove = (e: PointerEvent) => handlePressMove(e);
     const onUp = () => {
-      if (!isHeld) return;
+      // MODIFIED: Check for wrapperRef
+      if (!isHeld || !wrapperRef.current) return;
       setIsHeld(false);
       holdXTween.current?.(0);
       holdYTween.current?.(0);
 
-      // release: jello wobble + restore blur/scale
       const tl = gsap.timeline();
-      tl.to(effectRef.current, {
+      // MODIFIED: Target the wrapperRef for all animations
+      tl.to(wrapperRef.current, {
         "--jello-x": 1.06,
         "--jello-y": 0.94,
         duration: 0.1,
         ease: "power2.out",
       } as any)
-        .to(effectRef.current, {
+        .to(wrapperRef.current, {
           "--jello-x": 0.96,
           "--jello-y": 1.04,
           duration: 0.12,
           ease: "sine.out",
         } as any)
-        .to(effectRef.current, {
+        .to(wrapperRef.current, {
           "--jello-x": 1.02,
           "--jello-y": 0.98,
           duration: 0.14,
           ease: "sine.out",
         } as any)
-        .to(effectRef.current, {
+        .to(wrapperRef.current, {
           "--jello-x": 1,
           "--jello-y": 1,
           duration: 0.2,
           ease: "sine.out",
         } as any);
 
-      gsap.to(effectRef.current, {
+      gsap.to(wrapperRef.current, {
         "--press-scale": 1,
         duration: 0.5,
         ease: "elastic.out(1, 0.45)",
@@ -437,7 +396,6 @@ const HomePage = () => {
 
   const transformStyle = `translate(${translateXStr}, ${translateYStr}) ${isActive ? "scale(0.96)" : directionalScale} scale(var(--press-scale, 1)) scaleX(var(--jello-x, 1)) scaleY(var(--jello-y, 1))`;
 
-  // Thicker ring + juicy water-drop shadow + fluid splash highlights
   const borderThickness = 2.5;
 
   const dropShadow = [
@@ -447,7 +405,6 @@ const HomePage = () => {
     `inset 0 -12px 28px rgba(0,0,0,0.22)`,
   ].join(", ");
 
-  // Active offset for border/splash (follow hold when active)
   const activeOffset = isHeld ? pressOffset : mouseOffset;
 
   const fluidSplashBackground1 = `
@@ -496,7 +453,7 @@ const HomePage = () => {
     position: "fixed",
     top: `${position.y}px`,
     left: `${position.x}px`,
-    cursor: "pointer", // no dragging
+    cursor: "pointer",
     borderRadius: `${config.radius}px`,
     boxShadow: dropShadow,
     touchAction: "none",
@@ -518,127 +475,125 @@ const HomePage = () => {
         isChromaticEnabled={isChromaticEnabled}
       />
 
-      <button
-        type="button"
-        className="effect"
-        ref={effectRef}
-        style={baseStyle}
-        // REMOVED: onMouseDown drag
-        // onMouseDown={handleMouseDown}
-        onPointerDown={handlePressStart}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") e.preventDefault();
-        }}
-      >
-        <div className="nav-wrap">
-          <nav>
-            <Image
-              src="https://assets.codepen.io/605876/finder.png"
-              alt="macOS Finder icon"
-              width={80}
-              height={80}
-            />
-            <Image
-              src="https://assets.codepen.io/605876/launch-control.png"
-              alt="macOS Launch Control icon"
-              width={80}
-              height={80}
-            />
-            <Image
-              src="https://assets.codepen.io/605876/safari.png"
-              alt="macOS Safari icon"
-              width={80}
-              height={80}
-            />
-            <Image
-              src="https://assets.codepen.io/605876/calendar.png"
-              alt="macOS Calendar icon"
-              width={80}
-              height={80}
-            />
-          </nav>
-        </div>
+      {/* NEW: Wrapper div to hold the button and its borders */}
+      <div ref={wrapperRef}>
+        <button
+          type="button"
+          className="effect"
+          ref={effectRef}
+          style={baseStyle}
+          onPointerDown={handlePressStart}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") e.preventDefault();
+          }}
+        >
+          <div className="nav-wrap">
+            <nav>
+              <Image
+                src="https://assets.codepen.io/605876/finder.png"
+                alt="macOS Finder icon"
+                width={80}
+                height={80}
+              />
+              <Image
+                src="https://assets.codepen.io/605876/launch-control.png"
+                alt="macOS Launch Control icon"
+                width={80}
+                height={80}
+              />
+              <Image
+                src="https://assets.codepen.io/605876/safari.png"
+                alt="macOS Safari icon"
+                width={80}
+                height={80}
+              />
+              <Image
+                src="https://assets.codepen.io/605876/calendar.png"
+                alt="macOS Calendar icon"
+                width={80}
+                height={80}
+              />
+            </nav>
+          </div>
 
-        {/* Internal specular splash for liquid feel */}
-        <div
-          aria-hidden
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: `${config.radius}px`,
+              pointerEvents: "none",
+              mixBlendMode: "screen",
+              background: `
+                radial-gradient(80% 50% at calc(22% + ${activeOffset.x * 0.15}%) calc(18% + ${activeOffset.y * 0.08}%),
+                  rgba(255,255,255,0.75) 0%,
+                  rgba(255,255,255,0.35) 25%,
+                  rgba(255,255,255,0.10) 48%,
+                  rgba(255,255,255,0.0) 60%),
+                radial-gradient(40% 30% at calc(58% + ${activeOffset.x * 0.06}%) calc(20% + ${activeOffset.y * 0.05}%),
+                  rgba(255,255,255,0.45) 0%,
+                  rgba(255,255,255,0.12) 45%,
+                  rgba(255,255,255,0.0) 65%)
+              `,
+              filter: "blur(0.4px) saturate(1.15)",
+              opacity: 0.9,
+            }}
+          />
+
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: `${config.radius}px`,
+              pointerEvents: "none",
+              mixBlendMode: "screen",
+              opacity: isHeld ? 0.9 : 0,
+              transition: "opacity 180ms ease-out",
+              background: `
+                radial-gradient(180% 140% at calc(${50 + activeOffset.x * 0.5}%) calc(${50 + activeOffset.y * 0.5}%),
+                  rgba(255,255,255,0.95) 0%,
+                  rgba(255,255,255,0.45) 22%,
+                  rgba(255,255,255,0.12) 45%,
+                  rgba(255,255,255,0.0) 65%)
+              `,
+              filter: "saturate(1.12)",
+              backdropFilter: "blur(8px)",
+            } as React.CSSProperties}
+          />
+
+          <GlassFilter />
+        </button>
+
+        <span
+          className="effect-border"
           style={{
-            position: "absolute",
-            inset: 0,
-            borderRadius: `${config.radius}px`,
-            pointerEvents: "none",
+            ...borderStyle,
             mixBlendMode: "screen",
-            background: `
-              radial-gradient(80% 50% at calc(22% + ${activeOffset.x * 0.15}%) calc(18% + ${activeOffset.y * 0.08}%),
-                rgba(255,255,255,0.75) 0%,
-                rgba(255,255,255,0.35) 25%,
-                rgba(255,255,255,0.10) 48%,
-                rgba(255,255,255,0.0) 60%),
-              radial-gradient(40% 30% at calc(58% + ${activeOffset.x * 0.06}%) calc(20% + ${activeOffset.y * 0.05}%),
-                rgba(255,255,255,0.45) 0%,
-                rgba(255,255,255,0.12) 45%,
-                rgba(255,255,255,0.0) 65%)
-            `,
-            filter: "blur(0.4px) saturate(1.15)",
-            opacity: 0.9,
+            opacity: isHeld ? 0.65 : 0.42,
+            padding: `${borderThickness}px`,
+            WebkitMask:
+              "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+            WebkitMaskComposite: "xor",
+            maskComposite: "exclude",
+            background: fluidSplashBackground1,
           }}
         />
-
-        {/* NEW: White splash at hold position + blurred content */}
-        <div
-          aria-hidden
+        <span
+          className="effect-border"
           style={{
-            position: "absolute",
-            inset: 0,
-            borderRadius: `${config.radius}px`,
-            pointerEvents: "none",
-            mixBlendMode: "screen",
-            opacity: isHeld ? 0.9 : 0,
-            transition: "opacity 180ms ease-out",
-            background: `
-              radial-gradient(180% 140% at calc(${50 + activeOffset.x * 0.5}%) calc(${50 + activeOffset.y * 0.5}%),
-                rgba(255,255,255,0.95) 0%,
-                rgba(255,255,255,0.45) 22%,
-                rgba(255,255,255,0.12) 45%,
-                rgba(255,255,255,0.0) 65%)
-            `,
-            filter: "saturate(1.12)",
-            backdropFilter: "blur(8px)",
-          } as React.CSSProperties}
+            ...borderStyle,
+            mixBlendMode: "overlay",
+            opacity: isHeld ? 1 : 0.85,
+            padding: `${borderThickness}px`,
+            WebkitMask:
+              "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+            WebkitMaskComposite: "xor",
+            maskComposite: "exclude",
+            background: fluidSplashBackground2,
+          }}
         />
-
-        <GlassFilter />
-      </button>
-
-      {/* Thick, fluid splash ring around the glass (not a straight line) */}
-      <span
-        className="effect-border"
-        style={{
-          ...borderStyle,
-          mixBlendMode: "screen",
-          opacity: isHeld ? 0.65 : 0.42,
-          padding: `${borderThickness}px`,
-          WebkitMask:
-            "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
-          WebkitMaskComposite: "xor",
-          maskComposite: "exclude",
-          background: fluidSplashBackground1,
-        }}
-      />
-      <span
-        className="effect-border"
-        style={{
-          ...borderStyle,
-          mixBlendMode: "overlay",
-          opacity: isHeld ? 1 : 0.85,
-          padding: `${borderThickness}px`,
-          WebkitMask:
-            "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
-          WebkitMaskComposite: "xor",
-          maskComposite: "exclude",
-          background: fluidSplashBackground2,
-        }}
-      />
+      </div>
 
       <main>
         <section className="placeholder">
