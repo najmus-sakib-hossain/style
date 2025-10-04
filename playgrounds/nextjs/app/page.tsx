@@ -36,7 +36,7 @@ const Goo = ({
           <filter
             id={id}
             colorInterpolationFilters="sRGB"
-            x="-50%" y="-50%" width="200%" height="200%"  // expand filter region to avoid cropping
+            x="-50%" y="-50%" width="200%" height="200%"
           >
             <feGaussianBlur data-testid="blur" stdDeviation={blur} />
             <feColorMatrix values={`${r} ${g} ${b} ${a}`} />
@@ -70,16 +70,11 @@ const SaveIcon = () => <Icon path="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5
 
 export default function GooeyPage() {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [showContent, setShowContent] = useState(false); // reveal text after movement ends
-  const [isMoving, setIsMoving] = useState(false);       // keep skeleton visible while moving
+  const [isMoving, setIsMoving] = useState(false); // keep visible during motion
 
   const handleClick = () => {
     setIsMoving(true);
-    setIsExpanded(prev => {
-      const next = !prev;
-      if (!next) setShowContent(false); // hide text immediately on collapse
-      return next;
-    });
+    setIsExpanded(prev => !prev);
   };
 
   const menuItems = [
@@ -100,31 +95,31 @@ export default function GooeyPage() {
   const CLOSE_MS = 900;
   const transformMs = isExpanded ? OPEN_MS : CLOSE_MS;
 
-  const y = isExpanded ? -170 : -100;
+  const y = isExpanded ? -160 : -100;
   const move = `translateX(-50%) translateY(${y}px)`;
 
-  // Skeleton panel: full, fixed height; keep visible while moving so close is seen
+  // Skeleton panel: full, fixed height; stays visible while moving so close is seen
   const skeletonStyle: React.CSSProperties = {
     transform: move,
     opacity: isExpanded || isMoving ? 1 : 0,
     transformOrigin: "bottom center",
     willChange: "transform, opacity",
-    transition: [`transform ${transformMs}ms ${ease}`, "opacity 200ms ease-out"].join(", "),
+    transition: [`transform ${transformMs}ms ${ease}`, "opacity 150ms ease-out"].join(", "),
   };
 
-  // Content container: same position; text fades in after movement
+  // Text container: always visible during motion; clicks only when expanded
   const contentStyle: React.CSSProperties = {
     transform: move,
+    opacity: isExpanded || isMoving ? 1 : 0,
+    pointerEvents: isExpanded ? "auto" : "none",
     transformOrigin: "bottom center",
-    transition: `transform ${transformMs}ms ${ease}, opacity 150ms ease`,
-    opacity: showContent ? 1 : 0,
-    pointerEvents: showContent ? "auto" : "none",
     willChange: "transform, opacity",
+    transition: `transform ${transformMs}ms ${ease}, opacity 150ms ease`,
   };
 
+  // When movement finishes, allow panel to hide if we're closing
   const onMoveEnd = (e: React.TransitionEvent<HTMLDivElement>) => {
     if (e.propertyName === "transform") {
-      if (isExpanded) setShowContent(true);
       setIsMoving(false);
     }
   };
@@ -133,38 +128,32 @@ export default function GooeyPage() {
     <main className="flex min-h-screen flex-col items-center justify-center p-8">
       <div className="relative w-96 h-96 flex items-center justify-center">
         <Goo className="w-full h-full absolute flex items-center justify-center">
-          {/* Fixed, full height panel for goo */}
+          {/* Gooey skeleton panel */}
           <div
-            className="top-[-25px] left-1/2 absolute w-64 h-80 bg-card rounded-2xl"
+            className="top-[-25px] left-1/2 absolute w-64 h-76 bg-card rounded-2xl"
             style={skeletonStyle}
             onTransitionEnd={onMoveEnd}
           />
           <div className="absolute w-24 h-24 rounded-full bg-rose-500" />
         </Goo>
 
-        {/* Text container matches panel height so it aligns visually */}
+        {/* Text container */}
         <div
           className="top-[-25px] left-1/2 absolute w-64 h-80 rounded-2xl p-4 flex flex-col gap-2"
           style={contentStyle}
         >
-          {showContent &&
-            menuItems.map((item, index) => (
-              <div
-                key={index}
-                className="rounded-2xl flex items-center gap-4 p-3 hover:bg-secondary cursor-pointer"
-                style={{
-                  transition: "opacity 150ms ease, transform 150ms ease",
-                  transitionDelay: showContent ? `${index * 30}ms` : "0ms",
-                  opacity: showContent ? 1 : 0,
-                  transform: showContent ? "translateY(0)" : "translateY(4px)",
-                }}
-              >
-                {item.icon}
-                <span className="text-white font-medium">{item.text}</span>
-              </div>
-            ))}
+          {menuItems.map((item, index) => (
+            <div
+              key={index}
+              className="rounded-2xl flex items-center gap-4 p-3 hover:bg-secondary cursor-pointer"
+            >
+              {item.icon}
+              <span className="text-white font-medium">{item.text}</span>
+            </div>
+          ))}
         </div>
 
+        {/* Toggle button */}
         <div
           onClick={handleClick}
           className="absolute w-24 h-24 rounded-full cursor-pointer transition-transform duration-200 hover:scale-110 active:scale-95 z-10 flex items-center justify-center"
