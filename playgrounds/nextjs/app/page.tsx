@@ -80,31 +80,31 @@ const Icon = ({ path, className }: { path: string; className?: string }) => (
 const EditIcon = () => (
   <Icon
     path="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
-    className="text-white"
+    className="text-black"
   />
 );
 const CopyIcon = () => (
   <Icon
     path="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"
-    className="text-white"
+    className="text-black"
   />
 );
 const ShareIcon = () => (
   <Icon
     path="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8 M16 6l-4-4-4 4 M12 2v13"
-    className="text-white"
+    className="text-black"
   />
 );
 const DeleteIcon = () => (
   <Icon
     path="M3 6h18 M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
-    className="text-white"
+    className="text-black"
   />
 );
 const SaveIcon = () => (
   <Icon
     path="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z M17 21v-8H7v8 M7 3v5h8"
-    className="text-white"
+    className="text-black"
   />
 );
 
@@ -708,13 +708,13 @@ const HomePage = () => {
       </main> */}
 
       <div className="fixed bottom-0  left-80 w-96 h-96 flex items-center justify-center">
-        <Goo id="gooey-menu-filter" className="w-full h-full absolute flex items-center justify-center">
+        <Goo id="gooey-menu-filter" className="w-full h-full absolute flex items-center justify-center border">
           <div
-            className="top-[-25px] left-1/2 absolute w-64 h-76 bg-card rounded-2xl"
+            className="top-[-25px] left-1/2 absolute w-64 h-76 rounded-2xl bg-white"
             style={skeletonStyle}
             onTransitionEnd={onMoveEnd}
           />
-          <div className="absolute w-24 h-24 rounded-full bg-card" />
+          <div className="absolute w-24 h-24 rounded-full bg-white" />
         </Goo>
 
         <div
@@ -724,10 +724,10 @@ const HomePage = () => {
           {menuItems.map((item, index) => (
             <div
               key={index}
-              className="rounded-2xl flex items-center gap-4 p-3 hover:bg-secondary cursor-pointer"
+              className="rounded-2xl flex items-center gap-4 p-3 hover:bg-[#e9e9e9] cursor-pointer"
             >
               {item.icon}
-              <span className="text-white font-medium">{item.text}</span>
+              <span className="text-black font-medium">{item.text}</span>
             </div>
           ))}
         </div>
@@ -740,7 +740,7 @@ const HomePage = () => {
             className={`transition-transform duration-300 ${isExpanded ? "rotate-45" : "rotate-0"
               }`}
           >
-            <Icon path="M12 5v14m-7-7h14" className="text-white" />
+            <Icon path="M12 5v14m-7-7h14" className="text-black" />
           </div>
         </div>
       </div>
