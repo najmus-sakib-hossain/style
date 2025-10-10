@@ -75,7 +75,7 @@ export default function LiquidGlassControls({
             <CardContent>
                 <ScrollArea className="bg-background max-h-[500px]">
                     <Tabs
-                        defaultValue="dock"
+                        defaultValue="bubble"
                         className="w-full"
                         onValueChange={handlePresetChange}
                     >

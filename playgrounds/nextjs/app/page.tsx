@@ -169,7 +169,7 @@ const HomePage = () => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const dockPlaceholderRef = useRef<HTMLDivElement>(null);
 
-  const [config, setConfig] = useState(presets.dock);
+  const [config, setConfig] = useState(presets.bubble);
   const [isActive] = useState(false);
   const [globalMousePos, setGlobalMousePos] = useState({ x: 0, y: 0 });
   const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 });
@@ -573,13 +573,13 @@ const HomePage = () => {
 
   return (
     <>
-      {/* <LiquidGlassControls
+      <LiquidGlassControls
         config={config}
         handleConfigChange={handleConfigChange}
         handlePresetChange={handlePresetChange}
         toggleChromaticAberration={toggleChromaticAberration}
         isChromaticEnabled={isChromaticEnabled}
-      /> */}
+      />
 
       <div ref={wrapperRef}>
         <button
