@@ -153,7 +153,7 @@ const Gooey = () => {
 
   return (
     <>
-      <div className="fixed bottom-0  left-80 w-96 h-96 flex items-center justify-center">
+      <div className="fixed bottom-0 left-80 w-96 h-96 flex items-center justify-center">
         <Goo id="gooey-menu-filter" className="w-full h-full absolute flex items-center justify-center border">
           <div
             className="top-[-25px] left-1/2 absolute w-64 h-76 rounded-2xl bg-white"
