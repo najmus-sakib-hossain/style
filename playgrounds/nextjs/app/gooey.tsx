@@ -1,8 +1,6 @@
 "use client";
+import React, { useRef, useState } from "react";
 
-import React, { useState } from "react";
-
-// Gooey filter
 const Goo = ({
   children,
   className,
@@ -54,7 +52,6 @@ const Goo = ({
   );
 };
 
-// Icons
 const Icon = ({ path, className }: { path: string; className?: string }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -75,35 +72,35 @@ const Icon = ({ path, className }: { path: string; className?: string }) => (
 const EditIcon = () => (
   <Icon
     path="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
-    className="text-white"
+    className="text-black"
   />
 );
 const CopyIcon = () => (
   <Icon
     path="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"
-    className="text-white"
+    className="text-black"
   />
 );
 const ShareIcon = () => (
   <Icon
     path="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8 M16 6l-4-4-4 4 M12 2v13"
-    className="text-white"
+    className="text-black"
   />
 );
 const DeleteIcon = () => (
   <Icon
     path="M3 6h18 M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
-    className="text-white"
+    className="text-black"
   />
 );
 const SaveIcon = () => (
   <Icon
     path="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z M17 21v-8H7v8 M7 3v5h8"
-    className="text-white"
+    className="text-black"
   />
 );
 
-export default function GooeyPage() {
+const Gooey = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isMoving, setIsMoving] = useState(false); // keep visible during motion
 
@@ -120,12 +117,10 @@ export default function GooeyPage() {
     { icon: <SaveIcon />, text: "Save" },
   ];
 
-  // Asymmetric easing (open: slow start, close: slow end)
   const OPEN_EASE = "cubic-bezier(0.55, 0.085, 0.68, 0.53)";
   const CLOSE_EASE = "cubic-bezier(0.25, 0.46, 0.45, 0.94)";
   const ease = isExpanded ? OPEN_EASE : CLOSE_EASE;
 
-  // Faster movement
   const OPEN_MS = 450;
   const CLOSE_MS = 400;
   const transformMs = isExpanded ? OPEN_MS : CLOSE_MS;
@@ -133,7 +128,6 @@ export default function GooeyPage() {
   const y = isExpanded ? -160 : -100;
   const move = `translateX(-50%) translateY(${y}px)`;
 
-  // Skeleton panel: full, fixed height; stays visible while moving so close is seen
   const skeletonStyle: React.CSSProperties = {
     transform: move,
     opacity: isExpanded || isMoving ? 1 : 0,
@@ -142,7 +136,6 @@ export default function GooeyPage() {
     transition: [`transform ${transformMs}ms ${ease}`, "opacity 150ms ease-out"].join(", "),
   };
 
-  // Text container: always visible during motion; clicks only when expanded
   const contentStyle: React.CSSProperties = {
     transform: move,
     opacity: isExpanded || isMoving ? 1 : 0,
@@ -151,8 +144,7 @@ export default function GooeyPage() {
     willChange: "transform, opacity",
     transition: `transform ${transformMs}ms ${ease}, opacity 150ms ease`,
   };
-
-  // When movement finishes, allow panel to hide if we're closing
+  
   const onMoveEnd = (e: React.TransitionEvent<HTMLDivElement>) => {
     if (e.propertyName === "transform") {
       setIsMoving(false);
@@ -160,45 +152,46 @@ export default function GooeyPage() {
   };
 
   return (
-    <div className="fixed bottom-0  left-80 w-96 h-96 flex items-center justify-center">
-      <Goo id="gooey-menu-filter" className="w-full h-full absolute flex items-center justify-center">
-        {/* Gooey skeleton panel */}
-        <div
-          className="top-[-25px] left-1/2 absolute w-64 h-76 bg-card rounded-2xl"
-          style={skeletonStyle}
-          onTransitionEnd={onMoveEnd}
-        />
-        <div className="absolute w-24 h-24 rounded-full bg-rose-500" />
-      </Goo>
-
-      {/* Text container */}
-      <div
-        className="top-[-25px] left-1/2 absolute w-64 h-80 rounded-2xl p-4 flex flex-col gap-2"
-        style={contentStyle}
-      >
-        {menuItems.map((item, index) => (
+    <>
+      <div className="fixed bottom-0  left-80 w-96 h-96 flex items-center justify-center">
+        <Goo id="gooey-menu-filter" className="w-full h-full absolute flex items-center justify-center border">
           <div
-            key={index}
-            className="rounded-2xl flex items-center gap-4 p-3 hover:bg-secondary cursor-pointer"
-          >
-            {item.icon}
-            <span className="text-white font-medium">{item.text}</span>
-          </div>
-        ))}
-      </div>
+            className="top-[-25px] left-1/2 absolute w-64 h-76 rounded-2xl bg-white"
+            style={skeletonStyle}
+            onTransitionEnd={onMoveEnd}
+          />
+          <div className="absolute w-24 h-24 rounded-full bg-white" />
+        </Goo>
 
-      {/* Toggle button */}
-      <div
-        onClick={handleClick}
-        className="absolute w-24 h-24 rounded-full cursor-pointer transition-transform duration-200 hover:scale-110 active:scale-95 z-10 flex items-center justify-center"
-      >
         <div
-          className={`transition-transform duration-300 ${isExpanded ? "rotate-45" : "rotate-0"
-            }`}
+          className="top-[-25px] left-1/2 absolute w-64 h-80 rounded-2xl p-4 flex flex-col gap-2"
+          style={contentStyle}
         >
-          <Icon path="M12 5v14m-7-7h14" className="text-black" />
+          {menuItems.map((item, index) => (
+            <div
+              key={index}
+              className="rounded-2xl flex items-center gap-4 p-3 hover:bg-[#e9e9e9] cursor-pointer"
+            >
+              {item.icon}
+              <span className="text-black font-medium">{item.text}</span>
+            </div>
+          ))}
+        </div>
+
+        <div
+          onClick={handleClick}
+          className="absolute w-24 h-24 rounded-full cursor-pointer transition-transform duration-200 hover:scale-110 active:scale-95 z-10 flex items-center justify-center"
+        >
+          <div
+            className={`transition-transform duration-300 ${isExpanded ? "rotate-45" : "rotate-0"
+              }`}
+          >
+            <Icon path="M12 5v14m-7-7h14" className="text-black" />
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
-}
+};
+
+export default Gooey;

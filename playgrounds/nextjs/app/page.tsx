@@ -5,7 +5,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import LiquidGlassControls from "./liquid-glass-controls";
 import { base, presets, type Config } from "./liquid-glass-configs";
 import { GlassFilter, updateDisplacementFilter } from "./liquid-glass-filter";
-import GooeyPage from "./gooey";
 
 // Gooey filter
 const Goo = ({
