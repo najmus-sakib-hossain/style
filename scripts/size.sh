@@ -4,7 +4,7 @@
 # Item Name | Size | File Count (folders) or Line Count (files)
 # Folders are sorted by file count (most files first)
 # Files are sorted by size (biggest first)
-# Ignores .git, node_modules, and target folders in all subdirectories
+# Ignores .git, .next, node_modules, and target folders in all subdirectories
 
 echo "🔎 Summary for: $(pwd)"
 echo "===================================================================================="
@@ -31,9 +31,9 @@ format_size() {
 # Create temporary file for folder data
 temp_folders=$(mktemp)
 for item in * .[!.]*; do
-    if [ -e "$item" ] && [ -d "$item" ] && [[ "$item" != ".git" ]] && [[ "$item" != "node_modules" ]] && [[ "$item" != "target" ]]; then
-        size_bytes=$(du -sb --exclude='.git' --exclude='node_modules' --exclude='target' "$item" 2>/dev/null | awk '{print $1}')
-        file_count=$(find "$item" -maxdepth 1 -type f -not -path "*/.git/*" -not -path "*/node_modules/*" -not -path "*/target/*" 2>/dev/null | wc -l)
+    if [ -e "$item" ] && [ -d "$item" ] && [[ "$item" != ".git" ]] && [[ "$item" != ".next" ]] && [[ "$item" != "node_modules" ]] && [[ "$item" != "target" ]]; then
+        size_bytes=$(du -sb --exclude='.git' --exclude='.next' --exclude='node_modules' --exclude='target' "$item" 2>/dev/null | awk '{print $1}')
+        file_count=$(find "$item" -maxdepth 1 -type f -not -path "*/.git/*" -not -path "*/.next/*" -not -path "*/node_modules/*" -not -path "*/target/*" 2>/dev/null | wc -l)
         # Store: file_count|size_bytes|item_name
         echo "${file_count}|${size_bytes}|${item}" >> "$temp_folders"
     fi
@@ -86,9 +86,9 @@ echo "==========================================================================
 # --- Overall Summary ---
 echo "### Summary Totals"
 
-# Get total counts for the current directory ONLY, excluding .git, node_modules, and target
+# Get total counts for the current directory ONLY, excluding .git, .next, node_modules, and target
 FILE_COUNT=$(find . -maxdepth 1 -type f -not -path "*/.next/*" -not -path "*/.git/*" -not -path "*/node_modules/*" -not -path "*/target/*" 2>/dev/null | wc -l)
-FOLDER_COUNT=$(find . -maxdepth 1 -mindepth 1 -type d -not -name ".git" -not -name "node_modules" -not -name "target" 2>/dev/null | wc -l)
+FOLDER_COUNT=$(find . -maxdepth 1 -mindepth 1 -type d -not -name ".git" -not -name ".next" -not -name "node_modules" -not -name "target" 2>/dev/null | wc -l)
 
 # Get total lines from all text files in current directory
 TOTAL_LINES=0
@@ -99,7 +99,7 @@ for file in $(find . -maxdepth 1 -type f -not -path "*/.next/*" -not -path "*/.g
     fi
 done
 
-# Get total size, excluding .git, node_modules, and target
+# Get total size, excluding .git, .next, node_modules, and target
 SIZE_BYTES=$(du -sb  --exclude='.git' --exclude='.next/*' --exclude='node_modules' --exclude='target' . 2>/dev/null | awk '{print $1}')
 SIZE_FORMATTED=$(format_size "$SIZE_BYTES")
 
