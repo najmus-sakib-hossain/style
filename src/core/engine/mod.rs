@@ -12,8 +12,8 @@ pub use states::apply_wrappers_and_states;
 #[allow(dead_code)]
 pub fn init() {}
 
+use ahash::AHashMap;
 use memmap2::{Mmap, MmapOptions};
-use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
 use std::sync::Arc;
@@ -41,14 +41,14 @@ pub struct GeneratorMeta {
 }
 
 pub struct StyleEngine {
-    pub(crate) precompiled: HashMap<String, String>,
+    pub(crate) precompiled: AHashMap<String, String>,
     pub(crate) _mmap: Arc<Mmap>,
-    pub screens: HashMap<String, String>,
-    pub states: HashMap<String, String>,
-    pub container_queries: HashMap<String, String>,
-    pub colors: HashMap<String, String>,
+    pub screens: AHashMap<String, String>,
+    pub states: AHashMap<String, String>,
+    pub container_queries: AHashMap<String, String>,
+    pub colors: AHashMap<String, String>,
     pub generators: Option<Vec<GeneratorMeta>>,
-    pub generator_map: Option<HashMap<String, usize>>,
+    pub generator_map: Option<AHashMap<String, usize>>,
     #[allow(dead_code)]
     pub properties: Vec<PropertyMeta>,
     pub property_css: String,
@@ -78,7 +78,7 @@ impl StyleEngine {
         let mmap = unsafe { Mmap::map(&file)? };
         let config = flatbuffers::root::<style_schema::Config>(&mmap)
             .map_err(|e| format!("Failed to parse style.bin: {}", e))?;
-        let mut precompiled = HashMap::new();
+        let mut precompiled = AHashMap::new();
         if let Some(styles) = config.styles() {
             for style in styles {
                 let name = style.name();
@@ -117,22 +117,22 @@ impl StyleEngine {
                 }
             }
         }
-        let screens = config.screens().map_or_else(HashMap::new, |s| {
+        let screens = config.screens().map_or_else(AHashMap::new, |s| {
             s.iter()
                 .map(|scr| (scr.name().to_string(), scr.value().to_string()))
                 .collect()
         });
-        let states = config.states().map_or_else(HashMap::new, |s| {
+        let states = config.states().map_or_else(AHashMap::new, |s| {
             s.iter()
                 .map(|st| (st.name().to_string(), st.value().to_string()))
                 .collect()
         });
-        let container_queries = config.container_queries().map_or_else(HashMap::new, |c| {
+        let container_queries = config.container_queries().map_or_else(AHashMap::new, |c| {
             c.iter()
                 .map(|cq| (cq.name().to_string(), cq.value().to_string()))
                 .collect()
         });
-        let colors = config.colors().map_or_else(HashMap::new, |c| {
+        let colors = config.colors().map_or_else(AHashMap::new, |c| {
             c.iter()
                 .map(|col| (col.name().to_string(), col.value().to_string()))
                 .collect()
@@ -149,7 +149,7 @@ impl StyleEngine {
                 .collect()
         });
         let generator_map = generators.as_ref().map(|vec| {
-            let mut m = HashMap::new();
+            let mut m = AHashMap::new();
             for (i, g) in vec.iter().enumerate() {
                 m.insert(g.prefix.clone(), i);
             }
@@ -226,7 +226,7 @@ impl StyleEngine {
             anon.make_read_only().expect("failed to freeze anon map")
         }
         StyleEngine {
-            precompiled: HashMap::new(),
+            precompiled: AHashMap::new(),
             _mmap: Arc::new(mmap.unwrap_or_else(|| {
                 let file = File::options()
                     .read(true)
@@ -240,10 +240,10 @@ impl StyleEngine {
                     anon_read_only_mmap()
                 }
             })),
-            screens: HashMap::new(),
-            states: HashMap::new(),
-            container_queries: HashMap::new(),
-            colors: HashMap::new(),
+            screens: AHashMap::new(),
+            states: AHashMap::new(),
+            container_queries: AHashMap::new(),
+            colors: AHashMap::new(),
             generators: None,
             generator_map: None,
             properties: Vec::new(),

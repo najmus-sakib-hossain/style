@@ -29,8 +29,8 @@ pub fn generate_container_group(
     if inner_utils.is_empty() {
         return None;
     }
-    use std::collections::HashMap;
-    let mut decls: HashMap<String, (usize, String)> = HashMap::new();
+    use ahash::AHashMap;
+    let mut decls: AHashMap<String, (usize, String)> = AHashMap::new();
     let mut order: usize = 0;
     for util in &inner_utils {
         if let Some(raw_css) = engine.compute_css(util) {

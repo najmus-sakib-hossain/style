@@ -1,6 +1,6 @@
 use crate::platform;
 use std::borrow::Cow;
-use std::collections::HashMap;
+use ahash::AHashMap;
 use std::error::Error;
 use std::fmt;
 use std::fs;
@@ -66,7 +66,7 @@ impl From<ParseIntError> for FontError {
 
 pub struct DXCliFont {
     pub header: parser::HeaderLine,
-    pub fonts: HashMap<u32, parser::DXCliFontCharacter>,
+    pub fonts: AHashMap<u32, parser::DXCliFontCharacter>,
 }
 
 pub struct Figure<'a> {
@@ -207,7 +207,7 @@ impl<'a> fmt::Display for Figure<'a> {
 
 mod parser {
     use super::{DXCliFont, FontError};
-    use std::collections::HashMap;
+    use ahash::AHashMap;
     use std::ops::Range;
 
     #[derive(Clone, Copy)]
@@ -265,8 +265,8 @@ mod parser {
     fn read_fonts(
         lines: &[&str],
         header: HeaderLine,
-    ) -> Result<HashMap<u32, DXCliFontCharacter>, FontError> {
-        let mut map = HashMap::new();
+    ) -> Result<AHashMap<u32, DXCliFontCharacter>, FontError> {
+        let mut map = AHashMap::new();
         let (standard_range, codetag_range) = split_font_sections(lines, header)?;
 
         read_standard_fonts(&lines[standard_range], header, &mut map)?;
@@ -303,7 +303,7 @@ mod parser {
     fn read_standard_fonts(
         lines: &[&str],
         header: HeaderLine,
-        map: &mut HashMap<u32, DXCliFontCharacter>,
+        map: &mut AHashMap<u32, DXCliFontCharacter>,
     ) -> Result<(), FontError> {
         let height = header.height as usize;
         let (ascii_lines, german_lines) = lines.split_at(95 * height);
@@ -326,7 +326,7 @@ mod parser {
     fn read_codetag_fonts(
         lines: &[&str],
         header: HeaderLine,
-        map: &mut HashMap<u32, DXCliFontCharacter>,
+        map: &mut AHashMap<u32, DXCliFontCharacter>,
     ) -> Result<(), FontError> {
         let codetag_block_height = header.height as usize + 1;
         if !lines.is_empty() && lines.len() % codetag_block_height != 0 {

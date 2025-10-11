@@ -56,8 +56,8 @@ pub fn resolve_animation_tokens(engine: &StyleEngine, tokens: &[String]) -> Stri
             }
         }
     }
-    use std::collections::HashMap;
-    let mut last_for: HashMap<&str, usize> = HashMap::new();
+    use ahash::AHashMap;
+    let mut last_for: AHashMap<&str, usize> = AHashMap::new();
     for (i, d) in decls.iter().enumerate() {
         if let Some(idx) = d.find(':') {
             last_for.insert(d[..idx].trim(), i);

@@ -1,4 +1,5 @@
 use cssparser::serialize_identifier;
+use rayon::prelude::*;
 
 use crate::core::{
     AppState, group::GroupRegistry, properties_layer_present, set_properties_layer_present,
@@ -9,7 +10,6 @@ pub fn generate_css_into<'a, I>(buf: &mut Vec<u8>, classes: I, groups: &mut Grou
 where
     I: IntoIterator<Item = &'a String>,
 {
-    let mut escaped = String::with_capacity(64);
     let engine_opt = std::panic::catch_unwind(|| AppState::engine()).ok();
     if let Some(engine) = engine_opt {
         let collected: Vec<&String> = classes.into_iter().collect();
@@ -28,31 +28,87 @@ where
                 buf.extend_from_slice(dark_vars.as_bytes());
             }
         }
-        for class in collected {
-            if groups.is_internal_token(class) {
-                continue;
-            }
-            if let Some(alias_css) = groups.generate_css_for(class, engine) {
-                buf.extend_from_slice(alias_css.as_bytes());
-                if !alias_css.ends_with('\n') {
-                    buf.push(b'\n');
+        
+        // Parallelize CSS generation when we have enough classes to make it worthwhile
+        // Note: We can only parallelize the engine.css_for_class() lookups, not group operations
+        if collected.len() > 100 {
+            // First, handle group tokens sequentially (these require mutable access)
+            let mut non_group_classes = Vec::with_capacity(collected.len());
+            
+            for class in &collected {
+                if groups.is_internal_token(class) {
+                    continue;
                 }
-                continue;
-            }
-            if let Some(css) = engine.css_for_class(class) {
-                buf.extend_from_slice(css.as_bytes());
-                if !css.ends_with('\n') {
-                    buf.push(b'\n');
+                if let Some(alias_css) = groups.generate_css_for(class, engine) {
+                    buf.extend_from_slice(alias_css.as_bytes());
+                    if !alias_css.ends_with('\n') {
+                        buf.push(b'\n');
+                    }
+                } else {
+                    // Not a group token, add to parallel processing queue
+                    non_group_classes.push(*class);
                 }
-            } else {
-                buf.push(b'.');
-                escaped.clear();
-                serialize_identifier(class, &mut escaped).unwrap();
-                buf.extend_from_slice(escaped.as_bytes());
-                buf.extend_from_slice(b" {}\n");
+            }
+            
+            // Now parallelize the engine lookups for non-group classes
+            if !non_group_classes.is_empty() {
+                let css_chunks: Vec<Vec<u8>> = non_group_classes
+                    .par_iter()
+                    .map(|class| {
+                        let mut chunk = Vec::with_capacity(128);
+                        let mut escaped = String::with_capacity(64);
+                        
+                        if let Some(css) = engine.css_for_class(class) {
+                            chunk.extend_from_slice(css.as_bytes());
+                            if !css.ends_with('\n') {
+                                chunk.push(b'\n');
+                            }
+                        } else {
+                            chunk.push(b'.');
+                            serialize_identifier(class, &mut escaped).unwrap();
+                            chunk.extend_from_slice(escaped.as_bytes());
+                            chunk.extend_from_slice(b" {}\n");
+                        }
+                        
+                        chunk
+                    })
+                    .collect();
+                
+                // Combine results sequentially
+                for chunk in css_chunks {
+                    buf.extend_from_slice(&chunk);
+                }
+            }
+        } else {
+            // For small numbers of classes, use sequential processing
+            let mut escaped = String::with_capacity(64);
+            for class in collected {
+                if groups.is_internal_token(class) {
+                    continue;
+                }
+                if let Some(alias_css) = groups.generate_css_for(class, engine) {
+                    buf.extend_from_slice(alias_css.as_bytes());
+                    if !alias_css.ends_with('\n') {
+                        buf.push(b'\n');
+                    }
+                    continue;
+                }
+                if let Some(css) = engine.css_for_class(class) {
+                    buf.extend_from_slice(css.as_bytes());
+                    if !css.ends_with('\n') {
+                        buf.push(b'\n');
+                    }
+                } else {
+                    buf.push(b'.');
+                    escaped.clear();
+                    serialize_identifier(class, &mut escaped).unwrap();
+                    buf.extend_from_slice(escaped.as_bytes());
+                    buf.extend_from_slice(b" {}\n");
+                }
             }
         }
     } else {
+        let mut escaped = String::with_capacity(64);
         for class in classes {
             if groups.is_internal_token(class) {
                 continue;
@@ -71,37 +127,96 @@ where
     I: IntoIterator<Item = &'a String>,
 {
     use cssparser::serialize_identifier;
-    let mut escaped = String::with_capacity(64);
     let engine_opt = std::panic::catch_unwind(|| AppState::engine()).ok();
     if let Some(engine) = engine_opt {
-        for class in classes {
-            if groups.is_internal_token(class) {
-                continue;
-            }
-            if groups.is_util_member(class) {
-                continue;
-            }
-            if let Some(alias_css) = groups.generate_css_for(class, engine) {
-                buf.extend_from_slice(alias_css.as_bytes());
-                if !alias_css.ends_with('\n') {
-                    buf.push(b'\n');
+        let collected: Vec<&String> = classes.into_iter().collect();
+        
+        // Parallelize CSS generation when we have enough classes to make it worthwhile
+        // Note: We can only parallelize the engine.css_for_class() lookups, not group operations
+        if collected.len() > 100 {
+            // First, handle group tokens sequentially (these require mutable access)
+            let mut non_group_classes = Vec::with_capacity(collected.len());
+            
+            for class in &collected {
+                if groups.is_internal_token(class) {
+                    continue;
                 }
-                continue;
-            }
-            if let Some(css) = engine.css_for_class(class) {
-                buf.extend_from_slice(css.as_bytes());
-                if !css.ends_with('\n') {
-                    buf.push(b'\n');
+                if groups.is_util_member(class) {
+                    continue;
                 }
-            } else {
-                buf.push(b'.');
-                escaped.clear();
-                serialize_identifier(class, &mut escaped).unwrap();
-                buf.extend_from_slice(escaped.as_bytes());
-                buf.extend_from_slice(b" {}\n");
+                if let Some(alias_css) = groups.generate_css_for(class, engine) {
+                    buf.extend_from_slice(alias_css.as_bytes());
+                    if !alias_css.ends_with('\n') {
+                        buf.push(b'\n');
+                    }
+                } else {
+                    // Not a group token, add to parallel processing queue
+                    non_group_classes.push(*class);
+                }
+            }
+            
+            // Now parallelize the engine lookups for non-group classes
+            if !non_group_classes.is_empty() {
+                let css_chunks: Vec<Vec<u8>> = non_group_classes
+                    .par_iter()
+                    .map(|class| {
+                        let mut chunk = Vec::with_capacity(128);
+                        let mut escaped = String::with_capacity(64);
+                        
+                        if let Some(css) = engine.css_for_class(class) {
+                            chunk.extend_from_slice(css.as_bytes());
+                            if !css.ends_with('\n') {
+                                chunk.push(b'\n');
+                            }
+                        } else {
+                            chunk.push(b'.');
+                            serialize_identifier(class, &mut escaped).unwrap();
+                            chunk.extend_from_slice(escaped.as_bytes());
+                            chunk.extend_from_slice(b" {}\n");
+                        }
+                        
+                        chunk
+                    })
+                    .collect();
+                
+                // Combine results sequentially
+                for chunk in css_chunks {
+                    buf.extend_from_slice(&chunk);
+                }
+            }
+        } else {
+            // For small numbers of classes, use sequential processing
+            let mut escaped = String::with_capacity(64);
+            for class in collected {
+                if groups.is_internal_token(class) {
+                    continue;
+                }
+                if groups.is_util_member(class) {
+                    continue;
+                }
+                if let Some(alias_css) = groups.generate_css_for(class, engine) {
+                    buf.extend_from_slice(alias_css.as_bytes());
+                    if !alias_css.ends_with('\n') {
+                        buf.push(b'\n');
+                    }
+                    continue;
+                }
+                if let Some(css) = engine.css_for_class(class) {
+                    buf.extend_from_slice(css.as_bytes());
+                    if !css.ends_with('\n') {
+                        buf.push(b'\n');
+                    }
+                } else {
+                    buf.push(b'.');
+                    escaped.clear();
+                    serialize_identifier(class, &mut escaped).unwrap();
+                    buf.extend_from_slice(escaped.as_bytes());
+                    buf.extend_from_slice(b" {}\n");
+                }
             }
         }
     } else {
+        let mut escaped = String::with_capacity(64);
         for class in classes {
             if groups.is_internal_token(class) {
                 continue;

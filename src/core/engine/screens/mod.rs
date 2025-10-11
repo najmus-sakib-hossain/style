@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+use ahash::AHashMap;
 
 pub fn build_block(selector: &str, declarations: &str) -> String {
     let decl_raw = declarations.trim().trim_end_matches(';').trim();
-    let mut seen: HashMap<&str, usize> = HashMap::new();
+    let mut seen: AHashMap<&str, usize> = AHashMap::new();
     let parts: Vec<&str> = if decl_raw.is_empty() {
         Vec::new()
     } else if decl_raw.contains(';') {
