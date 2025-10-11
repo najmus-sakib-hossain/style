@@ -399,19 +399,269 @@ Always profile to find actual bottlenecks before optimizing. Use tools like `per
 
 ## Future Optimization Opportunities
 
-### 1. SIMD (Single Instruction Multiple Data)
+### 1. Parallel File Parsing with Rayon
 
-Use SIMD instructions for byte-level operations in the HTML parser:
+**Status:** Architecture supports but not yet implemented (currently single-file focused)
+
+**What it is:** Use rayon to parallelize parsing of multiple HTML files simultaneously across CPU cores.
+
+**Why it matters:** For projects with many HTML files, parsing is an "embarrassingly parallel" problem - each file can be processed independently.
+
+**Current Architecture:** dx-style currently focuses on a single `index_file`. To support multi-file parsing:
+
+**Implementation Strategy:**
 
 ```rust
-// Potential SIMD optimization for class extraction
+use rayon::prelude::*;
+use std::path::PathBuf;
+
+// Example: If scanning multiple HTML files
+fn parse_multiple_files(file_paths: &[PathBuf]) -> AHashSet<String> {
+    file_paths
+        .par_iter()  // Parallel iterator
+        .flat_map(|path| {
+            // Each file parsed on a separate thread
+            let html_bytes = std::fs::read(path).unwrap_or_default();
+            let extracted = extract_classes_fast(&html_bytes, 128);
+            extracted.classes
+        })
+        .collect()  // Combine all classes from all files
+}
+```
+
+**Performance Impact:** Near-linear speedup with number of CPU cores for multi-file projects.
+
+**When to Use:**
+
+- Projects with 10+ HTML files
+- Initial cold builds
+- CI/CD pipelines processing entire projects
+
+**Current Status:** Single-file parsing is already very fast (<20μs per class). Parallel file parsing would primarily benefit projects that expand beyond the single index file model.
+
+### 2. FxHashMap vs AHash Performance Comparison
+
+**Current:** dx-style uses `ahash::AHashMap` throughout
+
+**Alternative:** `rustc_hash::FxHashMap` (already added as dependency)
+
+**Performance Characteristics:**
+
+| Hash Algorithm | Speed | Quality | Best For |
+|---------------|-------|---------|----------|
+| **AHash** (current) | Very Fast | High | General purpose, default choice |
+| **FxHash** | Slightly Faster | Medium | Small keys (u32, u64), compiler-like workloads |
+| SipHash (std) | Slow | Cryptographic | Untrusted input, DOS resistance |
+
+**When to Consider FxHash:**
+
+- Keys are primarily integers or short strings
+- Profiling shows hash operations as bottleneck
+- You're willing to trade some collision resistance for speed
+
+**How to Switch:**
+
+```rust
+// In specific hot-path modules
+use rustc_hash::FxHashMap;
+
+// Replace:
+let mut cache: AHashMap<String, String> = AHashMap::new();
+
+// With:
+let mut cache: FxHashMap<String, String> = FxHashMap::default();
+```
+
+**Recommendation:** Stick with AHash unless profiling shows hash operations consuming >10% of CPU time. AHash provides better overall performance for string keys and better hash distribution.
+
+### 3. String Allocation Optimization
+
+**Status:** ✅ Already implemented in generator
+
+**What it is:** Using `write!`/`writeln!` with pre-allocated `String` buffers instead of repeated concatenation.
+
+**Why it matters:** String concatenation with `+` or `format!` creates intermediate allocations. Using a single buffer is much faster.
+
+**Current Implementation in `src/generator/mod.rs`:**
+
+```rust
+// ✅ GOOD: Already using this pattern
+let mut buf = Vec::with_capacity(128);  // Pre-allocated
+buf.extend_from_slice(css.as_bytes());   // Direct write, no allocation
+```
+
+**Anti-Pattern to Avoid:**
+
+```rust
+// ❌ BAD: Creates many intermediate strings
+let mut css = String::new();
+for class in classes {
+    css += &format!(".{} {{ }}\n", class);  // New allocation each time!
+}
+```
+
+**Best Practice:**
+
+```rust
+// ✅ GOOD: Single buffer, direct writes
+use std::fmt::Write;
+
+let mut css = String::with_capacity(classes.len() * 40);
+for class in classes {
+    writeln!(&mut css, ".{} {{ }}", class).unwrap();  // No allocation
+}
+```
+
+**Performance Impact:** 2-5x faster CSS generation, especially for large class lists.
+
+**Verification:** Run `cargo clippy -- -W clippy::string_add` to find string concatenation issues.
+
+### 4. Pre-compute Utility Cache at Startup
+
+**Status:** Potential future optimization
+
+**What it is:** Generate all possible utility class variations at startup and cache in memory for instant lookup.
+
+**Why it matters:** Eliminates on-the-fly CSS generation logic. Trades memory for speed.
+
+**Implementation Strategy:**
+
+```rust
+use ahash::AHashMap;
+
+pub struct StyleEngine {
+    // Current: Generate on demand
+    pub(crate) precompiled: AHashMap<String, String>,
+    
+    // New: Pre-computed utilities cache
+    utility_cache: Option<AHashMap<String, String>>,
+}
+
+impl StyleEngine {
+    pub fn new_with_precomputed_cache() -> Self {
+        let mut utility_cache = AHashMap::with_capacity(10_000);
+        
+        // Pre-compute all color utilities
+        for color in &["red", "blue", "green", "yellow"] {
+            for shade in &[100, 200, 300, 400, 500, 600, 700, 800, 900] {
+                let class = format!("bg-{}-{}", color, shade);
+                let css = format!(".{} {{ background-color: var(--{}-{}); }}", 
+                                  class, color, shade);
+                utility_cache.insert(class, css);
+                
+                // Repeat for text-, border-, etc.
+            }
+        }
+        
+        // Pre-compute spacing utilities
+        for unit in 0..=96 {
+            let class = format!("p-{}", unit);
+            let css = format!(".{} {{ padding: {}rem; }}", class, unit as f32 * 0.25);
+            utility_cache.insert(class, css);
+        }
+        
+        // ...continue for all utility types
+        
+        StyleEngine {
+            precompiled: AHashMap::new(),
+            utility_cache: Some(utility_cache),
+        }
+    }
+    
+    pub fn css_for_class(&self, class: &str) -> Option<String> {
+        // 1. Check pre-computed cache (fastest)
+        if let Some(ref cache) = self.utility_cache {
+            if let Some(css) = cache.get(class) {
+                return Some(css.clone());
+            }
+        }
+        
+        // 2. Check precompiled (medium)
+        if let Some(css) = self.precompiled.get(class) {
+            return Some(css.clone());
+        }
+        
+        // 3. Generate on-the-fly (slowest, for arbitrary values)
+        self.generate_dynamic_css(class)
+    }
+}
+```
+
+**Trade-offs:**
+
+**Pros:**
+
+- Near-instant lookups (hash table O(1))
+- No generation logic in hot path
+- Predictable memory usage
+
+**Cons:**
+
+- Increased startup time (100-500ms)
+- Memory overhead (10-50MB for comprehensive cache)
+- May cache utilities that are never used
+
+**When to Use:**
+
+- Production builds
+- Long-running watch processes
+- Projects using mostly standard utilities
+
+**When to Skip:**
+
+- Development mode (faster startup)
+- Projects with many arbitrary values (`p-[17px]`)
+- Memory-constrained environments
+
+**Recommended Approach:** Hybrid caching
+
+```rust
+// Cache only the top 1000 most common utilities
+// Based on actual usage statistics from real projects
+const COMMON_UTILITIES: &[&str] = &[
+    "flex", "items-center", "justify-center",
+    "p-4", "m-4", "text-white", "bg-blue-500",
+    // ...top 1000
+];
+```
+
+### 5. SIMD (Single Instruction Multiple Data)
+
+**Status:** Advanced optimization, not yet implemented
+
+**What it is:** Use CPU SIMD instructions to process multiple bytes in parallel during HTML parsing.
+
+**Why it matters:** Can scan 16-32 bytes at once instead of one at a time.
+
+**Potential Application:**
+
+```rust
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
 
-// Process 16 bytes at once looking for whitespace
+// Find 'class=' pattern in HTML using SIMD
+unsafe fn find_class_attr_simd(html: &[u8]) -> Vec<usize> {
+    let mut positions = Vec::new();
+    let pattern = _mm_set_epi8(
+        b'=' as i8, b's' as i8, b's' as i8, b'a' as i8,
+        b'l' as i8, b'c' as i8, /* ... */
+    );
+    
+    for chunk in html.chunks_exact(16) {
+        let data = _mm_loadu_si128(chunk.as_ptr() as *const __m128i);
+        let cmp = _mm_cmpeq_epi8(data, pattern);
+        // ...process matches
+    }
+    
+    positions
+}
 ```
 
-### 2. Memory Pool Allocation
+**Complexity:** High
+**Performance Gain:** 2-4x for parsing
+**Recommendation:** Only pursue if profiling shows parsing is a bottleneck (>30% CPU time)
+
+### 6. Memory Pool Allocation
 
 Implement a memory pool for frequently allocated small objects:
 
@@ -422,7 +672,7 @@ let arena = Bump::new();
 let classes = arena.alloc_slice_copy(&extracted_classes);
 ```
 
-### 3. Incremental Compilation
+### 7. Incremental Compilation
 
 Cache intermediate results between rebuilds:
 
@@ -431,7 +681,7 @@ Cache intermediate results between rebuilds:
 // Skip regeneration if content hasn't changed
 ```
 
-### 4. Lazy Evaluation
+### 8. Lazy Evaluation
 
 Only generate CSS for classes that are actually used:
 
