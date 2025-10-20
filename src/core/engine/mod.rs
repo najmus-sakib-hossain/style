@@ -12,7 +12,7 @@ pub use states::apply_wrappers_and_states;
 #[allow(dead_code)]
 pub fn init() {}
 
-use ahash::AHashMap;
+use ahash::{AHashMap, AHashSet};
 use memmap2::{Mmap, MmapOptions};
 use std::fs::File;
 use std::path::Path;
@@ -63,6 +63,9 @@ pub struct StyleEngine {
     pub generator_map: Option<AHashMap<String, usize>>,
     #[allow(dead_code)]
     pub properties: Vec<PropertyMeta>,
+    #[allow(dead_code)]
+    pub themes: Vec<ThemeDefinition>,
+    pub theme_lookup: AHashMap<String, usize>,
     pub property_css: String,
     pub base_layer_raw: Option<String>,
     pub property_layer_raw: Option<String>,
@@ -74,6 +77,12 @@ pub struct PropertyMeta {
     pub syntax: String,
     pub inherits: bool,
     pub initial: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct ThemeDefinition {
+    pub name: String,
+    pub tokens: Vec<(String, String)>,
 }
 
 impl StyleEngine {
@@ -178,6 +187,26 @@ impl StyleEngine {
                 })
                 .collect()
         });
+        let themes = config.themes().map_or_else(Vec::new, |tlist| {
+            tlist
+                .iter()
+                .map(|theme| {
+                    let name = theme.name().to_string();
+                    let tokens = theme.tokens().map_or_else(Vec::new, |tok_list| {
+                        tok_list
+                            .iter()
+                            .map(|token| (token.name().to_string(), token.value().to_string()))
+                            .collect()
+                    });
+                    ThemeDefinition { name, tokens }
+                })
+                .collect()
+        });
+        let theme_lookup = themes
+            .iter()
+            .enumerate()
+            .map(|(idx, theme)| (theme.name.clone(), idx))
+            .collect();
         let property_css = {
             if properties.is_empty() {
                 String::new()
@@ -214,6 +243,8 @@ impl StyleEngine {
             generators,
             generator_map,
             properties,
+            themes,
+            theme_lookup,
             property_css,
             base_layer_raw,
             property_layer_raw,
@@ -259,6 +290,8 @@ impl StyleEngine {
             generators: None,
             generator_map: None,
             properties: Vec::new(),
+            themes: Vec::new(),
+            theme_lookup: AHashMap::new(),
             property_css: String::new(),
             base_layer_raw: None,
             property_layer_raw: None,
@@ -267,6 +300,12 @@ impl StyleEngine {
 
     pub fn property_at_rules(&self) -> String {
         self.property_css.clone()
+    }
+
+    pub fn theme_by_name(&self, name: &str) -> Option<&ThemeDefinition> {
+        self.theme_lookup
+            .get(name)
+            .and_then(|idx| self.themes.get(*idx))
     }
 
     pub fn compute_css(&self, class_name: &str) -> Option<String> {
@@ -377,9 +416,6 @@ impl StyleEngine {
             }
         }
 
-        let mut root = String::from(":root {\n");
-        let mut dark = String::from(".dark {\n");
-
         let format_token_value = |raw: &str| -> String {
             let trimmed = raw.trim();
             let normalized = crate::core::color::normalize_color_to_oklch(trimmed)
@@ -401,6 +437,52 @@ impl StyleEngine {
             }
             out
         };
+
+        if let (Some(light_theme), Some(dark_theme)) = (
+            self.theme_by_name("dx.light"),
+            self.theme_by_name("dx.dark"),
+        ) {
+            let mut root = String::from(":root {\n");
+            let mut dark = String::from(".dark {\n");
+            let mut root_tokens: AHashSet<String> = AHashSet::default();
+
+            for (name, value) in &light_theme.tokens {
+                let normalized = format_token_value(value);
+                root_tokens.insert(name.clone());
+                let _ = writeln!(root, "  --{}: {};", name, normalized);
+            }
+            for (name, value) in DX_FONT_TOKENS {
+                if root_tokens.insert(name.to_string()) {
+                    let normalized = format_token_value(value);
+                    let _ = writeln!(root, "  --{}: {};", name, normalized);
+                }
+            }
+            for (name, value) in DX_BASE_TOKENS {
+                if root_tokens.insert(name.to_string()) {
+                    let normalized = format_token_value(value);
+                    let _ = writeln!(root, "  --{}: {};", name, normalized);
+                }
+            }
+
+            for (name, value) in &dark_theme.tokens {
+                let normalized = format_token_value(value);
+                let _ = writeln!(dark, "  --{}: {};", name, normalized);
+            }
+
+            for (name, value) in &token_entries {
+                let normalized = format_token_value(value);
+                let var_name = format!("color-{}", name);
+                let _ = writeln!(root, "  --{}: {};", var_name, normalized);
+                let _ = writeln!(dark, "  --{}: {};", var_name, normalized);
+            }
+
+            root.push_str("}\n");
+            dark.push_str("}\n");
+            return (root, dark);
+        }
+
+        let mut root = String::from(":root {\n");
+        let mut dark = String::from(".dark {\n");
 
         for (name, value) in DX_FONT_TOKENS {
             let normalized = format_token_value(value);

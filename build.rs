@@ -65,6 +65,39 @@ struct PropertiesConfig {
     properties: HashMap<String, PropertyMetaConfig>,
 }
 
+fn read_theme_tokens(path: &Path) -> Vec<(String, Vec<(String, String)>)> {
+    if !path.exists() {
+        return Vec::new();
+    }
+    let content = match fs::read_to_string(path) {
+        Ok(data) => data,
+        Err(_) => return Vec::new(),
+    };
+    let value: toml::Value = match content.parse() {
+        Ok(val) => val,
+        Err(_) => return Vec::new(),
+    };
+    let table = match value.as_table() {
+        Some(table) => table,
+        None => return Vec::new(),
+    };
+    let mut themes = Vec::new();
+    for (name, entry) in table.iter() {
+        if let Some(tokens_table) = entry.as_table() {
+            let mut tokens = Vec::new();
+            for (token_name, token_value) in tokens_table.iter() {
+                if let Some(value_str) = token_value.as_str() {
+                    tokens.push((token_name.to_string(), value_str.to_string()));
+                } else {
+                    tokens.push((token_name.to_string(), token_value.to_string()));
+                }
+            }
+            themes.push((name.to_string(), tokens));
+        }
+    }
+    themes
+}
+
 fn read_toml_file<T: for<'de> Deserialize<'de>>(path: &Path) -> Option<T> {
     if path.exists() {
         let content = fs::read_to_string(path).ok()?;
@@ -138,6 +171,7 @@ fn main() {
     let properties = read_toml_file::<PropertiesConfig>(&style_dir.join("property.toml"))
         .map(|c| c.properties)
         .unwrap_or_default();
+    let themes = read_theme_tokens(&style_dir.join("themes.toml"));
 
     let mut builder = FlatBufferBuilder::new();
 
@@ -277,6 +311,27 @@ fn main() {
     let cq_vec = builder.create_vector(&cq_offsets);
     let colors_vec = builder.create_vector(&color_offsets);
     let anim_gen_vec = builder.create_vector(&anim_gen_offsets);
+    let mut theme_offsets = Vec::new();
+    for (theme_name, tokens) in themes {
+        let name_offset = builder.create_string(&theme_name);
+        let mut token_offsets = Vec::new();
+        for (token_name, token_value) in tokens {
+            let token_name_offset = builder.create_string(&token_name);
+            let token_value_offset = builder.create_string(&token_value);
+            let table_wip = builder.start_table();
+            builder.push_slot(4, token_name_offset, WIPOffset::new(0));
+            builder.push_slot(6, token_value_offset, WIPOffset::new(0));
+            let token_offset = builder.end_table(table_wip);
+            token_offsets.push(token_offset);
+        }
+        let tokens_vec = builder.create_vector(&token_offsets);
+        let table_wip = builder.start_table();
+        builder.push_slot(4, name_offset, WIPOffset::new(0));
+        builder.push_slot(6, tokens_vec, WIPOffset::new(0));
+        let theme_offset = builder.end_table(table_wip);
+        theme_offsets.push(theme_offset);
+    }
+    let themes_vec = builder.create_vector(&theme_offsets);
     let mut property_offsets = Vec::new();
     for (name, meta) in properties {
         let name_offset = builder.create_string(&name);
@@ -307,8 +362,9 @@ fn main() {
     builder.push_slot(16, colors_vec, WIPOffset::new(0));
     builder.push_slot(18, anim_gen_vec, WIPOffset::new(0));
     builder.push_slot(20, properties_vec, WIPOffset::new(0));
-    builder.push_slot(22, base_css_offset, WIPOffset::new(0));
-    builder.push_slot(24, property_css_offset, WIPOffset::new(0));
+    builder.push_slot(22, themes_vec, WIPOffset::new(0));
+    builder.push_slot(24, base_css_offset, WIPOffset::new(0));
+    builder.push_slot(26, property_css_offset, WIPOffset::new(0));
     let config_root = builder.end_table(table_wip);
 
     builder.finish(config_root, None);
