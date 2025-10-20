@@ -18,6 +18,8 @@ use std::fs::File;
 use std::path::Path;
 use std::sync::Arc;
 
+use crate::core::color::{color::Argb, format_argb_as_oklch, theme::ThemeBuilder};
+
 #[allow(dead_code)]
 mod style_generated {
     #![allow(
@@ -40,89 +42,7 @@ const DX_FONT_TOKENS: &[(&str, &str)] = &[
 
 const DX_BASE_TOKENS: &[(&str, &str)] = &[("radius", "0.5rem")];
 
-const DX_LIGHT_TOKENS: &[(&str, &str)] = &[
-    ("background", "oklch(0.99 0 0)"),
-    ("foreground", "oklch(0 0 0)"),
-    ("card", "oklch(1.00 0 0)"),
-    ("card-foreground", "oklch(0 0 0)"),
-    ("popover", "oklch(0.99 0 0)"),
-    ("popover-foreground", "oklch(0 0 0)"),
-    ("primary", "oklch(0 0 0)"),
-    ("primary-foreground", "oklch(1.00 0 0)"),
-    ("secondary", "oklch(0.94 0 0)"),
-    ("secondary-foreground", "oklch(0 0 0)"),
-    ("muted", "oklch(0.97 0 0)"),
-    ("muted-foreground", "oklch(0.44 0 0)"),
-    ("accent", "oklch(0.94 0 0)"),
-    ("accent-foreground", "oklch(0 0 0)"),
-    ("destructive", "oklch(0.63 0.19 23.03)"),
-    ("destructive-foreground", "oklch(1.00 0 0)"),
-    ("border", "oklch(0.92 0 0)"),
-    ("input", "oklch(0.94 0 0)"),
-    ("ring", "oklch(0 0 0)"),
-    ("chart-1", "oklch(0.81 0.17 75.35)"),
-    ("chart-2", "oklch(0.55 0.22 264.53)"),
-    ("chart-3", "oklch(0.72 0 0)"),
-    ("chart-4", "oklch(0.92 0 0)"),
-    ("chart-5", "oklch(0.56 0 0)"),
-    ("sidebar", "oklch(0.99 0 0)"),
-    ("sidebar-foreground", "oklch(0 0 0)"),
-    ("sidebar-primary", "oklch(0 0 0)"),
-    ("sidebar-primary-foreground", "oklch(1.00 0 0)"),
-    ("sidebar-accent", "oklch(0.94 0 0)"),
-    ("sidebar-accent-foreground", "oklch(0 0 0)"),
-    ("sidebar-border", "oklch(0.94 0 0)"),
-    ("sidebar-ring", "oklch(0 0 0)"),
-    ("radius", "0.5rem"),
-    ("shadow-color", "hsl(0 0% 0%)"),
-    ("shadow-opacity", "0.18"),
-    ("shadow-blur", "2px"),
-    ("shadow-spread", "0px"),
-    ("shadow-offset-x", "0px"),
-    ("shadow-offset-y", "1px"),
-];
-
-const DX_DARK_TOKENS: &[(&str, &str)] = &[
-    ("background", "oklch(0.13 0 0)"),
-    ("foreground", "oklch(1.00 0 0)"),
-    ("card", "oklch(0.14 0 0)"),
-    ("card-foreground", "oklch(1.00 0 0)"),
-    ("popover", "oklch(0.18 0 0)"),
-    ("popover-foreground", "oklch(1.00 0 0)"),
-    ("primary", "oklch(1.00 0 0)"),
-    ("primary-foreground", "oklch(0 0 0)"),
-    ("secondary", "oklch(0.25 0 0)"),
-    ("secondary-foreground", "oklch(1.00 0 0)"),
-    ("muted", "oklch(0.23 0 0)"),
-    ("muted-foreground", "oklch(0.72 0 0)"),
-    ("accent", "oklch(0.32 0 0)"),
-    ("accent-foreground", "oklch(1.00 0 0)"),
-    ("destructive", "oklch(0.69 0.20 23.91)"),
-    ("destructive-foreground", "oklch(0 0 0)"),
-    ("border", "oklch(0.26 0 0)"),
-    ("input", "oklch(0.32 0 0)"),
-    ("ring", "oklch(0.72 0 0)"),
-    ("chart-1", "oklch(0.81 0.17 75.35)"),
-    ("chart-2", "oklch(0.58 0.21 260.84)"),
-    ("chart-3", "oklch(0.56 0 0)"),
-    ("chart-4", "oklch(0.44 0 0)"),
-    ("chart-5", "oklch(0.92 0 0)"),
-    ("sidebar", "oklch(0 0 0)"),
-    ("sidebar-foreground", "oklch(1.00 0 0)"),
-    ("sidebar-primary", "oklch(1.00 0 0)"),
-    ("sidebar-primary-foreground", "oklch(0 0 0)"),
-    ("sidebar-accent", "oklch(0.3 0 0)"),
-    ("sidebar-accent-foreground", "oklch(1.00 0 0)"),
-    ("sidebar-border", "oklch(0.32 0 0)"),
-    ("sidebar-ring", "oklch(0.72 0 0)"),
-    ("radius", "0.5rem"),
-    ("shadow-color", "hsl(0 0% 0%)"),
-    ("shadow-opacity", "0.18"),
-    ("shadow-blur", "2px"),
-    ("shadow-spread", "0px"),
-    ("shadow-offset-x", "0px"),
-    ("shadow-offset-y", "1px"),
-];
+const DEFAULT_THEME_SOURCE: u32 = 0xFF6750A4;
 
 #[derive(Clone)]
 pub struct GeneratorMeta {
@@ -460,25 +380,161 @@ impl StyleEngine {
         let mut root = String::from(":root {\n");
         let mut dark = String::from(".dark {\n");
 
-        let _ = writeln!(root, "  color-scheme: light;");
-        let _ = writeln!(dark, "  color-scheme: dark;");
+        let format_token_value = |raw: &str| -> String {
+            let trimmed = raw.trim();
+            let normalized = crate::core::color::normalize_color_to_oklch(trimmed)
+                .unwrap_or_else(|| trimmed.to_string());
+
+            let mut out = String::with_capacity(normalized.len() + 8);
+            let mut prev: Option<char> = None;
+            let mut iter = normalized.chars().peekable();
+            while let Some(ch) = iter.next() {
+                if ch == '.' {
+                    let prev_is_digit = prev.map_or(false, |p| p.is_ascii_digit());
+                    let next_is_digit = iter.peek().map_or(false, |n| n.is_ascii_digit());
+                    if !prev_is_digit && next_is_digit {
+                        out.push('0');
+                    }
+                }
+                out.push(ch);
+                prev = Some(ch);
+            }
+            out
+        };
 
         for (name, value) in DX_FONT_TOKENS {
-            let _ = writeln!(root, "  --{}: {};", name, value);
+            let normalized = format_token_value(value);
+            let _ = writeln!(root, "  --{}: {};", name, normalized);
         }
         for (name, value) in DX_BASE_TOKENS {
-            let _ = writeln!(root, "  --{}: {};", name, value);
+            let normalized = format_token_value(value);
+            let _ = writeln!(root, "  --{}: {};", name, normalized);
         }
-        for (name, value) in DX_LIGHT_TOKENS {
-            let _ = writeln!(root, "  --{}: {};", name, value);
+        let theme = ThemeBuilder::with_source(Argb::from_u32(DEFAULT_THEME_SOURCE)).build();
+        let light = &theme.schemes.light;
+        let dark_scheme = &theme.schemes.dark;
+
+        let write_argb_token = |buffer: &mut String, name: &str, color: Argb| {
+            let color_str = format_argb_as_oklch(color);
+            let normalized = format_token_value(&color_str);
+            let _ = writeln!(buffer, "  --{}: {};", name, normalized);
+        };
+
+        let write_raw_token = |buffer: &mut String, name: &str, value: &str| {
+            let normalized = format_token_value(value);
+            let _ = writeln!(buffer, "  --{}: {};", name, normalized);
+        };
+
+        // Surface & content tokens
+        write_argb_token(&mut root, "background", light.background);
+        write_argb_token(&mut dark, "background", dark_scheme.background);
+        write_argb_token(&mut root, "foreground", light.on_background);
+        write_argb_token(&mut dark, "foreground", dark_scheme.on_background);
+        write_argb_token(&mut root, "card", light.surface);
+        write_argb_token(&mut dark, "card", dark_scheme.surface);
+        write_argb_token(&mut root, "card-foreground", light.on_surface);
+        write_argb_token(&mut dark, "card-foreground", dark_scheme.on_surface);
+        write_argb_token(&mut root, "popover", light.surface_bright);
+        write_argb_token(&mut dark, "popover", dark_scheme.surface_dim);
+        write_argb_token(&mut root, "popover-foreground", light.on_surface);
+        write_argb_token(&mut dark, "popover-foreground", dark_scheme.on_surface);
+
+        // Brand tokens
+        write_argb_token(&mut root, "primary", light.primary);
+        write_argb_token(&mut dark, "primary", dark_scheme.primary);
+        write_argb_token(&mut root, "primary-foreground", light.on_primary);
+        write_argb_token(&mut dark, "primary-foreground", dark_scheme.on_primary);
+        write_argb_token(&mut root, "secondary", light.secondary);
+        write_argb_token(&mut dark, "secondary", dark_scheme.secondary);
+        write_argb_token(&mut root, "secondary-foreground", light.on_secondary);
+        write_argb_token(&mut dark, "secondary-foreground", dark_scheme.on_secondary);
+        write_argb_token(&mut root, "muted", light.surface_variant);
+        write_argb_token(&mut dark, "muted", dark_scheme.surface_variant);
+        write_argb_token(&mut root, "muted-foreground", light.on_surface_variant);
+        write_argb_token(
+            &mut dark,
+            "muted-foreground",
+            dark_scheme.on_surface_variant,
+        );
+        write_argb_token(&mut root, "accent", light.tertiary);
+        write_argb_token(&mut dark, "accent", dark_scheme.tertiary);
+        write_argb_token(&mut root, "accent-foreground", light.on_tertiary);
+        write_argb_token(&mut dark, "accent-foreground", dark_scheme.on_tertiary);
+        write_argb_token(&mut root, "destructive", light.error);
+        write_argb_token(&mut dark, "destructive", dark_scheme.error);
+        write_argb_token(&mut root, "destructive-foreground", light.on_error);
+        write_argb_token(&mut dark, "destructive-foreground", dark_scheme.on_error);
+
+        // Interaction tokens
+        write_argb_token(&mut root, "border", light.outline);
+        write_argb_token(&mut dark, "border", dark_scheme.outline);
+        write_argb_token(&mut root, "input", light.surface_container_high);
+        write_argb_token(&mut dark, "input", dark_scheme.surface_container_high);
+        write_argb_token(&mut root, "ring", light.surface_tint);
+        write_argb_token(&mut dark, "ring", dark_scheme.surface_tint);
+
+        // Chart palette (shared across themes)
+        let chart_1 = theme.palettes.primary.tone(60);
+        let chart_2 = theme.palettes.secondary.tone(60);
+        let chart_3 = theme.palettes.tertiary.tone(60);
+        let chart_4 = theme.palettes.primary.tone(80);
+        let chart_5 = theme.palettes.secondary.tone(80);
+        for (name, color) in [
+            ("chart-1", chart_1),
+            ("chart-2", chart_2),
+            ("chart-3", chart_3),
+            ("chart-4", chart_4),
+            ("chart-5", chart_5),
+        ] {
+            write_argb_token(&mut root, name, color);
+            write_argb_token(&mut dark, name, color);
         }
-        for (name, value) in DX_DARK_TOKENS {
-            let _ = writeln!(dark, "  --{}: {};", name, value);
+
+        // Sidebar tokens
+        write_argb_token(&mut root, "sidebar", light.surface_container_low);
+        write_argb_token(&mut dark, "sidebar", dark_scheme.surface_container_low);
+        write_argb_token(&mut root, "sidebar-foreground", light.on_surface);
+        write_argb_token(&mut dark, "sidebar-foreground", dark_scheme.on_surface);
+        write_argb_token(&mut root, "sidebar-primary", light.primary);
+        write_argb_token(&mut dark, "sidebar-primary", dark_scheme.primary);
+        write_argb_token(&mut root, "sidebar-primary-foreground", light.on_primary);
+        write_argb_token(
+            &mut dark,
+            "sidebar-primary-foreground",
+            dark_scheme.on_primary,
+        );
+        write_argb_token(&mut root, "sidebar-accent", light.secondary_container);
+        write_argb_token(&mut dark, "sidebar-accent", dark_scheme.secondary_container);
+        write_argb_token(
+            &mut root,
+            "sidebar-accent-foreground",
+            light.on_secondary_container,
+        );
+        write_argb_token(
+            &mut dark,
+            "sidebar-accent-foreground",
+            dark_scheme.on_secondary_container,
+        );
+        write_argb_token(&mut root, "sidebar-border", light.outline_variant);
+        write_argb_token(&mut dark, "sidebar-border", dark_scheme.outline_variant);
+        write_argb_token(&mut root, "sidebar-ring", light.surface_tint);
+        write_argb_token(&mut dark, "sidebar-ring", dark_scheme.surface_tint);
+
+        // Shadows
+        write_argb_token(&mut root, "shadow-color", light.shadow);
+        write_argb_token(&mut dark, "shadow-color", dark_scheme.shadow);
+        for target in [&mut root, &mut dark] {
+            write_raw_token(target, "shadow-opacity", "0.18");
+            write_raw_token(target, "shadow-blur", "2px");
+            write_raw_token(target, "shadow-spread", "0px");
+            write_raw_token(target, "shadow-offset-x", "0px");
+            write_raw_token(target, "shadow-offset-y", "1px");
         }
 
         for (name, value) in &token_entries {
-            let _ = writeln!(root, "  --color-{}: {};", name, value);
-            let _ = writeln!(dark, "  --color-{}: {};", name, value);
+            let normalized = format_token_value(value);
+            let _ = writeln!(root, "  --color-{}: {};", name, normalized);
+            let _ = writeln!(dark, "  --color-{}: {};", name, normalized);
         }
 
         root.push_str("}\n");

@@ -272,6 +272,214 @@ fn parse_oklch_value(value: &str) -> Option<Oklch> {
     })
 }
 
+fn split_components(input: &str) -> Vec<&str> {
+    if input.contains(',') {
+        input
+            .split(',')
+            .map(|segment| segment.trim())
+            .filter(|segment| !segment.is_empty())
+            .collect()
+    } else {
+        input
+            .split_whitespace()
+            .filter(|segment| !segment.is_empty())
+            .collect()
+    }
+}
+
+fn clamp01(value: f64) -> f64 {
+    if value <= 0.0 {
+        0.0
+    } else if value >= 1.0 {
+        1.0
+    } else {
+        value
+    }
+}
+
+fn parse_alpha_component(value: &str) -> Option<f64> {
+    let trimmed = value.trim();
+    if trimmed.ends_with('%') {
+        let number = trimmed.trim_end_matches('%').trim().parse::<f64>().ok()?;
+        Some(clamp01(number / 100.0))
+    } else {
+        let number = trimmed.parse::<f64>().ok()?;
+        Some(clamp01(number))
+    }
+}
+
+fn parse_rgb_component(value: &str) -> Option<f64> {
+    let trimmed = value.trim();
+    if trimmed.ends_with('%') {
+        let number = trimmed.trim_end_matches('%').trim().parse::<f64>().ok()?;
+        Some((clamp01(number / 100.0)) * 255.0)
+    } else {
+        let number = trimmed.parse::<f64>().ok()?;
+        Some(number.clamp(0.0, 255.0))
+    }
+}
+
+fn parse_hue(value: &str) -> Option<f64> {
+    let trimmed = value.trim();
+    let (number_str, unit) = if let Some(stripped) = trimmed.strip_suffix("deg") {
+        (stripped, "deg")
+    } else if let Some(stripped) = trimmed.strip_suffix("rad") {
+        (stripped, "rad")
+    } else if let Some(stripped) = trimmed.strip_suffix("turn") {
+        (stripped, "turn")
+    } else {
+        (trimmed, "deg")
+    };
+
+    let raw = number_str.trim().parse::<f64>().ok()?;
+    let degrees = match unit {
+        "deg" => raw,
+        "rad" => raw.to_degrees(),
+        "turn" => raw * 360.0,
+        _ => raw,
+    };
+
+    let mut normalized = degrees % 360.0;
+    if normalized < 0.0 {
+        normalized += 360.0;
+    }
+    Some(normalized)
+}
+
+fn parse_percentage_component(value: &str) -> Option<f64> {
+    let trimmed = value.trim();
+    if trimmed.ends_with('%') {
+        let number = trimmed.trim_end_matches('%').trim().parse::<f64>().ok()?;
+        Some(clamp01(number / 100.0))
+    } else {
+        let number = trimmed.parse::<f64>().ok()?;
+        if number > 1.0 {
+            Some(clamp01(number / 100.0))
+        } else {
+            Some(clamp01(number))
+        }
+    }
+}
+
+fn hue_to_rgb(p: f64, q: f64, mut t: f64) -> f64 {
+    if t < 0.0 {
+        t += 1.0;
+    }
+    if t > 1.0 {
+        t -= 1.0;
+    }
+    if t < 1.0 / 6.0 {
+        p + (q - p) * 6.0 * t
+    } else if t < 1.0 / 2.0 {
+        q
+    } else if t < 2.0 / 3.0 {
+        p + (q - p) * (2.0 / 3.0 - t) * 6.0
+    } else {
+        p
+    }
+}
+
+fn hsl_to_rgb(h: f64, s: f64, l: f64) -> (f64, f64, f64) {
+    if s == 0.0 {
+        (l, l, l)
+    } else {
+        let h_fraction = (h % 360.0) / 360.0;
+        let q = if l < 0.5 {
+            l * (1.0 + s)
+        } else {
+            l + s - l * s
+        };
+        let p = 2.0 * l - q;
+        (
+            hue_to_rgb(p, q, h_fraction + 1.0 / 3.0),
+            hue_to_rgb(p, q, h_fraction),
+            hue_to_rgb(p, q, h_fraction - 1.0 / 3.0),
+        )
+    }
+}
+
+fn parse_hsl_function(value: &str) -> Option<Argb> {
+    let start = value.find('(')?;
+    let end = value.rfind(')')?;
+    if end <= start + 1 {
+        return None;
+    }
+    let args = &value[start + 1..end];
+    let (components_part, alpha_part) = if let Some((left, right)) = args.split_once('/') {
+        (left.trim(), Some(right.trim()))
+    } else {
+        (args.trim(), None)
+    };
+
+    let mut components = split_components(components_part);
+    let inline_alpha = if components.len() == 4 {
+        components.pop()
+    } else {
+        None
+    };
+    if components.len() != 3 {
+        return None;
+    }
+
+    let h = parse_hue(components[0])?;
+    let s = parse_percentage_component(components[1])?;
+    let l = parse_percentage_component(components[2])?;
+    let alpha = if let Some(alpha_raw) = alpha_part {
+        parse_alpha_component(alpha_raw)?
+    } else if let Some(inline) = inline_alpha {
+        parse_alpha_component(inline)?
+    } else {
+        1.0
+    };
+
+    let (r, g, b) = hsl_to_rgb(h, s, l);
+    let red = (r * 255.0).round().clamp(0.0, 255.0) as u8;
+    let green = (g * 255.0).round().clamp(0.0, 255.0) as u8;
+    let blue = (b * 255.0).round().clamp(0.0, 255.0) as u8;
+    let alpha_byte = (alpha * 255.0).round().clamp(0.0, 255.0) as u8;
+    Some(Argb::new(alpha_byte, red, green, blue))
+}
+
+fn parse_rgb_function(value: &str) -> Option<Argb> {
+    let start = value.find('(')?;
+    let end = value.rfind(')')?;
+    if end <= start + 1 {
+        return None;
+    }
+    let args = &value[start + 1..end];
+    let (components_part, alpha_from_slash) = if let Some((left, right)) = args.split_once('/') {
+        (left.trim(), Some(right.trim()))
+    } else {
+        (args.trim(), None)
+    };
+
+    let mut components = split_components(components_part);
+    if components.len() < 3 {
+        return None;
+    }
+
+    let mut alpha = if let Some(alpha_raw) = alpha_from_slash {
+        parse_alpha_component(alpha_raw)?
+    } else if components.len() == 4 {
+        parse_alpha_component(components.pop().unwrap())?
+    } else {
+        1.0
+    };
+
+    let red = parse_rgb_component(components.get(0)?.trim())?;
+    let green = parse_rgb_component(components.get(1)?.trim())?;
+    let blue = parse_rgb_component(components.get(2)?.trim())?;
+
+    alpha = clamp01(alpha);
+
+    Some(Argb::new(
+        (alpha * 255.0).round().clamp(0.0, 255.0) as u8,
+        red.round().clamp(0.0, 255.0) as u8,
+        green.round().clamp(0.0, 255.0) as u8,
+        blue.round().clamp(0.0, 255.0) as u8,
+    ))
+}
+
 pub(crate) fn parse_color_to_argb(value: &str) -> Option<Argb> {
     let trimmed = value.trim();
     if trimmed.is_empty() {
@@ -283,6 +491,16 @@ pub(crate) fn parse_color_to_argb(value: &str) -> Option<Argb> {
     }
     if trimmed.starts_with("oklch(") {
         return parse_oklch_value(trimmed).map(Argb::from);
+    }
+    if lower.starts_with("hsl(") || lower.starts_with("hsla(") {
+        if let Some(color) = parse_hsl_function(trimmed) {
+            return Some(color);
+        }
+    }
+    if lower.starts_with("rgb(") || lower.starts_with("rgba(") {
+        if let Some(color) = parse_rgb_function(trimmed) {
+            return Some(color);
+        }
     }
     trimmed.parse::<Argb>().ok()
 }
