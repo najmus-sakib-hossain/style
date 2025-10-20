@@ -40,6 +40,10 @@ float-cmp = "0.9"
 reqwest = "0.12.5"
 tokio = { version = "1.39.2", features = ["rt", "macros"] }
 
+[[bench]]
+name = "style_benchmark"
+harness = false
+
 [build-dependencies]
 flatc-rust = "0.2.0"
 toml = "0.9.5"

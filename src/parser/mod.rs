@@ -4,6 +4,8 @@ use smallvec::SmallVec;
 use std::hash::Hasher;
 use std::ops::Range;
 
+pub mod optimized;
+
 #[derive(Debug, Clone)]
 pub struct GroupEvent {
     pub stack: Vec<String>,
