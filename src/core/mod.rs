@@ -225,11 +225,11 @@ pub fn rebuild_styles(
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Check if we should suppress logging for this run (set by previous HTML grouping rewrite)
     let suppress_this_run = SUPPRESS_NEXT_LOG.swap(false, Ordering::Relaxed);
-    
+
     let mut html_bytes = datasource::read_file(index_path)?;
     let mut dev_group_selectors: AHashMap<String, String> = AHashMap::default();
     let mut html_was_rewritten = false;
-    
+
     // HTML grouping rewrite happens here, but we DON'T include its time in performance metrics
     // because it's an HTML I/O operation, not a CSS generation operation
     if let Some(plan) = rewrite_duplicate_classes(&html_bytes) {
@@ -1532,7 +1532,7 @@ pub fn rebuild_styles(
     // 2. This run was triggered by a previous HTML grouping rewrite (suppress_this_run)
     let silent_format = std::env::var("DX_SILENT_FORMAT").ok().as_deref() == Some("1");
     let suppress_log = html_was_rewritten || suppress_this_run;
-    
+
     if !suppress_log && !silent_format && !FIRST_LOG_DONE.load(Ordering::Relaxed) {
         let mut write_detail = format!(
             "mode={} classes={} bytes={} {}={:?}",

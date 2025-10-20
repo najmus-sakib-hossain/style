@@ -1,6 +1,6 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use style::parser::{extract_classes_fast, rewrite_duplicate_classes};
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 use std::hint::black_box as hint_black_box;
+use style::parser::{extract_classes_fast, rewrite_duplicate_classes};
 
 // Benchmark HTML samples of varying sizes
 const SMALL_HTML: &str = r#"<div class="flex items-center bg-red-500 text-white p-4"></div>"#;
@@ -24,7 +24,7 @@ const LARGE_HTML: &str = include_str!("../playgrounds/index.html");
 fn generate_complex_html(num_elements: usize) -> String {
     let mut html = String::with_capacity(num_elements * 200);
     html.push_str("<html><body>");
-    
+
     for i in 0..num_elements {
         html.push_str(&format!(
             r#"<div class="flex items-center justify-between bg-gradient-to-r from-blue-{} to-purple-{} p-{} rounded-lg shadow-{} hover:shadow-{} transition-all duration-{} ease-in-out">
@@ -49,7 +49,7 @@ fn generate_complex_html(num_elements: usize) -> String {
             i % 10 * 100,
         ));
     }
-    
+
     html.push_str("</body></html>");
     html
 }
@@ -57,7 +57,7 @@ fn generate_complex_html(num_elements: usize) -> String {
 fn generate_grouping_html(num_groups: usize) -> String {
     let mut html = String::with_capacity(num_groups * 300);
     html.push_str("<html><body>");
-    
+
     for i in 0..num_groups {
         html.push_str(&format!(
             r#"<div class="card(bg-white p-4 rounded shadow hover:shadow-lg transition-all) mx-{} my-{}">
@@ -70,14 +70,14 @@ fn generate_grouping_html(num_groups: usize) -> String {
             i
         ));
     }
-    
+
     html.push_str("</body></html>");
     html
 }
 
 fn bench_html_parsing(c: &mut Criterion) {
     let mut group = c.benchmark_group("html_parsing");
-    
+
     for (name, html) in &[
         ("small", SMALL_HTML),
         ("medium", MEDIUM_HTML),
@@ -87,15 +87,19 @@ fn bench_html_parsing(c: &mut Criterion) {
     ] {
         let html_bytes = html.as_bytes();
         group.throughput(Throughput::Bytes(html_bytes.len() as u64));
-        
-        group.bench_with_input(BenchmarkId::from_parameter(name), &html_bytes, |b, &data| {
-            b.iter(|| {
-                let result = extract_classes_fast(black_box(data), 64);
-                hint_black_box(result);
-            });
-        });
+
+        group.bench_with_input(
+            BenchmarkId::from_parameter(name),
+            &html_bytes,
+            |b, &data| {
+                b.iter(|| {
+                    let result = extract_classes_fast(black_box(data), 64);
+                    hint_black_box(result);
+                });
+            },
+        );
     }
-    
+
     group.finish();
 }
 
@@ -103,7 +107,7 @@ fn bench_class_extraction_capacity_hints(c: &mut Criterion) {
     let mut group = c.benchmark_group("capacity_hints");
     let html = generate_complex_html(200);
     let html_bytes = html.as_bytes();
-    
+
     for capacity in &[0, 16, 64, 128, 256, 512, 1024] {
         group.bench_with_input(
             BenchmarkId::from_parameter(capacity),
@@ -116,19 +120,19 @@ fn bench_class_extraction_capacity_hints(c: &mut Criterion) {
             },
         );
     }
-    
+
     group.finish();
 }
 
 fn bench_grouping_features(c: &mut Criterion) {
     let mut group = c.benchmark_group("grouping");
-    
+
     for num_groups in &[10, 50, 100, 200] {
         let html = generate_grouping_html(*num_groups);
         let html_bytes = html.as_bytes();
-        
+
         group.throughput(Throughput::Elements(*num_groups as u64));
-        
+
         group.bench_with_input(
             BenchmarkId::new("extract_with_groups", num_groups),
             &html_bytes,
@@ -140,13 +144,13 @@ fn bench_grouping_features(c: &mut Criterion) {
             },
         );
     }
-    
+
     group.finish();
 }
 
 fn bench_duplicate_rewriting(c: &mut Criterion) {
     let mut group = c.benchmark_group("duplicate_rewriting");
-    
+
     // HTML with duplicates
     let duplicate_html = r#"
         <div class="flex items-center bg-red-500 p-4">One</div>
@@ -154,16 +158,16 @@ fn bench_duplicate_rewriting(c: &mut Criterion) {
         <div class="flex items-center bg-red-500 p-4">Three</div>
         <div class="flex items-center bg-red-500 p-4">Four</div>
     "#;
-    
+
     let duplicate_bytes = duplicate_html.as_bytes();
-    
+
     group.bench_function("rewrite_duplicates", |b| {
         b.iter(|| {
             let result = rewrite_duplicate_classes(black_box(duplicate_bytes));
             hint_black_box(result);
         });
     });
-    
+
     // HTML without duplicates
     let no_dup_html = r#"
         <div class="flex items-center bg-red-500 p-4">One</div>
@@ -171,52 +175,52 @@ fn bench_duplicate_rewriting(c: &mut Criterion) {
         <div class="absolute top-0 left-0">Three</div>
         <div class="relative z-10 overflow-hidden">Four</div>
     "#;
-    
+
     let no_dup_bytes = no_dup_html.as_bytes();
-    
+
     group.bench_function("no_duplicates", |b| {
         b.iter(|| {
             let result = rewrite_duplicate_classes(black_box(no_dup_bytes));
             hint_black_box(result);
         });
     });
-    
+
     group.finish();
 }
 
 fn bench_incremental_updates(c: &mut Criterion) {
     let mut group = c.benchmark_group("incremental_updates");
-    
+
     // Simulate adding a single class
     let base_html = generate_complex_html(100);
     let added_html = base_html.replace("</body>", r#"<div class="new-class-added"></div></body>"#);
-    
+
     let base_bytes = base_html.as_bytes();
     let added_bytes = added_html.as_bytes();
-    
+
     group.bench_function("baseline_parse", |b| {
         b.iter(|| {
             let result = extract_classes_fast(black_box(base_bytes), 128);
             hint_black_box(result);
         });
     });
-    
+
     group.bench_function("with_one_addition", |b| {
         b.iter(|| {
             let result = extract_classes_fast(black_box(added_bytes), 128);
             hint_black_box(result);
         });
     });
-    
+
     group.finish();
 }
 
 fn bench_memory_allocation(c: &mut Criterion) {
     let mut group = c.benchmark_group("memory_allocation");
-    
+
     let html = generate_complex_html(200);
     let html_bytes = html.as_bytes();
-    
+
     // Benchmark with different pre-allocation strategies
     group.bench_function("zero_capacity", |b| {
         b.iter(|| {
@@ -224,24 +228,24 @@ fn bench_memory_allocation(c: &mut Criterion) {
             hint_black_box(result);
         });
     });
-    
+
     group.bench_function("optimal_capacity", |b| {
         // First, determine optimal capacity
         let sample = extract_classes_fast(html_bytes, 0);
         let optimal = sample.classes.len().next_power_of_two();
-        
+
         b.iter(|| {
             let result = extract_classes_fast(black_box(html_bytes), optimal);
             hint_black_box(result);
         });
     });
-    
+
     group.finish();
 }
 
 fn bench_real_world_scenario(c: &mut Criterion) {
     let mut group = c.benchmark_group("real_world");
-    
+
     // Simulate a typical e-commerce product page
     let product_page = r#"
     <div class="container mx-auto px-4 py-8">
@@ -270,40 +274,40 @@ fn bench_real_world_scenario(c: &mut Criterion) {
         </div>
     </div>
     "#;
-    
+
     let bytes = product_page.as_bytes();
     group.throughput(Throughput::Bytes(bytes.len() as u64));
-    
+
     group.bench_function("product_page", |b| {
         b.iter(|| {
             let result = extract_classes_fast(black_box(bytes), 64);
             hint_black_box(result);
         });
     });
-    
+
     group.finish();
 }
 
 // Micro-benchmarks for specific operations
 fn bench_string_operations(c: &mut Criterion) {
     let mut group = c.benchmark_group("string_ops");
-    
+
     let class_list = "flex items-center justify-between bg-gradient-to-r from-blue-500 to-purple-600 p-6 rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300";
-    
+
     group.bench_function("split_whitespace", |b| {
         b.iter(|| {
             let result: Vec<&str> = black_box(class_list).split_whitespace().collect();
             hint_black_box(result);
         });
     });
-    
+
     group.bench_function("contains_check", |b| {
         b.iter(|| {
             let result = black_box(class_list).contains("hover:");
             hint_black_box(result);
         });
     });
-    
+
     group.finish();
 }
 

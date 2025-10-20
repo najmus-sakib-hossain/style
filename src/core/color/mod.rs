@@ -1,5 +1,6 @@
 #![allow(dead_code)] // Color module API surface is broader than current in-crate usage.
 
+use crate::core::color::color::{Argb, Oklch};
 use crate::core::engine::StyleEngine;
 
 #[cfg(all(feature = "image", not(feature = "std")))]
@@ -232,4 +233,65 @@ pub fn derive_color_value(engine: &StyleEngine, name: &str) -> Option<String> {
         return Some(format!("#{}", lower));
     }
     None
+}
+
+fn parse_oklch_value(value: &str) -> Option<Oklch> {
+    let trimmed = value.trim();
+    let inner = trimmed
+        .strip_prefix("oklch(")?
+        .strip_suffix(')')?
+        .replace('/', " ");
+    let mut parts = inner
+        .split_whitespace()
+        .filter(|segment| !segment.is_empty());
+    let l_raw = parts.next()?;
+    let c_raw = parts.next()?;
+    let h_raw = parts.next()?;
+
+    fn parse_component(component: &str) -> Option<f64> {
+        let cleaned = component.trim_end_matches(|ch: char| {
+            ch == '%' || ch == '°' || ch == 'd' || ch == 'e' || ch == 'g'
+        });
+        if cleaned.is_empty() {
+            return None;
+        }
+        cleaned.parse::<f64>().ok()
+    }
+
+    let mut l_value = parse_component(l_raw)?;
+    if l_value > 1.0 {
+        l_value /= 100.0;
+    }
+    let c_value = parse_component(c_raw)?;
+    let h_value = parse_component(h_raw)?;
+
+    Some(Oklch {
+        l: l_value,
+        c: c_value,
+        h: h_value,
+    })
+}
+
+pub(crate) fn parse_color_to_argb(value: &str) -> Option<Argb> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let lower = trimmed.to_ascii_lowercase();
+    if lower == "transparent" || lower == "currentcolor" || lower == "inherit" {
+        return None;
+    }
+    if trimmed.starts_with("oklch(") {
+        return parse_oklch_value(trimmed).map(Argb::from);
+    }
+    trimmed.parse::<Argb>().ok()
+}
+
+pub(crate) fn format_argb_as_oklch(color: Argb) -> String {
+    let oklch = Oklch::from(color);
+    format!("oklch({:.2} {:.3} {:.2})", oklch.l, oklch.c, oklch.h)
+}
+
+pub(crate) fn normalize_color_to_oklch(value: &str) -> Option<String> {
+    parse_color_to_argb(value).map(format_argb_as_oklch)
 }

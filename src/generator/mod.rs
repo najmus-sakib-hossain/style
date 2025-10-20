@@ -28,13 +28,13 @@ where
                 buf.extend_from_slice(dark_vars.as_bytes());
             }
         }
-        
+
         // Parallelize CSS generation when we have enough classes to make it worthwhile
         // Note: We can only parallelize the engine.css_for_class() lookups, not group operations
         if collected.len() > 100 {
             // First, handle group tokens sequentially (these require mutable access)
             let mut non_group_classes = Vec::with_capacity(collected.len());
-            
+
             for class in &collected {
                 if groups.is_internal_token(class) {
                     continue;
@@ -49,7 +49,7 @@ where
                     non_group_classes.push(*class);
                 }
             }
-            
+
             // Now parallelize the engine lookups for non-group classes
             if !non_group_classes.is_empty() {
                 let css_chunks: Vec<Vec<u8>> = non_group_classes
@@ -57,7 +57,7 @@ where
                     .map(|class| {
                         let mut chunk = Vec::with_capacity(128);
                         let mut escaped = String::with_capacity(64);
-                        
+
                         if let Some(css) = engine.css_for_class(class) {
                             chunk.extend_from_slice(css.as_bytes());
                             if !css.ends_with('\n') {
@@ -69,11 +69,11 @@ where
                             chunk.extend_from_slice(escaped.as_bytes());
                             chunk.extend_from_slice(b" {}\n");
                         }
-                        
+
                         chunk
                     })
                     .collect();
-                
+
                 // Combine results sequentially
                 for chunk in css_chunks {
                     buf.extend_from_slice(&chunk);
@@ -130,13 +130,13 @@ where
     let engine_opt = std::panic::catch_unwind(|| AppState::engine()).ok();
     if let Some(engine) = engine_opt {
         let collected: Vec<&String> = classes.into_iter().collect();
-        
+
         // Parallelize CSS generation when we have enough classes to make it worthwhile
         // Note: We can only parallelize the engine.css_for_class() lookups, not group operations
         if collected.len() > 100 {
             // First, handle group tokens sequentially (these require mutable access)
             let mut non_group_classes = Vec::with_capacity(collected.len());
-            
+
             for class in &collected {
                 if groups.is_internal_token(class) {
                     continue;
@@ -154,7 +154,7 @@ where
                     non_group_classes.push(*class);
                 }
             }
-            
+
             // Now parallelize the engine lookups for non-group classes
             if !non_group_classes.is_empty() {
                 let css_chunks: Vec<Vec<u8>> = non_group_classes
@@ -162,7 +162,7 @@ where
                     .map(|class| {
                         let mut chunk = Vec::with_capacity(128);
                         let mut escaped = String::with_capacity(64);
-                        
+
                         if let Some(css) = engine.css_for_class(class) {
                             chunk.extend_from_slice(css.as_bytes());
                             if !css.ends_with('\n') {
@@ -174,11 +174,11 @@ where
                             chunk.extend_from_slice(escaped.as_bytes());
                             chunk.extend_from_slice(b" {}\n");
                         }
-                        
+
                         chunk
                     })
                     .collect();
-                
+
                 // Combine results sequentially
                 for chunk in css_chunks {
                     buf.extend_from_slice(&chunk);

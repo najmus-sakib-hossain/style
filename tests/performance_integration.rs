@@ -1,5 +1,5 @@
-use style::parser::{extract_classes_fast, optimized::extract_classes_optimized};
 use std::time::Instant;
+use style::parser::{extract_classes_fast, optimized::extract_classes_optimized};
 
 #[test]
 fn test_parser_correctness() {
@@ -9,19 +9,18 @@ fn test_parser_correctness() {
         r#"<div dx-text="card(bg-white p-4 rounded)"></div>"#,
         r#"<div class="hover:bg-blue-500 focus:outline-none"></div>"#,
     ];
-    
+
     for html in html_samples {
         let html_bytes = html.as_bytes();
         let original = extract_classes_fast(html_bytes, 64);
         let optimized = extract_classes_optimized(html_bytes, 64);
-        
+
         assert_eq!(
-            original.classes, 
-            optimized.classes,
+            original.classes, optimized.classes,
             "Classes should match for HTML: {}",
             html
         );
-        
+
         assert_eq!(
             original.group_events.len(),
             optimized.group_events.len(),
@@ -44,14 +43,14 @@ fn test_performance_baseline() {
         ));
     }
     html.push_str("</body></html>");
-    
+
     let html_bytes = html.as_bytes();
-    
+
     // Warm up
     for _ in 0..5 {
         let _ = extract_classes_fast(html_bytes, 128);
     }
-    
+
     // Measure performance
     let iterations = 100;
     let start = Instant::now();
@@ -61,10 +60,13 @@ fn test_performance_baseline() {
     }
     let duration = start.elapsed();
     let avg_micros = duration.as_micros() / iterations;
-    
+
     println!("Average parse time: {}µs", avg_micros);
-    println!("Classes extracted: {}", extract_classes_fast(html_bytes, 128).classes.len());
-    
+    println!(
+        "Classes extracted: {}",
+        extract_classes_fast(html_bytes, 128).classes.len()
+    );
+
     // Performance assertion - should be well under 100µs for 100 elements
     assert!(
         avg_micros < 100,
@@ -86,15 +88,15 @@ fn test_optimized_vs_original_performance() {
         ));
     }
     html.push_str("</body></html>");
-    
+
     let html_bytes = html.as_bytes();
-    
+
     // Warm up both
     for _ in 0..5 {
         let _ = extract_classes_fast(html_bytes, 256);
         let _ = extract_classes_optimized(html_bytes, 256);
     }
-    
+
     // Measure original
     let iterations = 50;
     let start = Instant::now();
@@ -103,7 +105,7 @@ fn test_optimized_vs_original_performance() {
         std::hint::black_box(result);
     }
     let original_time = start.elapsed();
-    
+
     // Measure optimized
     let start = Instant::now();
     for _ in 0..iterations {
@@ -111,14 +113,14 @@ fn test_optimized_vs_original_performance() {
         std::hint::black_box(result);
     }
     let optimized_time = start.elapsed();
-    
+
     let original_avg = original_time.as_micros() / iterations;
     let optimized_avg = optimized_time.as_micros() / iterations;
-    
+
     println!("\nPerformance Comparison:");
     println!("  Original:  {}µs", original_avg);
     println!("  Optimized: {}µs", optimized_avg);
-    
+
     if optimized_avg < original_avg {
         let speedup = original_avg as f64 / optimized_avg as f64;
         let improvement = ((speedup - 1.0) * 100.0);
@@ -146,15 +148,15 @@ fn test_large_html_performance() {
         ));
     }
     html.push_str("</body></html>");
-    
+
     let html_bytes = html.as_bytes();
     println!("Large HTML size: {} bytes", html_bytes.len());
-    
+
     // Warm up
     for _ in 0..3 {
         let _ = extract_classes_fast(html_bytes, 512);
     }
-    
+
     // Measure
     let iterations = 20;
     let start = Instant::now();
@@ -165,9 +167,9 @@ fn test_large_html_performance() {
     let duration = start.elapsed();
     let avg_millis = duration.as_millis() / iterations;
     let avg_micros = duration.as_micros() / iterations;
-    
+
     println!("Large HTML parse time: {}ms ({}µs)", avg_millis, avg_micros);
-    
+
     // Should handle large files efficiently
     assert!(
         avg_millis < 10,
@@ -190,14 +192,14 @@ fn test_grouping_performance() {
         ));
     }
     html.push_str("</body></html>");
-    
+
     let html_bytes = html.as_bytes();
-    
+
     // Warm up
     for _ in 0..3 {
         let _ = extract_classes_fast(html_bytes, 128);
     }
-    
+
     // Measure
     let iterations = 50;
     let start = Instant::now();
@@ -207,12 +209,12 @@ fn test_grouping_performance() {
     }
     let duration = start.elapsed();
     let avg_micros = duration.as_micros() / iterations;
-    
+
     println!("Grouping parse time: {}µs", avg_micros);
-    
+
     let result = extract_classes_fast(html_bytes, 128);
     println!("Group events: {}", result.group_events.len());
-    
+
     // Grouping should still be fast
     assert!(
         avg_micros < 500,

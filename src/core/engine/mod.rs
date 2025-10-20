@@ -32,6 +32,98 @@ mod style_generated {
 }
 use style_generated::style_schema;
 
+const DX_FONT_TOKENS: &[(&str, &str)] = &[
+    ("font-sans", "Geist, sans-serif"),
+    ("font-serif", "Georgia, serif"),
+    ("font-mono", "Geist Mono, monospace"),
+];
+
+const DX_BASE_TOKENS: &[(&str, &str)] = &[("radius", "0.5rem")];
+
+const DX_LIGHT_TOKENS: &[(&str, &str)] = &[
+    ("background", "oklch(0.99 0 0)"),
+    ("foreground", "oklch(0 0 0)"),
+    ("card", "oklch(1.00 0 0)"),
+    ("card-foreground", "oklch(0 0 0)"),
+    ("popover", "oklch(0.99 0 0)"),
+    ("popover-foreground", "oklch(0 0 0)"),
+    ("primary", "oklch(0 0 0)"),
+    ("primary-foreground", "oklch(1.00 0 0)"),
+    ("secondary", "oklch(0.94 0 0)"),
+    ("secondary-foreground", "oklch(0 0 0)"),
+    ("muted", "oklch(0.97 0 0)"),
+    ("muted-foreground", "oklch(0.44 0 0)"),
+    ("accent", "oklch(0.94 0 0)"),
+    ("accent-foreground", "oklch(0 0 0)"),
+    ("destructive", "oklch(0.63 0.19 23.03)"),
+    ("destructive-foreground", "oklch(1.00 0 0)"),
+    ("border", "oklch(0.92 0 0)"),
+    ("input", "oklch(0.94 0 0)"),
+    ("ring", "oklch(0 0 0)"),
+    ("chart-1", "oklch(0.81 0.17 75.35)"),
+    ("chart-2", "oklch(0.55 0.22 264.53)"),
+    ("chart-3", "oklch(0.72 0 0)"),
+    ("chart-4", "oklch(0.92 0 0)"),
+    ("chart-5", "oklch(0.56 0 0)"),
+    ("sidebar", "oklch(0.99 0 0)"),
+    ("sidebar-foreground", "oklch(0 0 0)"),
+    ("sidebar-primary", "oklch(0 0 0)"),
+    ("sidebar-primary-foreground", "oklch(1.00 0 0)"),
+    ("sidebar-accent", "oklch(0.94 0 0)"),
+    ("sidebar-accent-foreground", "oklch(0 0 0)"),
+    ("sidebar-border", "oklch(0.94 0 0)"),
+    ("sidebar-ring", "oklch(0 0 0)"),
+    ("radius", "0.5rem"),
+    ("shadow-color", "hsl(0 0% 0%)"),
+    ("shadow-opacity", "0.18"),
+    ("shadow-blur", "2px"),
+    ("shadow-spread", "0px"),
+    ("shadow-offset-x", "0px"),
+    ("shadow-offset-y", "1px"),
+];
+
+const DX_DARK_TOKENS: &[(&str, &str)] = &[
+    ("background", "oklch(0.13 0 0)"),
+    ("foreground", "oklch(1.00 0 0)"),
+    ("card", "oklch(0.14 0 0)"),
+    ("card-foreground", "oklch(1.00 0 0)"),
+    ("popover", "oklch(0.18 0 0)"),
+    ("popover-foreground", "oklch(1.00 0 0)"),
+    ("primary", "oklch(1.00 0 0)"),
+    ("primary-foreground", "oklch(0 0 0)"),
+    ("secondary", "oklch(0.25 0 0)"),
+    ("secondary-foreground", "oklch(1.00 0 0)"),
+    ("muted", "oklch(0.23 0 0)"),
+    ("muted-foreground", "oklch(0.72 0 0)"),
+    ("accent", "oklch(0.32 0 0)"),
+    ("accent-foreground", "oklch(1.00 0 0)"),
+    ("destructive", "oklch(0.69 0.20 23.91)"),
+    ("destructive-foreground", "oklch(0 0 0)"),
+    ("border", "oklch(0.26 0 0)"),
+    ("input", "oklch(0.32 0 0)"),
+    ("ring", "oklch(0.72 0 0)"),
+    ("chart-1", "oklch(0.81 0.17 75.35)"),
+    ("chart-2", "oklch(0.58 0.21 260.84)"),
+    ("chart-3", "oklch(0.56 0 0)"),
+    ("chart-4", "oklch(0.44 0 0)"),
+    ("chart-5", "oklch(0.92 0 0)"),
+    ("sidebar", "oklch(0 0 0)"),
+    ("sidebar-foreground", "oklch(1.00 0 0)"),
+    ("sidebar-primary", "oklch(1.00 0 0)"),
+    ("sidebar-primary-foreground", "oklch(0 0 0)"),
+    ("sidebar-accent", "oklch(0.3 0 0)"),
+    ("sidebar-accent-foreground", "oklch(1.00 0 0)"),
+    ("sidebar-border", "oklch(0.32 0 0)"),
+    ("sidebar-ring", "oklch(0.72 0 0)"),
+    ("radius", "0.5rem"),
+    ("shadow-color", "hsl(0 0% 0%)"),
+    ("shadow-opacity", "0.18"),
+    ("shadow-blur", "2px"),
+    ("shadow-spread", "0px"),
+    ("shadow-offset-x", "0px"),
+    ("shadow-offset-y", "1px"),
+];
+
 #[derive(Clone)]
 pub struct GeneratorMeta {
     pub prefix: String,
@@ -341,29 +433,54 @@ impl StyleEngine {
         I: IntoIterator<Item = &'a String>,
     {
         use std::collections::BTreeSet;
+        use std::fmt::Write as _;
+
         let mut needed: BTreeSet<&str> = BTreeSet::new();
         for c in classes.into_iter() {
             let base = c.rsplit(':').next().unwrap_or(c);
             if let Some(name) = base.strip_prefix("bg-") {
-                // Always consider; we'll validate later
                 needed.insert(name);
             }
             if let Some(name) = base.strip_prefix("text-") {
                 needed.insert(name);
             }
         }
-        if needed.is_empty() {
-            return (String::new(), String::new());
-        }
-        let mut root = String::from(":root {\n");
-        let mut dark = String::from(".dark {\n");
-        for name in needed {
-            if let Some(val) = crate::core::color::derive_color_value(self, name) {
-                use std::fmt::Write as _;
-                let _ = writeln!(root, "  --color-{}: {};", name, val);
-                let _ = writeln!(dark, "  --color-{}: {};", name, val);
+
+        let mut token_entries: Vec<(String, String)> = Vec::new();
+
+        for name in &needed {
+            if let Some(mut val) = crate::core::color::derive_color_value(self, name) {
+                if let Some(oklch) = crate::core::color::normalize_color_to_oklch(&val) {
+                    val = oklch;
+                }
+                token_entries.push(((*name).to_string(), val));
             }
         }
+
+        let mut root = String::from(":root {\n");
+        let mut dark = String::from(".dark {\n");
+
+        let _ = writeln!(root, "  color-scheme: light;");
+        let _ = writeln!(dark, "  color-scheme: dark;");
+
+        for (name, value) in DX_FONT_TOKENS {
+            let _ = writeln!(root, "  --{}: {};", name, value);
+        }
+        for (name, value) in DX_BASE_TOKENS {
+            let _ = writeln!(root, "  --{}: {};", name, value);
+        }
+        for (name, value) in DX_LIGHT_TOKENS {
+            let _ = writeln!(root, "  --{}: {};", name, value);
+        }
+        for (name, value) in DX_DARK_TOKENS {
+            let _ = writeln!(dark, "  --{}: {};", name, value);
+        }
+
+        for (name, value) in &token_entries {
+            let _ = writeln!(root, "  --color-{}: {};", name, value);
+            let _ = writeln!(dark, "  --color-{}: {};", name, value);
+        }
+
         root.push_str("}\n");
         dark.push_str("}\n");
         (root, dark)
