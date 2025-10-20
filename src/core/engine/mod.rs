@@ -12,7 +12,7 @@ pub use states::apply_wrappers_and_states;
 #[allow(dead_code)]
 pub fn init() {}
 
-use ahash::{AHashMap, AHashSet};
+use ahash::AHashMap;
 use memmap2::{Mmap, MmapOptions};
 use std::fs::File;
 use std::path::Path;
@@ -444,36 +444,13 @@ impl StyleEngine {
         ) {
             let mut root = String::from(":root {\n");
             let mut dark = String::from(".dark {\n");
-            let mut root_tokens: AHashSet<String> = AHashSet::default();
 
             for (name, value) in &light_theme.tokens {
-                let normalized = format_token_value(value);
-                root_tokens.insert(name.clone());
-                let _ = writeln!(root, "  --{}: {};", name, normalized);
-            }
-            for (name, value) in DX_FONT_TOKENS {
-                if root_tokens.insert(name.to_string()) {
-                    let normalized = format_token_value(value);
-                    let _ = writeln!(root, "  --{}: {};", name, normalized);
-                }
-            }
-            for (name, value) in DX_BASE_TOKENS {
-                if root_tokens.insert(name.to_string()) {
-                    let normalized = format_token_value(value);
-                    let _ = writeln!(root, "  --{}: {};", name, normalized);
-                }
+                let _ = writeln!(root, "  --{}: {};", name, value);
             }
 
             for (name, value) in &dark_theme.tokens {
-                let normalized = format_token_value(value);
-                let _ = writeln!(dark, "  --{}: {};", name, normalized);
-            }
-
-            for (name, value) in &token_entries {
-                let normalized = format_token_value(value);
-                let var_name = format!("color-{}", name);
-                let _ = writeln!(root, "  --{}: {};", var_name, normalized);
-                let _ = writeln!(dark, "  --{}: {};", var_name, normalized);
+                let _ = writeln!(dark, "  --{}: {};", name, value);
             }
 
             root.push_str("}\n");

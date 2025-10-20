@@ -73,28 +73,49 @@ fn read_theme_tokens(path: &Path) -> Vec<(String, Vec<(String, String)>)> {
         Ok(data) => data,
         Err(_) => return Vec::new(),
     };
-    let value: toml::Value = match content.parse() {
-        Ok(val) => val,
-        Err(_) => return Vec::new(),
-    };
-    let table = match value.as_table() {
-        Some(table) => table,
-        None => return Vec::new(),
-    };
-    let mut themes = Vec::new();
-    for (name, entry) in table.iter() {
-        if let Some(tokens_table) = entry.as_table() {
-            let mut tokens = Vec::new();
-            for (token_name, token_value) in tokens_table.iter() {
-                if let Some(value_str) = token_value.as_str() {
-                    tokens.push((token_name.to_string(), value_str.to_string()));
-                } else {
-                    tokens.push((token_name.to_string(), token_value.to_string()));
-                }
-            }
-            themes.push((name.to_string(), tokens));
+
+    let mut themes: Vec<(String, Vec<(String, String)>)> = Vec::new();
+    let mut current_theme: Option<usize> = None;
+
+    for raw_line in content.lines() {
+        let line = raw_line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
         }
+
+        if line.starts_with('[') && line.ends_with(']') {
+            let inner = line[1..line.len() - 1].trim();
+            let name = if inner.starts_with('"') && inner.ends_with('"') && inner.len() >= 2 {
+                inner[1..inner.len() - 1].to_string()
+            } else {
+                inner.to_string()
+            };
+            themes.push((name, Vec::new()));
+            current_theme = Some(themes.len() - 1);
+            continue;
+        }
+
+        let Some(theme_index) = current_theme else {
+            continue;
+        };
+
+        let Some(eq_pos) = line.find('=') else {
+            continue;
+        };
+
+        let key = line[..eq_pos].trim().trim_matches('"').to_string();
+        let mut value_part = line[eq_pos + 1..].trim();
+        if value_part.is_empty() {
+            continue;
+        }
+
+        if value_part.starts_with('"') && value_part.ends_with('"') && value_part.len() >= 2 {
+            value_part = &value_part[1..value_part.len() - 1];
+        }
+
+        themes[theme_index].1.push((key, value_part.to_string()));
     }
+
     themes
 }
 
