@@ -185,6 +185,10 @@ pub fn properties_layer_present() -> bool {
 
 static FIRST_LOG_DONE: AtomicBool = AtomicBool::new(false);
 
+// Flag to suppress logging after HTML grouping rewrite
+// When set, the next rebuild_styles() call will skip all logging
+static SUPPRESS_NEXT_LOG: AtomicBool = AtomicBool::new(false);
+
 #[derive(Clone, Copy, Debug)]
 pub struct RuleMeta {
     pub off: usize,
@@ -219,8 +223,15 @@ pub fn rebuild_styles(
     index_path: &str,
     is_initial_run: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // Check if we should suppress logging for this run (set by previous HTML grouping rewrite)
+    let suppress_this_run = SUPPRESS_NEXT_LOG.swap(false, Ordering::Relaxed);
+    
     let mut html_bytes = datasource::read_file(index_path)?;
     let mut dev_group_selectors: AHashMap<String, String> = AHashMap::default();
+    let mut html_was_rewritten = false;
+    
+    // HTML grouping rewrite happens here, but we DON'T include its time in performance metrics
+    // because it's an HTML I/O operation, not a CSS generation operation
     if let Some(plan) = rewrite_duplicate_classes(&html_bytes) {
         if !plan.groups.is_empty() {
             for info in &plan.groups {
@@ -234,8 +245,12 @@ pub fn rebuild_styles(
             }
         }
         if plan.html != html_bytes {
+            // This HTML write is intentionally NOT timed - it's an HTML operation, not CSS
             std::fs::write(index_path, &plan.html)?;
             html_bytes = plan.html;
+            html_was_rewritten = true;
+            // Suppress logging for the NEXT rebuild (triggered by file watcher seeing this HTML change)
+            SUPPRESS_NEXT_LOG.store(true, Ordering::Relaxed);
         }
     }
 
@@ -1512,8 +1527,13 @@ pub fn rebuild_styles(
         + cache_update_duration
         + css_write_duration;
 
+    // Suppress logging if:
+    // 1. HTML was rewritten by grouping feature in THIS run (html_was_rewritten)
+    // 2. This run was triggered by a previous HTML grouping rewrite (suppress_this_run)
     let silent_format = std::env::var("DX_SILENT_FORMAT").ok().as_deref() == Some("1");
-    if !silent_format && !FIRST_LOG_DONE.load(Ordering::Relaxed) {
+    let suppress_log = html_was_rewritten || suppress_this_run;
+    
+    if !suppress_log && !silent_format && !FIRST_LOG_DONE.load(Ordering::Relaxed) {
         let mut write_detail = format!(
             "mode={} classes={} bytes={} {}={:?}",
             write_stats.mode,
@@ -1541,7 +1561,7 @@ pub fn rebuild_styles(
             write_detail
         );
         FIRST_LOG_DONE.store(true, Ordering::Relaxed);
-    } else if !silent_format {
+    } else if !suppress_log && !silent_format {
         let mut write_detail = format!(
             "mode={} classes={} bytes={} {}={:?}",
             write_stats.mode,
