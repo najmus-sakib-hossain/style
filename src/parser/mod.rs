@@ -4,7 +4,11 @@ use smallvec::SmallVec;
 use std::hash::Hasher;
 use std::ops::Range;
 
+pub mod incremental;
 pub mod optimized;
+
+// Re-export incremental parser
+pub use incremental::{IncrementalParser, IncrementalStats};
 
 #[derive(Debug, Clone)]
 pub struct GroupEvent {

@@ -237,6 +237,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             crate::core::group::GroupRegistry::new()
         },
         group_log_hash: 0,
+        incremental_parser: crate::parser::IncrementalParser::new(),
     }));
 
     if std::env::var("DX_DUMP_STATE_ON_START").is_ok() {

@@ -1,6 +1,6 @@
 use crate::{
     cache, datasource, generator,
-    parser::{extract_classes_fast, rewrite_duplicate_classes},
+    parser::{IncrementalParser, extract_classes_fast, rewrite_duplicate_classes},
     telemetry::format_duration,
 };
 mod animation;
@@ -206,6 +206,7 @@ pub struct AppState {
     pub utilities_offset: usize,
     pub group_registry: group::GroupRegistry,
     pub group_log_hash: u64,
+    pub incremental_parser: IncrementalParser,
 }
 
 impl AppState {
@@ -275,8 +276,33 @@ pub fn rebuild_styles(
 
     let parse_timer = Instant::now();
     let prev_len_hint = { state.lock().unwrap().class_cache.len() };
-    let extracted = extract_classes_fast(&html_bytes, prev_len_hint.next_power_of_two());
+
+    // Use incremental parser for dramatic speedup on large files
+    let extracted = {
+        let mut state_guard = state.lock().unwrap();
+        state_guard
+            .incremental_parser
+            .parse_incremental(&html_bytes, prev_len_hint.next_power_of_two())
+    };
     let parse_extract_duration = parse_timer.elapsed();
+
+    // Log incremental parsing stats if enabled
+    if std::env::var("DX_DEBUG").ok().as_deref() == Some("1") {
+        let stats = {
+            let state_guard = state.lock().unwrap();
+            state_guard.incremental_parser.stats().clone()
+        };
+        if stats.incremental_parses > 0 {
+            eprintln!(
+                "[incremental-parser] Full: {}, Incremental: {}, Parsed: {}KB, Skipped: {}KB, Reused: {} regions",
+                stats.full_parses,
+                stats.incremental_parses,
+                stats.bytes_parsed / 1024,
+                stats.bytes_skipped / 1024,
+                stats.regions_reused
+            );
+        }
+    }
 
     let mut all_classes = extracted.classes;
     let mut group_registry = group::GroupRegistry::analyze(
