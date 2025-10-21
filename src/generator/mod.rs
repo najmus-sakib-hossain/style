@@ -1,3 +1,5 @@
+pub mod arena;
+
 use cssparser::serialize_identifier;
 use rayon::prelude::*;
 
@@ -5,8 +7,36 @@ use crate::core::{
     AppState, group::GroupRegistry, properties_layer_present, set_properties_layer_present,
 };
 
+// Re-export arena functions for convenience
+pub use arena::{
+    estimate_css_size, generate_css_batch_arena, generate_css_batch_presized,
+    generate_incremental_css,
+};
+
 #[allow(dead_code)]
 pub fn generate_css_into<'a, I>(buf: &mut Vec<u8>, classes: I, groups: &mut GroupRegistry)
+where
+    I: IntoIterator<Item = &'a String>,
+{
+    // Use arena allocation for large batches if feature is enabled
+    #[cfg(feature = "arena-alloc")]
+    {
+        let classes_vec: Vec<&String> = classes.into_iter().collect();
+        if classes_vec.len() > 50 {
+            generate_css_batch_arena(buf, classes_vec, groups);
+            return;
+        }
+        // Fall through to regular path for small batches
+        generate_css_into_regular(buf, classes_vec, groups);
+        return;
+    }
+
+    #[cfg(not(feature = "arena-alloc"))]
+    generate_css_into_regular(buf, classes, groups);
+}
+
+#[allow(dead_code)]
+fn generate_css_into_regular<'a, I>(buf: &mut Vec<u8>, classes: I, groups: &mut GroupRegistry)
 where
     I: IntoIterator<Item = &'a String>,
 {
@@ -124,6 +154,31 @@ where
 
 pub fn generate_class_rules_only<'a, I>(buf: &mut Vec<u8>, classes: I, groups: &mut GroupRegistry)
 where
+    I: IntoIterator<Item = &'a String>,
+{
+    // Use arena allocation for large batches if feature is enabled
+    #[cfg(feature = "arena-alloc")]
+    {
+        let classes_vec: Vec<&String> = classes.into_iter().collect();
+        if classes_vec.len() > 50 {
+            // Arena path doesn't have separate "rules only" - just use regular arena
+            generate_css_batch_arena(buf, classes_vec, groups);
+            return;
+        }
+        // Fall through to regular path for small batches
+        generate_class_rules_only_regular(buf, classes_vec, groups);
+        return;
+    }
+
+    #[cfg(not(feature = "arena-alloc"))]
+    generate_class_rules_only_regular(buf, classes, groups);
+}
+
+fn generate_class_rules_only_regular<'a, I>(
+    buf: &mut Vec<u8>,
+    classes: I,
+    groups: &mut GroupRegistry,
+) where
     I: IntoIterator<Item = &'a String>,
 {
     use cssparser::serialize_identifier;

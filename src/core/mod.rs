@@ -202,7 +202,7 @@ pub struct AppState {
     pub last_css_hash: u64,
     pub css_buffer: Vec<u8>,
     pub class_list_checksum: u64,
-    pub css_index: ahash::AHashMap<String, RuleMeta>,
+    pub css_index: AHashMap<String, RuleMeta>,
     pub utilities_offset: usize,
     pub group_registry: group::GroupRegistry,
     pub group_log_hash: u64,
