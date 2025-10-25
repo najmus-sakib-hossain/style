@@ -13,11 +13,13 @@ use crate::core::{AppState, group::GroupRegistry};
 ///
 /// Uses bump allocation for extremely fast memory allocation without
 /// individual deallocations. Perfect for generating many CSS rules at once.
+#[allow(dead_code)]
 pub struct ArenaCssGenerator<'arena> {
     arena: &'arena Bump,
     buffer: bumpalo::collections::Vec<'arena, u8>,
 }
 
+#[allow(dead_code)]
 impl<'arena> ArenaCssGenerator<'arena> {
     /// Create a new arena-based generator with the given arena
     #[inline]
@@ -176,6 +178,7 @@ impl<'arena> ArenaCssGenerator<'arena> {
 ///
 /// This function creates an arena and generates CSS for all provided classes
 /// in a single allocation context, then copies the result to the output buffer.
+#[allow(dead_code)]
 pub fn generate_css_batch_arena<'a, I>(out: &mut Vec<u8>, classes: I, groups: &mut GroupRegistry)
 where
     I: IntoIterator<Item = &'a String>,
@@ -191,6 +194,7 @@ where
 }
 
 /// Fast path for generating CSS with pre-sized buffer
+#[allow(dead_code)]
 pub fn generate_css_batch_presized<'a, I>(
     out: &mut Vec<u8>,
     classes: I,
@@ -207,6 +211,7 @@ pub fn generate_css_batch_presized<'a, I>(
 ///
 /// Returns a conservative estimate of the CSS size that will be generated.
 /// This helps with pre-allocation to avoid reallocations.
+#[allow(dead_code)]
 #[inline]
 pub fn estimate_css_size(class_count: usize) -> usize {
     // Average CSS rule is roughly 80-120 bytes
@@ -217,6 +222,7 @@ pub fn estimate_css_size(class_count: usize) -> usize {
 /// Fast CSS generation for incremental updates
 ///
 /// Optimized for adding a small number of new classes to existing CSS.
+#[allow(dead_code)]
 pub fn generate_incremental_css<'a, I>(
     out: &mut Vec<u8>,
     new_classes: I,

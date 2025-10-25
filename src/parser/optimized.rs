@@ -7,6 +7,7 @@ use smallvec::SmallVec;
 use super::{ExtractedClasses, GroupCollector};
 
 /// Optimized version with SIMD-friendly operations and better memory locality
+#[allow(dead_code)]
 #[inline]
 pub fn extract_classes_optimized(html_bytes: &[u8], capacity_hint: usize) -> ExtractedClasses {
     // Use capacity hint more intelligently
@@ -36,6 +37,7 @@ pub fn extract_classes_optimized(html_bytes: &[u8], capacity_hint: usize) -> Ext
     }
 }
 
+#[allow(dead_code)]
 #[inline(always)]
 fn extract_class_attributes(
     html_bytes: &[u8],
@@ -95,6 +97,7 @@ fn extract_class_attributes(
     }
 }
 
+#[allow(dead_code)]
 #[inline(always)]
 fn extract_dx_attributes(
     html_bytes: &[u8],
@@ -163,6 +166,7 @@ fn extract_dx_attributes(
 }
 
 /// Optimized grouping expansion with better memory usage
+#[allow(dead_code)]
 #[inline]
 fn expand_grouping_into_optimized(
     s: &str,
@@ -189,6 +193,7 @@ fn expand_grouping_into_optimized(
     expand_grouping_full(s, out, collector);
 }
 
+#[allow(dead_code)]
 #[inline(always)]
 fn fast_split_whitespace_insert_optimized(s: &str, out: &mut AHashSet<String>) {
     // Pre-allocate string buffer to avoid allocations in the loop
@@ -207,6 +212,7 @@ fn fast_split_whitespace_insert_optimized(s: &str, out: &mut AHashSet<String>) {
     }
 }
 
+#[allow(dead_code)]
 #[inline]
 fn expand_grouping_full(s: &str, out: &mut AHashSet<String>, collector: &mut GroupCollector) {
     let bytes = s.as_bytes();
@@ -368,6 +374,7 @@ fn expand_grouping_full(s: &str, out: &mut AHashSet<String>, collector: &mut Gro
 }
 
 /// Optimized duplicate class rewriting with better algorithmic complexity
+#[allow(dead_code)]
 pub fn rewrite_duplicate_classes_optimized(html_bytes: &[u8]) -> Option<super::AutoGroupRewrite> {
     // Use the original implementation but with potential for future SIMD optimizations
     // For now, focus on other hot paths

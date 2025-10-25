@@ -25,6 +25,7 @@ struct RegionCache {
     /// Ending byte offset
     end: usize,
     /// Hash of content in this region
+    #[allow(dead_code)]
     content_hash: u64,
     /// Classes found in this region
     classes: AHashSet<String>,
@@ -354,6 +355,7 @@ impl IncrementalParser {
     }
 
     /// Reset the parser state
+    #[allow(dead_code)]
     pub fn reset(&mut self) {
         self.prev_hash = 0;
         self.prev_content.clear();

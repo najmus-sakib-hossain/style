@@ -8,7 +8,7 @@ pub mod incremental;
 pub mod optimized;
 
 // Re-export incremental parser
-pub use incremental::{IncrementalParser, IncrementalStats};
+pub use incremental::IncrementalParser;
 
 #[derive(Debug, Clone)]
 pub struct GroupEvent {

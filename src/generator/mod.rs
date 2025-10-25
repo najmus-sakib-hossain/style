@@ -7,12 +7,6 @@ use crate::core::{
     AppState, group::GroupRegistry, properties_layer_present, set_properties_layer_present,
 };
 
-// Re-export arena functions for convenience
-pub use arena::{
-    estimate_css_size, generate_css_batch_arena, generate_css_batch_presized,
-    generate_incremental_css,
-};
-
 #[allow(dead_code)]
 pub fn generate_css_into<'a, I>(buf: &mut Vec<u8>, classes: I, groups: &mut GroupRegistry)
 where
