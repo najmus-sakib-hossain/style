@@ -4,16 +4,43 @@
     "title": "Enhanced Developing Experience",
     "description": "Orchestrate don't just own your code",
     "author": "essensefromexistence",
-
-    "language": "auto-detected",
-    "runtime": "auto-detected",
-    "compiler": "auto-detected",
-    "bundler": "auto-detected",
-    "interpreter": "auto-detected",
-    "packageManager": "auto-detected",
-    "framework": "auto-detected",
-
-    "forge": "https://dx.vercel.app/essensefromexistence/dx",
+    "languages": [
+        {
+            "name": "javascript/typescript",
+            "runtime": "bun",
+            "compiler": "tsc",
+            "bundler": "vite",
+            "packageManager": "bun",
+            "framework": "react"
+        },
+        {
+            "name": "python",
+            "runtime": "cpython",
+            "packageManager": "uv",
+            "framework": "django"
+        },
+        {
+            "name": "rust",
+            "runtime": "native",
+            "compiler": "rustc",
+            "packageManager": "cargo"
+        }
+    ],
+    "forge": {
+        "repository": "https://dx.vercel.app/essensefromexistence/dx",
+        "container": "none",
+        "ci/cd": "none",
+        "tasks": "none",
+        "items": [
+            "cli",
+            "docs",
+            "examples",
+            "packages",
+            "scripts",
+            "style",
+            "tests"
+        ]
+    },
     "style": {
         "path": "@/style",
         "engine": [
@@ -103,11 +130,9 @@
         "primary": "Manrope",
         "secondary": "Roboto Mono"
     },
-
     "dependencies": {},
     "devDependencies": {},
     "peerDependencies": {},
-
     "workspace": {
         "frontend/www": {},
         "frontend/mobile": {}
