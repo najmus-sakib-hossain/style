@@ -1,31 +1,113 @@
 {
-    "$schema": "https://ui.shadcn.com/schema/registry.json",
     "name": "dx",
     "version": "0.0.1",
-    "title": "Enhance Developing Experience",
+    "title": "Enhanced Developing Experience",
     "description": "Orchestrate don't just own your code",
     "author": "essensefromexistence",
-    "repository": "https://dx.vercel.app/essensefromexistence/dx",
-    "homepage": "auto-detected",
-    "items": [
-        {
-            "name": "dx",
-            "type": "registry:lib",
-            "dx": "0.0.1"
-        }
-    ],
+
     "language": "auto-detected",
     "runtime": "auto-detected",
     "compiler": "auto-detected",
     "bundler": "auto-detected",
     "interpreter": "auto-detected",
-    "framework": "auto-detected",
     "packageManager": "auto-detected",
-    "environment": {
-        "os": "auto-detected",
-        "arch": "auto-detected",
-        "container": "auto-detected"
+    "framework": "auto-detected",
+
+    "forge": "https://dx.vercel.app/essensefromexistence/dx",
+    "style": {
+        "path": "@/style",
+        "engine": [
+            "automic",
+            "enhanced",
+            "logical"
+        ],
+        "themes": [
+            "dx",
+            "vercel",
+            "claude"
+        ]
     },
+    "ui": {
+        "path": "@/components/ui",
+        "items": [
+            "button",
+            "card",
+            "modal",
+            "navbar",
+            "footer"
+        ]
+    },
+    "check": {
+        "lint": {},
+        "format": {},
+        "fix": {}
+    },
+    "media": {
+        "images": {
+            "path": "@/public/images/*",
+            "items": [
+                "dummy1.jpg",
+                "dummy2.png"
+            ]
+        },
+        "videos": {
+            "path": "@/public/videos/*",
+            "items": [
+                "dummy1.mp4"
+            ]
+        },
+        "sounds": {
+            "path": "@/public/sounds/*",
+            "items": [
+                "dummy1.wav"
+            ]
+        },
+        "assets": {
+            "path": "@/public/assets/*",
+            "items": [
+                "dummy1.asset"
+            ]
+        }
+    },
+    "internationalization": {
+        "locales": {
+            "path": "@/locales",
+            "default": "en-US",
+            "dev": [
+                "en-US"
+            ],
+            "prod": [
+                "all"
+            ]
+        },
+        "ttses": {
+            "path": "./ttses",
+            "default": "en-US",
+            "dev": [
+                "en-US",
+                "bn-BD"
+            ],
+            "prod": [
+                "all"
+            ]
+        }
+    },
+    "icon": {
+        "path": "@/components/icons",
+        "pack": "lucide-react",
+        "variant": "default"
+    },
+    "font": {
+        "path": "@/font",
+        "default": "Inter",
+        "primary": "Manrope",
+        "secondary": "Roboto Mono"
+    },
+
+    "dependencies": {},
+    "devDependencies": {},
+    "peerDependencies": {},
+
     "workspace": {
         "frontend/www": {},
         "frontend/mobile": {}
@@ -40,79 +122,5 @@
         "cursor": {},
         "windsruff": {},
         "stackblitz": {}
-    },
-    "scripts": {
-        "start": "dx start",
-        "build": "dx build",
-        "test": "dx test",
-        "lint": "dx lint",
-        "format": "dx format",
-        "fix": "dx fix"
-    },
-    "forge": {},
-    "style": {
-        "style": "./style",
-        "engine": [
-            "automic",
-            "enhanced",
-            "logical"
-        ],
-        "themes": [
-            "dx",
-            "vercel",
-            "claude"
-        ]
-    },
-    "ui": {},
-    "check": {
-        "lint": {},
-        "format": {},
-        "fix": {}
-    },
-    "media": {
-        "image": "./public/images",
-        "video": "./public/videos",
-        "sound": "./public/sounds",
-        "asset": "./public/assets",
-        "images": [],
-        "videos": [],
-        "sounds": [],
-        "assets": []
-    },
-    "internationalization": {
-        "locale": "./locales",
-        "tts": "./ttses",
-        "defaultLocale": "en-US",
-        "defaultTts": "en-US",
-        "locales": {
-            "dev": [
-                "en-US",
-                "bn-BD"
-            ],
-            "prod": [
-                "all"
-            ]
-        },
-        "ttses": {
-            "dev": [
-                "en-US",
-                "bn-BD"
-            ],
-            "prod": [
-                "all"
-            ]
-        }
-    },
-    "icon": {
-        "icon": "@/components/icons",
-        "pack": "lucide-react",
-        "variant": "default"
-    },
-    "font": {
-        "font": "./font",
-        "primary": "Inter",
-        "secondary": "Roboto Mono"
-    },
-    "dependencies": {},
-    "devDependencies": {}
+    }
 }
