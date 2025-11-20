@@ -1,6 +1,6 @@
 # Dx Style
 
-**Enhance Developer Experience with Lightning-Fast CSS Generation**
+## Enhance Developer Experience with Lightning-Fast CSS Generation
 
 A high-performance CSS utility generator written in Rust, featuring on-demand style generation, intelligent file watching, and advanced optimizations for maximum speed.
 
@@ -67,6 +67,7 @@ cargo test --test performance_integration --release
 ```
 
 Expected performance (with all optimizations):
+
 - Add single class: ~10-12µs
 - Parse 100 classes: ~320µs (full) or ~30-100µs (incremental)
 - Parse 1000 classes: ~1.9ms (full) or ~200-500µs (incremental)
